@@ -6,7 +6,7 @@ SDPLUGIN_DIR := $(PLUGIN_UUID).sdPlugin
 MAIN_BRANCH  := main
 STREAMDECK   := npx --no-install streamdeck
 
-.PHONY: help setup build clean distclean test package cleanup_tags cleanup_branches cleanup_actions
+.PHONY: help setup build deploy clean distclean test package cleanup_tags cleanup_branches cleanup_actions
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} \
@@ -17,6 +17,9 @@ setup: ## Install npm dependencies (restores what distclean removed)
 
 build: ## Compile TypeScript via rollup into <plugin>/bin/plugin.js
 	npm run build
+
+deploy: build ## Build, then restart the plugin in the Stream Deck app
+	$(STREAMDECK) restart $(PLUGIN_UUID)
 
 clean: ## Remove build output (bin, logs, packed plugin) — keeps node_modules
 	rm -rf $(SDPLUGIN_DIR)/bin $(SDPLUGIN_DIR)/logs
