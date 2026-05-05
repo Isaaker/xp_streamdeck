@@ -25,6 +25,20 @@ export const catalog: IconDef[] = [
 	{ kind: "toggle", name: "apr", label: "APR", accent: "#f59e0b", group: "AP" },
 	{ kind: "toggle", name: "bc", label: "BC", accent: "#f59e0b", group: "AP" },
 
+	// === Lights (toggles) — `lt_` prefix avoids clashing with AP "nav" ===
+	{ kind: "toggle", name: "lt_bcn", label: "BCN", accent: "#ef4444", group: "LIGHTS" },
+	{ kind: "toggle", name: "lt_land", label: "LAND", accent: "#fbbf24", group: "LIGHTS" },
+	{ kind: "toggle", name: "lt_taxi", label: "TAXI", accent: "#fbbf24", group: "LIGHTS" },
+	{ kind: "toggle", name: "lt_nav", label: "NAV", accent: "#22c55e", group: "LIGHTS" },
+	{ kind: "toggle", name: "lt_strobe", label: "STROBE", accent: "#06b6d4", group: "LIGHTS" },
+
+	// === Cockpit controls / system switches (toggles) ===
+	{ kind: "toggle", name: "parkbrake", label: "PARK BRK", accent: "#ef4444", group: "CTRL" },
+	{ kind: "toggle", name: "fuelpump", label: "FUEL PUMP", accent: "#f59e0b", group: "CTRL" },
+	{ kind: "toggle", name: "master_bat", label: "MASTER BAT", accent: "#22c55e", group: "CTRL" },
+	{ kind: "toggle", name: "avionics", label: "AVIONICS", accent: "#3b82f6", group: "CTRL" },
+	{ kind: "toggle", name: "pitot_heat", label: "PITOT HEAT", accent: "#ef4444", group: "CTRL" },
+
 	// === Live readouts (display-only, no on/off) ===
 	// Layout reserves the lower 2/3 of the key for the Stream Deck title overlay.
 	{ kind: "display", name: "cur_hdg", label: "HDG", accent: "#3b82f6", group: "INST" },

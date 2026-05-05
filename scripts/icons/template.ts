@@ -11,12 +11,31 @@ const FONT_STACK =
 	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif";
 
 // === Toggle (on/off button) layout ===
-const TOGGLE_LABEL_FONT_SIZE = 44;
-const TOGGLE_LABEL_BASELINE_Y = 82;
+// Labels up to 4 chars (the AP family — VNAV is the design max) render at 44px.
+// Longer labels (lights, controls) shrink in a fixed staircase so they stay
+// inside the canvas without per-icon hand-tuning. Labels of the same length
+// always render at the same size → groups look uniform within themselves.
 const TOGGLE_BAR_HEIGHT = 14;
 const TOGGLE_BAR_INSET_X = 14;
 const TOGGLE_BAR_INSET_BOTTOM = 14;
 const TOGGLE_BAR_RADIUS = 3;
+
+const TOGGLE_LABEL_VISUAL_CENTER_Y = 64;
+
+function toggleFontSize(label: string): number {
+	const len = label.length;
+	if (len <= 4) return 44;
+	if (len === 5) return 36;
+	if (len === 6) return 30;
+	if (len === 7) return 26;
+	if (len === 8) return 22;
+	if (len === 9) return 20;
+	return 18;
+}
+
+function toggleBaselineY(fontSize: number): number {
+	return Math.round(TOGGLE_LABEL_VISUAL_CENTER_Y + fontSize * 0.35);
+}
 
 // === Display (live readout) layout ===
 // Caption + accent line live in the top ~⅓ so Stream Deck's title overlay
@@ -28,6 +47,8 @@ const DISPLAY_ACCENT_LINE_HEIGHT = 2;
 const DISPLAY_ACCENT_LINE_WIDTH = 64;
 
 export function renderToggleIcon(def: ToggleIcon, state: IconState): string {
+	const fontSize = toggleFontSize(def.label);
+	const baselineY = toggleBaselineY(fontSize);
 	const barFill = state === "on" ? def.accent : BAR_OFF;
 	const barWidth = SIZE - TOGGLE_BAR_INSET_X * 2;
 	const barY = SIZE - TOGGLE_BAR_INSET_BOTTOM - TOGGLE_BAR_HEIGHT;
@@ -44,8 +65,8 @@ export function renderToggleIcon(def: ToggleIcon, state: IconState): string {
     </filter>
   </defs>
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
-  <text x="${SIZE / 2}" y="${TOGGLE_LABEL_BASELINE_Y}" text-anchor="middle"
-        font-family="${FONT_STACK}" font-size="${TOGGLE_LABEL_FONT_SIZE}" font-weight="800"
+  <text x="${SIZE / 2}" y="${baselineY}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${fontSize}" font-weight="800"
         fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>
   ${glow}
   <rect x="${TOGGLE_BAR_INSET_X}" y="${barY}" width="${barWidth}" height="${TOGGLE_BAR_HEIGHT}" rx="${TOGGLE_BAR_RADIUS}" fill="${barFill}"/>
