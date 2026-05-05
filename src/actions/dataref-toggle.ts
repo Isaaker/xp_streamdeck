@@ -45,6 +45,7 @@ interface ActionState {
 	commandPath: string;
 	imageOff?: string;
 	imageOn?: string;
+	imagesApplied: boolean;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 	currentState: number;
@@ -72,10 +73,11 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			commandPath: parsed.commandPath,
 			imageOff: parsed.imageOff,
 			imageOn: parsed.imageOn,
+			imagesApplied: false,
 			currentState: STATE_OFF,
 		};
 		this.states.set(ev.action.id, state);
-		await this.applyCustomImages(state);
+		await this.applyCustomImages(state, /* force */ true);
 		await this.applySubscription(state);
 	}
 
@@ -95,8 +97,8 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 
 		const parsed = parseSettings(ev.payload.settings ?? {});
 		const pathChanged = parsed.path !== state.path;
-		const imagesChanged =
-			parsed.imageOff !== state.imageOff || parsed.imageOn !== state.imageOn;
+		const offChanged = parsed.imageOff !== state.imageOff;
+		const onChanged = parsed.imageOn !== state.imageOn;
 
 		state.valueOff = parsed.valueOff;
 		state.valueOn = parsed.valueOn;
@@ -105,8 +107,11 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		state.imageOff = parsed.imageOff;
 		state.imageOn = parsed.imageOn;
 
-		if (imagesChanged) {
-			await this.applyCustomImages(state);
+		if (offChanged) {
+			await state.action.setImage(state.imageOff, { state: STATE_OFF });
+		}
+		if (onChanged) {
+			await state.action.setImage(state.imageOn, { state: STATE_ON });
 		}
 
 		if (pathChanged) {
@@ -164,9 +169,20 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		}
 	}
 
-	private async applyCustomImages(state: ActionState): Promise<void> {
-		await state.action.setImage(state.imageOff, { state: STATE_OFF });
-		await state.action.setImage(state.imageOn, { state: STATE_ON });
+	private async applyCustomImages(state: ActionState, force: boolean): Promise<void> {
+		// On first appear we always apply (force=true) so a freshly opened key
+		// gets its custom override even after a Stream Deck restart. After that
+		// we only push images when they actually change in onDidReceiveSettings,
+		// to avoid stomping on Stream Deck's per-state image cache during state
+		// transitions.
+		if (!force && state.imagesApplied) return;
+		if (state.imageOff !== undefined) {
+			await state.action.setImage(state.imageOff, { state: STATE_OFF });
+		}
+		if (state.imageOn !== undefined) {
+			await state.action.setImage(state.imageOn, { state: STATE_ON });
+		}
+		state.imagesApplied = true;
 	}
 
 	private async applySubscription(state: ActionState): Promise<void> {
@@ -179,11 +195,31 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 
 		try {
 			state.handle = await this.xplane.subscribe(state.path, (value) => {
+				const prev = state.lastValue;
 				state.lastValue = value;
+				if (!sameValue(prev, value)) {
+					streamDeck.logger.info(
+						`dataref-toggle: subscribe ${state.path} = ${describeValue(value)}`,
+					);
+				}
 				this.renderState(state, value).catch((err) =>
 					streamDeck.logger.warn("dataref-toggle: render failed", err),
 				);
 			});
+
+			// Seed the visible state immediately via REST so the first frame is
+			// correct even before the subscription delivers its first update.
+			try {
+				const id = await this.xplane.getDataRefId(state.path);
+				const initial = await this.xplane.readDataRef(id);
+				state.lastValue = initial;
+				await this.renderState(state, initial);
+			} catch (err) {
+				streamDeck.logger.warn(
+					`dataref-toggle: initial read failed for ${state.path}`,
+					err,
+				);
+			}
 		} catch (err) {
 			streamDeck.logger.warn(`dataref-toggle: subscribe failed for ${state.path}`, err);
 			await state.action.showAlert();
@@ -199,6 +235,10 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 
 	private async renderState(state: ActionState, value: DataRefValue): Promise<void> {
 		const target = mapValueToStateIndex(value, state.valueOff, state.valueOn);
+		if (target === state.currentState) return;
+		streamDeck.logger.info(
+			`dataref-toggle: setState ${target} for ${state.path} (value=${describeValue(value)}, off=${state.valueOff}, on=${state.valueOn})`,
+		);
 		state.currentState = target;
 		await state.action.setState(target);
 	}
@@ -253,6 +293,23 @@ function coerceNumber(v: DataRefValue): number | undefined {
 	}
 	if (Array.isArray(v) && v.length > 0 && typeof v[0] === "number") return v[0];
 	return undefined;
+}
+
+function describeValue(v: DataRefValue): string {
+	if (Array.isArray(v)) return `[${v.slice(0, 4).join(",")}${v.length > 4 ? ",…" : ""}]`;
+	return `${v} (${typeof v})`;
+}
+
+function sameValue(a: DataRefValue | undefined, b: DataRefValue): boolean {
+	if (a === undefined) return false;
+	if (Array.isArray(a) && Array.isArray(b)) {
+		if (a.length !== b.length) return false;
+		for (let i = 0; i < a.length; i++) {
+			if (a[i] !== b[i]) return false;
+		}
+		return true;
+	}
+	return a === b;
 }
 
 function mapValueToStateIndex(
