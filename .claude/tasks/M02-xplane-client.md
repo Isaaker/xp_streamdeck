@@ -15,8 +15,8 @@ Build a reusable `src/xplane/` module that all subsequent actions consume. Hides
   - `getCommandId(name): Promise<number>` — cached
   - `readDataRef(id): Promise<number | string | number[]>`
   - `writeDataRef(id, value): Promise<void>`
-  - `activateCommand(id): Promise<void>`
-  - `beginCommand(id) / endCommand(id)` — for hold-style commands
+  - `activateCommand(id, duration?: number): Promise<void>` — `duration` defaults to 0 (immediate press-release); values > 0 hold the command for that many seconds (max 10). The endpoint **requires** `Content-Type: application/json` and a body `{"duration": N}` — empty POST returns HTTP 400 (learned the hard way in M01).
+  - `beginCommand(id) / endCommand(id)` — for hold-style commands. **Note:** the REST API does **not** expose separate begin/end endpoints; these methods route through the WebSocket `command_set_is_active` message (`{"is_active": true|false}`). Documented as part of the client surface here so callers don't care about the transport.
 - WebSocket client:
   - `connect()` with exponential backoff (1s, 2s, 4s, 8s, max 30s)
   - `subscribe(datarefId, callback)` / `unsubscribe(handle)`
@@ -70,3 +70,7 @@ Build a reusable `src/xplane/` module that all subsequent actions consume. Hides
 - Use `AbortController` for in-flight HTTP requests so we can cancel during disconnect.
 - Don't import Stream Deck SDK here. Keep this module pure — testable in isolation.
 - Avoid an Event Emitter library — Node has `EventEmitter` built in.
+- **Wire-level gotchas learned from M01:**
+  - `POST /command/<id>/activate` rejects an empty body with HTTP 400 — always send `Content-Type: application/json` and `{"duration": N}`.
+  - Hold-style commands (`begin`/`end`) only exist on the WebSocket side as `command_set_is_active`. There is no `/command/<id>/begin` REST endpoint.
+  - When auditing more endpoints (DataRef write etc.) during this milestone, assume the same shape: JSON body required, even when there's no obvious payload to send.

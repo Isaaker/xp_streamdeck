@@ -13,7 +13,7 @@ Replace M01's hard-coded `command-pause` action with a fully configurable `comma
 - Action ID `command` (delete or rename M01's `command-pause`).
 - Property Inspector (`com.robertw.xplane.sdPlugin/ui/command.html`):
   - One text input: `commandPath` (e.g. `sim/autopilot/heading_up`)
-  - Optional toggle: `holdMode` — when on, use `command_begin` / `command_end` (for trim-style hold)
+  - Optional toggle: `holdMode` — when on, route via the client's `beginCommand`/`endCommand` (these go over WebSocket `command_set_is_active`, since the REST API has no begin/end endpoints — see M02)
 - On `keyDown`:
   - If `holdMode`: `beginCommand(id)`
   - Otherwise: `activateCommand(id)`
