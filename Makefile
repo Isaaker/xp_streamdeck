@@ -6,7 +6,7 @@ SDPLUGIN_DIR := $(PLUGIN_UUID).sdPlugin
 MAIN_BRANCH  := main
 STREAMDECK   := npx --no-install streamdeck
 
-.PHONY: help setup build deploy clean distclean test lint lint-fix format format-check check smoke package cleanup_tags cleanup_branches cleanup_actions
+.PHONY: help setup build deploy clean distclean test lint lint-fix format format-check check smoke icons package cleanup_tags cleanup_branches cleanup_actions
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} \
@@ -21,9 +21,10 @@ build: ## Compile TypeScript via rollup into <plugin>/bin/plugin.js
 deploy: build ## Build, then restart the plugin in the Stream Deck app
 	$(STREAMDECK) restart $(PLUGIN_UUID)
 
-clean: ## Remove build output (bin, logs, packed plugin) — keeps node_modules
+clean: ## Remove build output (bin, logs, packed plugin, generated icons) — keeps node_modules
 	rm -rf $(SDPLUGIN_DIR)/bin $(SDPLUGIN_DIR)/logs
 	rm -f $(PLUGIN_UUID).streamDeckPlugin
+	rm -rf out
 
 distclean: clean ## Like clean, plus wipe node_modules (full reset; needs `make setup` after)
 	rm -rf node_modules
@@ -47,6 +48,9 @@ check: lint test ## Run lint + type-check — recommended before every commit
 
 smoke: ## Run the X-Plane client smoke script (X-Plane must be running)
 	npm run --silent smoke
+
+icons: ## Generate Stream Deck button icons from scripts/icons/catalog.ts into out/icons/
+	npm run --silent icons
 
 package: build ## Build a distributable .streamDeckPlugin (uses streamdeck pack — see M08)
 	$(STREAMDECK) pack -f $(SDPLUGIN_DIR)

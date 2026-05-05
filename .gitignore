@@ -17,6 +17,9 @@ build/
 *.tsbuildinfo
 .rollup.cache/
 
+# Icon generator output
+out/
+
 # Test / coverage output
 coverage/
 .nyc_output/
