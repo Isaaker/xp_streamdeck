@@ -14,8 +14,9 @@ help: ## Show available targets
 build: ## Compile TypeScript via rollup into <plugin>/bin/plugin.js
 	npm run build
 
-clean: ## Remove build output, logs and node_modules
+clean: ## Remove build output, packed plugin, logs and node_modules
 	rm -rf $(SDPLUGIN_DIR)/bin $(SDPLUGIN_DIR)/logs node_modules
+	rm -f $(PLUGIN_UUID).streamDeckPlugin
 
 test: ## Type-check the source (no test framework configured yet)
 	npx tsc --noEmit
