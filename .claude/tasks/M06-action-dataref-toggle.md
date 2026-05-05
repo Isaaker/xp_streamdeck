@@ -95,3 +95,5 @@ The flagship action — combines reading + state-based image rendering + click-t
 - For boolean DataRefs, X-Plane sometimes returns `0.0` or `1.0` floats. Use `Math.round(value)` before comparing in the simple boolean case.
 - Image upload via `<input type="file">` in the Property Inspector → read as data URL → store base64 in settings (Stream Deck SDK accepts data URLs in `setImage`).
 - Re-emit current state on reconnect (after re-subscribing) to refresh visuals.
+- **Follow `CLAUDE.md` → "Action Implementation Conventions"**, especially: any boolean toggle in the PI (e.g. an "invert state" flag) must use unchecked = baseline semantics (`=== true` checks in code). `default="true"` on `<sdpi-checkbox>` is broken — verified during M03.
+- `triggerMode` is a select, not a checkbox — use `<sdpi-select>` with two options, no default-value pitfall there.

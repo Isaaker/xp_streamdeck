@@ -55,6 +55,18 @@ xp_streamdeck/
 - **Default to no comments.** Only add a comment when the *why* is non-obvious.
 - **No premature abstractions.** Three similar lines beat a flexible factory.
 - **Verification before claiming done.** Each milestone has explicit verification steps — run them before marking complete.
+- **Pre-commit gate:** `make check` (Biome lint + `tsc --noEmit`). Must be green before any commit.
+
+## Action Implementation Conventions (locked in during M03)
+
+Patterns every new action under `src/actions/` should follow:
+
+- **Settings type:** `type FooSettings = JsonObject & { /* keys */ }`. `JsonObject` is exported from `@elgato/utils` (NOT from `@elgato/streamdeck`) — it's required to satisfy the `SingletonAction<T extends JsonObject>` constraint.
+- **Visual feedback on `keyDown`:** call `ev.action.showOk()` on success (optionally gated by an opt-out setting), `ev.action.showAlert()` on every failure path including empty/invalid config. Errors must always be visible — never gate `showAlert()` behind a setting.
+- **sdpi-checkbox defaults are unreliable.** `default="true"` on `<sdpi-checkbox>` does not round-trip cleanly when the user unchecks (we hit this with `showConfirmation`). **Always design checkboxes so unchecked = baseline behavior, checked = opt-in to a deviation.** In code use `=== true` (not `!== false`) so a missing setting maps to the baseline.
+- **Property Inspector** lives in `com.robertw.xplane.sdPlugin/ui/<action>.html` and loads sdpi-components v4 from CDN (`https://sdpi-components.dev/releases/v4/sdpi-components.js`).
+- **No floating promises.** Biome's `noFloatingPromises` will fail the build. Wrap fire-and-forget async with `.catch((err) => streamDeck.logger.error(...))` or `await` it.
+- **Read settings via `ev.payload.settings`** in `onKeyDown`/`onKeyUp`/`onWillAppear`. Trim string inputs.
 
 ## Test Environment Reality
 

@@ -59,3 +59,5 @@ Get the working plugin onto the user's flight-sim Mac (where the Stream Deck XL 
 - If the user later wants to share the plugin: Apple Developer account + notarization adds 5–10 h. Not in scope here.
 - The `.streamDeckPlugin` extension is just a renamed zip of the `.sdPlugin` directory — handy for debugging if install fails.
 - Once installed, plugin runs as a background process; check Activity Monitor if it doesn't appear in the Stream Deck app.
+- Run `make check` before `make package` — TS or lint regressions must not ship.
+- **Sim-Mac dev workflow** (the user pulls main and runs `make build` directly there): if `package.json` devDependencies changed since the last build, run `make setup` first. We hit this once when `@types/ws` was missing locally because `npm install` hadn't been re-run after a pull.
