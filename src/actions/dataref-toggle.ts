@@ -45,11 +45,15 @@ interface ActionState {
 	commandPath: string;
 	imageOff?: string;
 	imageOn?: string;
-	imagesApplied: boolean;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 	currentState: number;
 }
+
+const DEFAULT_IMAGE_OFF = "imgs/states/off";
+const DEFAULT_IMAGE_ON = "imgs/states/on";
+
+const UNINITIALIZED_STATE = -1;
 
 @action({ UUID: "com.robertw.xplane.dataref-toggle" })
 export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> {
@@ -73,11 +77,9 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			commandPath: parsed.commandPath,
 			imageOff: parsed.imageOff,
 			imageOn: parsed.imageOn,
-			imagesApplied: false,
-			currentState: STATE_OFF,
+			currentState: UNINITIALIZED_STATE,
 		};
 		this.states.set(ev.action.id, state);
-		await this.applyCustomImages(state, /* force */ true);
 		await this.applySubscription(state);
 	}
 
@@ -97,8 +99,6 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 
 		const parsed = parseSettings(ev.payload.settings ?? {});
 		const pathChanged = parsed.path !== state.path;
-		const offChanged = parsed.imageOff !== state.imageOff;
-		const onChanged = parsed.imageOn !== state.imageOn;
 
 		state.valueOff = parsed.valueOff;
 		state.valueOn = parsed.valueOn;
@@ -107,21 +107,18 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		state.imageOff = parsed.imageOff;
 		state.imageOn = parsed.imageOn;
 
-		if (offChanged) {
-			await state.action.setImage(state.imageOff, { state: STATE_OFF });
-		}
-		if (onChanged) {
-			await state.action.setImage(state.imageOn, { state: STATE_ON });
-		}
-
 		if (pathChanged) {
 			this.dropSubscription(state);
 			state.path = parsed.path;
 			state.lastValue = undefined;
+			state.currentState = UNINITIALIZED_STATE;
 			await this.applySubscription(state);
 			return;
 		}
 
+		// Force a re-render so changed off/on thresholds and image overrides
+		// take effect immediately.
+		state.currentState = UNINITIALIZED_STATE;
 		if (state.lastValue !== undefined) {
 			await this.renderState(state, state.lastValue);
 		}
@@ -167,22 +164,6 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			streamDeck.logger.error("dataref-toggle keyDown failed", err);
 			await ev.action.showAlert();
 		}
-	}
-
-	private async applyCustomImages(state: ActionState, force: boolean): Promise<void> {
-		// On first appear we always apply (force=true) so a freshly opened key
-		// gets its custom override even after a Stream Deck restart. After that
-		// we only push images when they actually change in onDidReceiveSettings,
-		// to avoid stomping on Stream Deck's per-state image cache during state
-		// transitions.
-		if (!force && state.imagesApplied) return;
-		if (state.imageOff !== undefined) {
-			await state.action.setImage(state.imageOff, { state: STATE_OFF });
-		}
-		if (state.imageOn !== undefined) {
-			await state.action.setImage(state.imageOn, { state: STATE_ON });
-		}
-		state.imagesApplied = true;
 	}
 
 	private async applySubscription(state: ActionState): Promise<void> {
@@ -241,6 +222,15 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		);
 		state.currentState = target;
 		await state.action.setState(target);
+
+		// Stream Deck does not always refresh the visible image after setState
+		// alone on multi-state keys, so we explicitly push the active image
+		// (custom data URL if uploaded, otherwise the manifest path). This
+		// targets the *currently displayed* state because we just switched to
+		// `target`, which is why we omit the { state } option here.
+		const customImage = target === STATE_ON ? state.imageOn : state.imageOff;
+		const image = customImage ?? (target === STATE_ON ? DEFAULT_IMAGE_ON : DEFAULT_IMAGE_OFF);
+		await state.action.setImage(image);
 	}
 
 	private onXPlaneDisconnected(): void {
