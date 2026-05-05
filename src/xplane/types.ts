@@ -1,12 +1,6 @@
 export type DataRefValue = number | string | number[] | boolean;
 
-export type DataRefValueType =
-	| "int"
-	| "float"
-	| "double"
-	| "int_array"
-	| "float_array"
-	| "data";
+export type DataRefValueType = "int" | "float" | "double" | "int_array" | "float_array" | "data";
 
 export interface DataRefMeta {
 	id: number;

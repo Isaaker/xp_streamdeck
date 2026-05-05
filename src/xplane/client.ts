@@ -1,10 +1,7 @@
 import { EventEmitter } from "node:events";
 import WebSocket, { type RawData } from "ws";
 
-import {
-	SubscriptionMultiplexer,
-	type SubscriptionTransport,
-} from "./subscriptions";
+import { SubscriptionMultiplexer, type SubscriptionTransport } from "./subscriptions";
 import type {
 	CommandMeta,
 	ConnectionStatus,
@@ -127,10 +124,7 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 
 	// ---------------- subscriptions ----------------
 
-	async subscribe(
-		name: string,
-		callback: DataRefCallback,
-	): Promise<SubscriptionHandle> {
+	async subscribe(name: string, callback: DataRefCallback): Promise<SubscriptionHandle> {
 		this.connect();
 		return this.subs.subscribe(name, callback);
 	}
@@ -194,18 +188,14 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 		this.sendWs({
 			type: "dataref_subscribe_values",
 			params: { datarefs: [{ id }] },
-		}).catch((err) =>
-			this.logger.warn(`subscribe(${id}) failed`, err),
-		);
+		}).catch((err) => this.logger.warn(`subscribe(${id}) failed`, err));
 	}
 
 	sendUnsubscribe(id: number): void {
 		this.sendWs({
 			type: "dataref_unsubscribe_values",
 			params: { datarefs: [{ id }] },
-		}).catch((err) =>
-			this.logger.warn(`unsubscribe(${id}) failed`, err),
-		);
+		}).catch((err) => this.logger.warn(`unsubscribe(${id}) failed`, err));
 	}
 
 	isConnected(): boolean {
@@ -305,9 +295,7 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 		const { initialMs, maxMs } = this.reconnectOpts;
 		const delay = Math.min(initialMs * 2 ** this.connectAttempt, maxMs);
 		this.connectAttempt++;
-		this.logger.info(
-			`X-Plane WS reconnect in ${delay}ms (attempt ${this.connectAttempt})`,
-		);
+		this.logger.info(`X-Plane WS reconnect in ${delay}ms (attempt ${this.connectAttempt})`);
 		this.reconnectTimer = setTimeout(() => {
 			this.reconnectTimer = null;
 			if (!this.closed) this.openWs();
@@ -358,10 +346,9 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 		type: string;
 		params?: Record<string, unknown>;
 	}): Promise<WsResultMessage> {
-		if (!this.ws || this.wsState !== "connected") {
-			return Promise.reject(
-				new Error(`WS not connected (state: ${this.wsState})`),
-			);
+		const ws = this.ws;
+		if (!ws || this.wsState !== "connected") {
+			return Promise.reject(new Error(`WS not connected (state: ${this.wsState})`));
 		}
 		const reqId = this.nextReqId++;
 		const full: WsRequestEnvelope = { req_id: reqId, ...envelope };
@@ -372,7 +359,7 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 			}, REQ_TIMEOUT_MS);
 			this.pending.set(reqId, { resolve, reject, timer });
 			try {
-				this.ws!.send(JSON.stringify(full));
+				ws.send(JSON.stringify(full));
 			} catch (err) {
 				clearTimeout(timer);
 				this.pending.delete(reqId);

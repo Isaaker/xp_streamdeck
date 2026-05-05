@@ -8,9 +8,14 @@
     "scripts": {
         "build": "rollup -c",
         "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.robertw.xplane\"",
-        "smoke": "tsx scripts/smoke-client.ts"
+        "smoke": "tsx scripts/smoke-client.ts",
+        "lint": "biome check",
+        "lint:fix": "biome check --write",
+        "format": "biome format --write",
+        "format:check": "biome format"
     },
     "devDependencies": {
+        "@biomejs/biome": "2.4.14",
         "@elgato/cli": "^1.7.4",
         "@rollup/plugin-commonjs": "^29.0.2",
         "@rollup/plugin-node-resolve": "^15.2.2",

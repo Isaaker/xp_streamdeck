@@ -1,9 +1,4 @@
-import type {
-	DataRefCallback,
-	DataRefValue,
-	SubscriptionHandle,
-	XPlaneLogger,
-} from "./types.js";
+import type { DataRefCallback, DataRefValue, SubscriptionHandle, XPlaneLogger } from "./types.js";
 
 export interface SubscriptionTransport {
 	resolveDataRefId(name: string): Promise<number>;
@@ -39,10 +34,7 @@ export class SubscriptionMultiplexer {
 
 	constructor(private readonly transport: SubscriptionTransport) {}
 
-	async subscribe(
-		name: string,
-		callback: DataRefCallback,
-	): Promise<SubscriptionHandle> {
+	async subscribe(name: string, callback: DataRefCallback): Promise<SubscriptionHandle> {
 		let entry = this.byName.get(name);
 		if (!entry) {
 			const id = await this.transport.resolveDataRefId(name);
@@ -89,10 +81,7 @@ export class SubscriptionMultiplexer {
 			try {
 				callback(value);
 			} catch (err) {
-				this.transport.logger.warn(
-					`subscription callback for ${entry.name} threw`,
-					err,
-				);
+				this.transport.logger.warn(`subscription callback for ${entry.name} threw`, err);
 			}
 		}
 	}
@@ -118,10 +107,7 @@ export class SubscriptionMultiplexer {
 				this.transport.sendSubscribe(entry.id);
 				entry.subscribed = true;
 			} catch (err) {
-				this.transport.logger.warn(
-					`re-subscribe failed for ${entry.name}`,
-					err,
-				);
+				this.transport.logger.warn(`re-subscribe failed for ${entry.name}`, err);
 			}
 		}
 	}

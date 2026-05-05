@@ -4,16 +4,15 @@
 	"Author": "Robert Wellinger",
 	"Actions": [
 		{
-			"Name": "Pause",
-			"UUID": "com.robertw.xplane.command-pause",
-			"Icon": "imgs/actions/pause/icon",
-			"Tooltip": "Toggles X-Plane simulator pause (sim/operation/pause_toggle).",
-			"Controllers": [
-				"Keypad"
-			],
+			"Name": "Command",
+			"UUID": "com.robertw.xplane.command",
+			"Icon": "imgs/actions/command/icon",
+			"Tooltip": "Trigger any X-Plane CommandRef by path.",
+			"PropertyInspectorPath": "ui/command.html",
+			"Controllers": ["Keypad"],
 			"States": [
 				{
-					"Image": "imgs/actions/pause/key",
+					"Image": "imgs/actions/command/key",
 					"TitleAlignment": "middle"
 				}
 			]

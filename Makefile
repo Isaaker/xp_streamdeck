@@ -6,7 +6,7 @@ SDPLUGIN_DIR := $(PLUGIN_UUID).sdPlugin
 MAIN_BRANCH  := main
 STREAMDECK   := npx --no-install streamdeck
 
-.PHONY: help setup build deploy clean distclean test smoke package cleanup_tags cleanup_branches cleanup_actions
+.PHONY: help setup build deploy clean distclean test lint lint-fix format format-check check smoke package cleanup_tags cleanup_branches cleanup_actions
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} \
@@ -30,6 +30,20 @@ distclean: clean ## Like clean, plus wipe node_modules (full reset; needs `make 
 
 test: ## Type-check the source (no test framework configured yet)
 	npx tsc --noEmit
+
+lint: ## Run Biome lint + format check (read-only; fails CI on issues)
+	npm run --silent lint
+
+lint-fix: ## Apply safe lint fixes (imports, unused, style)
+	npm run --silent lint:fix
+
+format: ## Format all sources in place via Biome
+	npm run --silent format
+
+format-check: ## Check formatting without writing (CI-friendly)
+	npm run --silent format:check
+
+check: lint test ## Run lint + type-check — recommended before every commit
 
 smoke: ## Run the X-Plane client smoke script (X-Plane must be running)
 	npm run --silent smoke

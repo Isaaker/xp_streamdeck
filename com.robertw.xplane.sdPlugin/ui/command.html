@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane Command</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+	</head>
+	<body>
+		<sdpi-item label="Command Path">
+			<sdpi-textfield
+				setting="commandPath"
+				placeholder="sim/operation/pause_toggle"
+				required
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Hold Mode">
+			<sdpi-checkbox
+				setting="holdMode"
+				label="Send begin/end while held (e.g. heading bug)"
+			></sdpi-checkbox>
+		</sdpi-item>
+	</body>
+</html>

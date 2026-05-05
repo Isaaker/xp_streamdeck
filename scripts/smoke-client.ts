@@ -12,8 +12,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 import { XPlaneClient } from "../src/xplane";
 
-const READ_DATAREF =
-	process.env.READ_DATAREF ?? "sim/cockpit2/clock_timer/zulu_time_seconds";
+const READ_DATAREF = process.env.READ_DATAREF ?? "sim/cockpit2/clock_timer/zulu_time_seconds";
 const SUBSCRIBE_DATAREF = process.env.SUBSCRIBE_DATAREF ?? READ_DATAREF;
 
 const log = (msg: string, ...args: unknown[]) => console.log(`[smoke] ${msg}`, ...args);
@@ -37,7 +36,7 @@ async function main(): Promise<void> {
 		const id = await client.getDataRefId(READ_DATAREF);
 		log(`  -> id=${id}`);
 
-		log(`reading value`);
+		log("reading value");
 		const value = await client.readDataRef(id);
 		log(`  -> value=${JSON.stringify(value)}`);
 
