@@ -63,6 +63,34 @@ After this, the **X-Plane → Pause** action appears in the Stream Deck app's ac
 
 ## Actions
 
+### Command
+
+Triggers any X-Plane CommandRef on key press. Optional **Hold Mode** routes the press through the WebSocket `command_set_is_active` begin/end pair instead of a one-shot activate — useful for things that should keep firing while the key is held (e.g. spinning the heading bug).
+
+Property Inspector fields:
+
+- **Command Path** — the X-Plane CommandRef, e.g. `sim/operation/pause_toggle`.
+- **Hold Mode** — when checked, sends begin on `keyDown` and end on `keyUp`.
+- **Hide green confirmation icon** — opt-out of the `showOk()` flash on success. Errors still always show the alert icon.
+
+#### Example: toggle pause
+
+| Field | Value |
+| --- | --- |
+| Command Path | `sim/operation/pause_toggle` |
+| Hold Mode | *(unchecked)* |
+
+Press → X-Plane pauses; press again → resumes.
+
+#### Example: spin the heading bug while held
+
+| Field | Value |
+| --- | --- |
+| Command Path | `sim/autopilot/heading_up` |
+| Hold Mode | *(checked)* |
+
+Press and hold → heading bug rotates continuously; release → stops. Pair with `sim/autopilot/heading_down` on a second key for the opposite direction.
+
 ### DataRef Display
 
 Shows a live X-Plane DataRef value as the button title. Pure read-only — no click action.
