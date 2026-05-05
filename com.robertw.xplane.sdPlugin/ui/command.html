@@ -4,12 +4,14 @@
 		<meta charset="utf-8" />
 		<title>X-Plane Command</title>
 		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
 	</head>
 	<body>
 		<sdpi-item label="Command Path">
 			<sdpi-textfield
 				setting="commandPath"
 				placeholder="sim/operation/pause_toggle"
+				id="commandField"
 				required
 			></sdpi-textfield>
 		</sdpi-item>
@@ -25,5 +27,13 @@
 				label="Hide green confirmation icon on success"
 			></sdpi-checkbox>
 		</sdpi-item>
+		<script>
+			(async () => {
+				const field = document.getElementById("commandField");
+				if (window.XPlanePI && field) {
+					await window.XPlanePI.attachAutocomplete(field, "command");
+				}
+			})();
+		</script>
 	</body>
 </html>

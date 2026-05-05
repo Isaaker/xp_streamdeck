@@ -4,14 +4,31 @@
 		<meta charset="utf-8" />
 		<title>X-Plane DataRef Display</title>
 		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
+		<style>
+			.live-preview {
+				font-family: monospace;
+				color: #aaa;
+				font-size: 11px;
+				word-break: break-all;
+			}
+			.live-preview[data-state="not-found"],
+			.live-preview[data-state="error"] {
+				color: #d97;
+			}
+		</style>
 	</head>
 	<body>
 		<sdpi-item label="DataRef Path">
 			<sdpi-textfield
 				setting="datarefPath"
 				placeholder="sim/cockpit/autopilot/heading_mag"
+				id="datarefField"
 				required
 			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Live Value">
+			<span class="live-preview" id="datarefPreview"></span>
 		</sdpi-item>
 		<sdpi-item label="Format">
 			<sdpi-textfield
@@ -33,5 +50,15 @@
 				inputmode="numeric"
 			></sdpi-textfield>
 		</sdpi-item>
+		<script>
+			(async () => {
+				const field = document.getElementById("datarefField");
+				const preview = document.getElementById("datarefPreview");
+				if (window.XPlanePI && field) {
+					await window.XPlanePI.attachAutocomplete(field, "dataref");
+					await window.XPlanePI.attachLivePreview(field, preview);
+				}
+			})();
+		</script>
 	</body>
 </html>

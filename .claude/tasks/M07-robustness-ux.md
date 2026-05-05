@@ -1,6 +1,6 @@
 # M07 — Robustness & Property Inspector UX
 
-**Status:** Not started
+**Status:** Implemented — pending hardware verification
 **Estimated effort:** 6–10 h core + 4–8 h optional polish
 **Depends on:** M01–M06 (the four action types must exist)
 

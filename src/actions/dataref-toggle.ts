@@ -9,6 +9,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { clearTile, setDisconnected, setNotFound } from "../util/error-tile";
 import { persistImage } from "../util/image-cache";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -202,7 +203,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		if (!state.path) return;
 
 		if (this.xplane.status() !== "connected") {
-			await state.action.showAlert();
+			await setDisconnected(state.action);
 			return;
 		}
 
@@ -235,6 +236,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			}
 		} catch (err) {
 			streamDeck.logger.warn(`dataref-toggle: subscribe failed for ${state.path}`, err);
+			await setNotFound(state.action);
 			await state.action.showAlert();
 		}
 	}
@@ -253,6 +255,8 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			`dataref-toggle: setState ${target} for ${state.path} (value=${describeValue(value)}, off=${state.valueOff}, on=${state.valueOn})`,
 		);
 		state.currentState = target;
+		// Once we have valid data, drop any disconnected/not-found overlay.
+		await clearTile(state.action);
 		await state.action.setState(target);
 
 		// Stream Deck does not always refresh the visible image after setState
@@ -268,9 +272,12 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 	private onXPlaneDisconnected(): void {
 		for (const state of this.states.values()) {
 			if (!state.path) continue;
-			state.action
-				.showAlert()
-				.catch((err) => streamDeck.logger.warn("dataref-toggle: showAlert failed", err));
+			// Force the next renderState to push state+image again so the
+			// "X-Plane" title overlay is cleanly replaced on reconnect.
+			state.currentState = UNINITIALIZED_STATE;
+			setDisconnected(state.action).catch((err) =>
+				streamDeck.logger.warn("dataref-toggle: setDisconnected failed", err),
+			);
 		}
 	}
 

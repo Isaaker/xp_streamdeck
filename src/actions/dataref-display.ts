@@ -7,6 +7,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { DISCONNECTED_TITLE, NOT_FOUND_TITLE } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -16,9 +17,6 @@ type DataRefDisplaySettings = JsonObject & {
 	unitScale?: string | number;
 	precision?: string | number;
 };
-
-const DISCONNECTED_TITLE = "X-Plane";
-const ERROR_TITLE = "?";
 
 interface ActionState {
 	action: WillAppearEvent<DataRefDisplaySettings>["action"];
@@ -110,7 +108,7 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 			});
 		} catch (err) {
 			streamDeck.logger.warn(`dataref-display: subscribe failed for ${state.path}`, err);
-			await state.action.setTitle(ERROR_TITLE);
+			await state.action.setTitle(NOT_FOUND_TITLE);
 			await state.action.showAlert();
 		}
 	}

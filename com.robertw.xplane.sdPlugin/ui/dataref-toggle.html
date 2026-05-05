@@ -4,7 +4,18 @@
 		<meta charset="utf-8" />
 		<title>X-Plane DataRef Toggle</title>
 		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
 		<style>
+			.live-preview {
+				font-family: monospace;
+				color: #aaa;
+				font-size: 11px;
+				word-break: break-all;
+			}
+			.live-preview[data-state="not-found"],
+			.live-preview[data-state="error"] {
+				color: #d97;
+			}
 			.image-upload {
 				display: flex;
 				align-items: center;
@@ -46,8 +57,12 @@
 			<sdpi-textfield
 				setting="datarefPath"
 				placeholder="sim/cockpit2/controls/gear_handle_down"
+				id="datarefField"
 				required
 			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Live Value">
+			<span class="live-preview" id="datarefPreview"></span>
 		</sdpi-item>
 		<sdpi-item label="Value OFF">
 			<sdpi-textfield
@@ -73,6 +88,7 @@
 			<sdpi-textfield
 				setting="commandPath"
 				placeholder="sim/flight_controls/landing_gear_toggle (only used in command mode)"
+				id="commandField"
 			></sdpi-textfield>
 		</sdpi-item>
 		<sdpi-item label="Image OFF">
@@ -228,6 +244,17 @@
 
 				wire(fileOff, "imageOff", thumbOff);
 				wire(fileOn, "imageOn", thumbOn);
+
+				const datarefField = document.getElementById("datarefField");
+				const commandField = document.getElementById("commandField");
+				const datarefPreview = document.getElementById("datarefPreview");
+				if (window.XPlanePI && datarefField) {
+					window.XPlanePI.attachAutocomplete(datarefField, "dataref");
+					window.XPlanePI.attachLivePreview(datarefField, datarefPreview);
+				}
+				if (window.XPlanePI && commandField) {
+					window.XPlanePI.attachAutocomplete(commandField, "command");
+				}
 
 				document
 					.getElementById("pickOff")
