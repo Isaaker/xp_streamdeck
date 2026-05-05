@@ -4,6 +4,7 @@ SHELL := /bin/bash
 PLUGIN_UUID  := com.robertw.xplane
 SDPLUGIN_DIR := $(PLUGIN_UUID).sdPlugin
 MAIN_BRANCH  := main
+STREAMDECK   := npx --no-install streamdeck
 
 .PHONY: help setup build clean distclean test package cleanup_tags cleanup_branches cleanup_actions
 
@@ -28,7 +29,7 @@ test: ## Type-check the source (no test framework configured yet)
 	npx tsc --noEmit
 
 package: build ## Build a distributable .streamDeckPlugin (uses streamdeck pack — see M08)
-	streamdeck pack -f $(SDPLUGIN_DIR)
+	$(STREAMDECK) pack -f $(SDPLUGIN_DIR)
 
 cleanup_tags: ## Remove local tags that no longer exist on origin
 	git fetch --prune --prune-tags origin
