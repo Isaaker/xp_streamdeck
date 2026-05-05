@@ -9,6 +9,7 @@
         "build": "rollup -c",
         "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.robertw.xplane\"",
         "smoke": "tsx scripts/smoke-client.ts",
+        "smoke:format": "tsx scripts/smoke-format.ts",
         "lint": "biome check",
         "lint:fix": "biome check --write",
         "format": "biome format --write",

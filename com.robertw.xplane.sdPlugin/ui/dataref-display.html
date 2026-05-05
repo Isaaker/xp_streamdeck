@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane DataRef Display</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+	</head>
+	<body>
+		<sdpi-item label="DataRef Path">
+			<sdpi-textfield
+				setting="datarefPath"
+				placeholder="sim/cockpit/autopilot/heading_mag"
+				required
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Format">
+			<sdpi-textfield
+				setting="format"
+				placeholder="%.0f° (default: %s)"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Unit Scale">
+			<sdpi-textfield
+				setting="unitScale"
+				placeholder="e.g. 1.94384 (m/s → kt)"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Precision">
+			<sdpi-textfield
+				setting="precision"
+				placeholder="decimals — overridden by explicit %.Nf"
+				inputmode="numeric"
+			></sdpi-textfield>
+		</sdpi-item>
+	</body>
+</html>

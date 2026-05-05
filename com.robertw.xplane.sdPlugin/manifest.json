@@ -16,6 +16,20 @@
 					"TitleAlignment": "middle"
 				}
 			]
+		},
+		{
+			"Name": "DataRef Display",
+			"UUID": "com.robertw.xplane.dataref-display",
+			"Icon": "imgs/actions/dataref-display/icon",
+			"Tooltip": "Show a live X-Plane DataRef value as the button title.",
+			"PropertyInspectorPath": "ui/dataref-display.html",
+			"Controllers": ["Keypad"],
+			"States": [
+				{
+					"Image": "imgs/actions/dataref-display/key",
+					"TitleAlignment": "middle"
+				}
+			]
 		}
 	],
 	"Category": "X-Plane",
