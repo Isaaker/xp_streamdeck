@@ -44,6 +44,12 @@ xp_streamdeck/
 │   ├── actions/                   # One file per action type
 │   ├── xplane/                    # Web API client + subscriptions
 │   └── util/                      # Helpers (formatting, etc.)
+├── scripts/                       # tsx-runnable utilities (not bundled into the plugin)
+│   ├── smoke-client.ts            # X-Plane Web API smoke test
+│   ├── generate-icons.ts          # Button icon generator (entry; outputs out/icons/)
+│   └── icons/
+│       ├── catalog.ts             # Icon definitions — add a row to add an icon
+│       └── template.ts            # Single SVG renderer; all visual style lives here
 └── .claude/tasks/                 # Milestone task files (one .md per milestone)
 ```
 
@@ -67,6 +73,28 @@ Patterns every new action under `src/actions/` should follow:
 - **Property Inspector** lives in `com.robertw.xplane.sdPlugin/ui/<action>.html` and loads sdpi-components v4 from CDN (`https://sdpi-components.dev/releases/v4/sdpi-components.js`).
 - **No floating promises.** Biome's `noFloatingPromises` will fail the build. Wrap fire-and-forget async with `.catch((err) => streamDeck.logger.error(...))` or `await` it.
 - **Read settings via `ev.payload.settings`** in `onKeyDown`/`onKeyUp`/`onWillAppear`. Trim string inputs.
+
+## Button Icon Pipeline
+
+To keep buttons visually consistent (one of M01's pain points was inconsistent purchased icon packs), button images are generated locally instead of curated by hand.
+
+- **Entry:** `make icons` → `npm run icons` → `tsx scripts/generate-icons.ts`.
+- **Output:** `out/icons/*.png` (144×144, gitignored, wiped by `make clean`).
+- **Two icon kinds, one catalog (discriminated union on `kind`):**
+  - **`toggle`** — for buttons that flip a state. Produces `<name>_on.png` + `<name>_off.png`. Bold label + LED bar at bottom (lit/dark by state).
+  - **`display`** — for the `dataref-display` action. Produces a single `<name>.png`. Caption + accent line in the top third; the lower ⅔ is intentionally empty so Stream Deck's `setTitle()` overlay (the live value) sits cleanly underneath.
+- **Adding an icon = one catalog row.** In `scripts/icons/catalog.ts`:
+  ```ts
+  { kind: 'toggle',  name: 'apu',     label: 'APU', accent: '#ef4444', group: 'ENG' },
+  { kind: 'display', name: 'cur_oat', label: 'OAT', accent: '#94a3b8', group: 'INST' },
+  ```
+  No template change needed unless you want a new visual *kind*.
+- **Visual style is centralized** in `scripts/icons/template.ts` — two render functions (`renderToggleIcon`, `renderDisplayIcon`), all layout/color constants at the top, one constant block per kind. Change once, re-run `make icons`, every icon of that kind updates identically. **Do not** branch per-icon style inside a renderer; if a new visual shape is needed (e.g. glyph icons, two-line displays), add a third `kind` to the union plus a third render function.
+- **Label sizing.** Toggle labels are fixed at 44px (designed for 4-character max — `VNAV`); display labels at 22px (designed for 6-character max — `AP HDG`, `W SPD`). Longer labels overflow — pick shorter wording rather than shrinking the font.
+- **Color palette by function group:**
+  - Toggle: engage = green (`#22c55e`), lateral = blue (`#3b82f6`), vertical = purple (`#a855f7`), approach = orange (`#f59e0b`).
+  - Display: matches the toggle palette where the readout corresponds to a mode; gray (`#94a3b8`) for ambient/environmental readouts (BARO, WIND, OAT).
+- **Renderer is reproducible only as far as system fonts go.** The SVG references `-apple-system, …, Helvetica Neue, Arial`. Rasterization on macOS picks one of those; on a Linux CI box without those fonts, output will differ. If cross-machine reproducibility becomes a requirement (OSS release etc.), embed an OFL/Apache font as base64 in the SVG.
 
 ## Test Environment Reality
 

@@ -122,6 +122,55 @@ For **hPa/mb** (1013) instead:
 | Format | `%.0f hPa` |
 | Unit Scale | `0.01` |
 
+## Button icons
+
+Button images shown on the Stream Deck are generated locally by a small TypeScript pipeline so the whole set stays visually consistent (same font size, same baseline, same LED-bar geometry across every icon).
+
+```bash
+make icons
+```
+
+Two kinds of icons are produced from a single catalog (`scripts/icons/catalog.ts`):
+
+- **`toggle`** — for action buttons that flip a state (AP HDG mode, FD on/off, …). Generates an `_on` + `_off` pair: bold uppercase label centered, colored LED bar at the bottom (lit in the accent color when ON, dark grey when OFF, with a soft glow).
+- **`display`** — for the **`dataref-display`** action (live X-Plane readouts: current altitude, wind, AP setpoints, …). Generates a single PNG: small caption + thin accent line in the top third, rest of the key left empty so Stream Deck's title overlay can render the live value cleanly underneath.
+
+Output: `out/icons/<name>_on.png` + `<name>_off.png` for toggles, `out/icons/<name>.png` for displays. All 144×144. The `out/` folder is gitignored and wiped by `make clean`.
+
+### Adding a new icon
+
+1. Open `scripts/icons/catalog.ts`.
+2. Append a single entry to the `catalog` array, picking the `kind`:
+
+   ```ts
+   // toggle button
+   { kind: 'toggle',  name: 'apu',     label: 'APU',     accent: '#ef4444', group: 'ENG' },
+
+   // live readout (header for the dataref-display action)
+   { kind: 'display', name: 'cur_oat', label: 'OAT',     accent: '#94a3b8', group: 'INST' },
+   ```
+
+   - `kind` — `'toggle'` for on/off buttons, `'display'` for live-readout headers.
+   - `name` — file-name stem; must be unique. Output: `apu_on.png` + `apu_off.png` (toggle) or `cur_oat.png` (display).
+   - `label` — text shown on the icon. **Toggle:** keep ≤ 4 characters (`VNAV` is the design max). **Display:** ≤ 6 characters comfortably (`AP HDG`, `W SPD`).
+   - `accent` — hex color. For toggles: the LED-bar ON color. For displays: the accent line under the caption. Use the established palette where it fits a group, or pick a new color for a new group.
+   - `group` — free-text grouping tag (`AP`, `INST`, `AP-SET`, `ENG`, `LIGHTS`, …). Human-only; the renderer ignores it.
+3. Run `make icons`. The new files appear in `out/icons/`.
+4. In the Stream Deck app: drag the PNG onto a key. For a `display` icon, configure the `dataref-display` action (DataRef path + format) on that key — the live value renders as the title in the empty zone of the icon.
+
+To rename an icon, edit the catalog entry and re-run; the old PNGs stay until you run `make clean`.
+
+### Where to change the look
+
+All visual decisions live in `scripts/icons/template.ts` (a single SVG renderer):
+
+- `LABEL_FONT_SIZE`, `LABEL_BASELINE_Y` — text size and vertical position.
+- `BAR_HEIGHT`, `BAR_INSET_X`, `BAR_INSET_BOTTOM`, `BAR_RADIUS` — LED bar geometry.
+- `BG`, `BAR_OFF`, `LABEL_COLOR` — base palette.
+- The `<filter id="glow">` block — strength of the lit-bar glow.
+
+Change once → re-run `make icons` → every icon updates with identical proportions.
+
 ## Common Make targets
 
-Run `make help` for the full list. Most-used: `make build`, `make clean`, `make distclean`, `make setup`, `make package`.
+Run `make help` for the full list. Most-used: `make build`, `make icons`, `make clean`, `make distclean`, `make setup`, `make package`.
