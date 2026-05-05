@@ -1,6 +1,6 @@
 # M06 — Action: `dataref-toggle` ⭐ (Hauptszenario: Gear UP/DOWN)
 
-**Status:** Not started
+**Status:** Implemented — pending hardware verification on sim Mac
 **Estimated effort:** 8–12 h
 **Depends on:** M02 (client + subscriptions), M03–M05 (action patterns)
 

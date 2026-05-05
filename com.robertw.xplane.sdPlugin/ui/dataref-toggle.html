@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane DataRef Toggle</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<style>
+			.image-upload {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				flex: 1;
+			}
+			.image-upload .thumb {
+				width: 36px;
+				height: 36px;
+				border-radius: 4px;
+				background: #2d2d2d center/contain no-repeat;
+				border: 1px solid #444;
+				flex: 0 0 auto;
+				display: inline-block;
+			}
+			.image-upload .actions {
+				display: flex;
+				gap: 6px;
+				flex: 1;
+			}
+			.image-upload button {
+				cursor: pointer;
+			}
+			.image-upload input[type="file"] {
+				display: none;
+			}
+			.image-upload .filename {
+				color: #888;
+				font-size: 11px;
+				flex: 1;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+			}
+		</style>
+	</head>
+	<body>
+		<sdpi-item label="DataRef Path">
+			<sdpi-textfield
+				setting="datarefPath"
+				placeholder="sim/cockpit2/controls/gear_handle_down"
+				required
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Value OFF">
+			<sdpi-textfield
+				setting="valueOff"
+				placeholder="0"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Value ON">
+			<sdpi-textfield
+				setting="valueOn"
+				placeholder="1"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Trigger Mode">
+			<sdpi-select setting="triggerMode" default="write">
+				<option value="write">Write DataRef (toggle value)</option>
+				<option value="command">Activate Command</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item label="Command Path">
+			<sdpi-textfield
+				setting="commandPath"
+				placeholder="sim/flight_controls/landing_gear_toggle (only used in command mode)"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Image OFF">
+			<div class="image-upload">
+				<div class="thumb" id="thumbOff"></div>
+				<div class="actions">
+					<button type="button" id="pickOff">Choose…</button>
+					<button type="button" id="clearOff">Reset</button>
+				</div>
+				<input type="file" id="fileOff" accept="image/png,image/jpeg,image/svg+xml" />
+			</div>
+		</sdpi-item>
+		<sdpi-item label="Image ON">
+			<div class="image-upload">
+				<div class="thumb" id="thumbOn"></div>
+				<div class="actions">
+					<button type="button" id="pickOn">Choose…</button>
+					<button type="button" id="clearOn">Reset</button>
+				</div>
+				<input type="file" id="fileOn" accept="image/png,image/jpeg,image/svg+xml" />
+			</div>
+		</sdpi-item>
+
+		<script>
+			(() => {
+				const client = window.SDPIComponents?.streamDeckClient;
+				if (!client) {
+					console.error("SDPIComponents.streamDeckClient not available");
+					return;
+				}
+
+				const thumbOff = document.getElementById("thumbOff");
+				const thumbOn = document.getElementById("thumbOn");
+				const fileOff = document.getElementById("fileOff");
+				const fileOn = document.getElementById("fileOn");
+
+				const setThumb = (el, dataUrl) => {
+					el.style.backgroundImage = dataUrl ? `url("${dataUrl}")` : "";
+				};
+
+				const readAsDataURL = (file) =>
+					new Promise((resolve, reject) => {
+						const r = new FileReader();
+						r.onload = () => resolve(String(r.result));
+						r.onerror = () => reject(r.error);
+						r.readAsDataURL(file);
+					});
+
+				const updateSetting = async (key, value) => {
+					const current = (await client.getSettings()) ?? {};
+					const next = { ...current };
+					if (value === undefined) delete next[key];
+					else next[key] = value;
+					await client.setSettings(next);
+				};
+
+				const wire = (input, key, thumb) => {
+					input.addEventListener("change", async () => {
+						const file = input.files?.[0];
+						if (!file) return;
+						try {
+							const dataUrl = await readAsDataURL(file);
+							setThumb(thumb, dataUrl);
+							await updateSetting(key, dataUrl);
+						} catch (err) {
+							console.error(`Failed to read image for ${key}`, err);
+						} finally {
+							input.value = "";
+						}
+					});
+				};
+
+				wire(fileOff, "imageOff", thumbOff);
+				wire(fileOn, "imageOn", thumbOn);
+
+				document
+					.getElementById("pickOff")
+					.addEventListener("click", () => fileOff.click());
+				document
+					.getElementById("pickOn")
+					.addEventListener("click", () => fileOn.click());
+				document
+					.getElementById("clearOff")
+					.addEventListener("click", async () => {
+						setThumb(thumbOff, "");
+						await updateSetting("imageOff", undefined);
+					});
+				document
+					.getElementById("clearOn")
+					.addEventListener("click", async () => {
+						setThumb(thumbOn, "");
+						await updateSetting("imageOn", undefined);
+					});
+
+				// Hydrate previews from persisted settings.
+				client.getSettings().then((settings) => {
+					const s = settings ?? {};
+					setThumb(thumbOff, s.imageOff ?? "");
+					setThumb(thumbOn, s.imageOn ?? "");
+				});
+			})();
+		</script>
+	</body>
+</html>
