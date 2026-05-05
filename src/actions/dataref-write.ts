@@ -3,25 +3,19 @@ import streamDeck, {
 	type DidReceiveSettingsEvent,
 	type KeyDownEvent,
 	SingletonAction,
-	type TitleParametersDidChangeEvent,
 	type WillAppearEvent,
 	type WillDisappearEvent,
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
-import {
-	combineTitle,
-	DISCONNECTED_SUFFIX,
-	extractUserTitle,
-	NOT_FOUND_SUFFIX,
-	readPayloadTitle,
-} from "../util/error-tile";
+import { combineTitle, DISCONNECTED_SUFFIX, NOT_FOUND_SUFFIX } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
 type DataRefWriteSettings = JsonObject & {
 	datarefPath?: string;
 	value?: string | number;
+	label?: string;
 	hideConfirmation?: boolean;
 	showCurrentValue?: boolean;
 	format?: string;
@@ -32,12 +26,11 @@ type DataRefWriteSettings = JsonObject & {
 interface ActionState {
 	action: WillAppearEvent<DataRefWriteSettings>["action"];
 	path: string;
+	label: string;
 	showCurrentValue: boolean;
 	format: string;
 	unitScale?: number;
 	precision?: number;
-	userTitle: string;
-	lastRenderedTitle: string;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 }
@@ -57,30 +50,14 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 		const state: ActionState = {
 			action: ev.action,
 			path: parsed.path,
+			label: parsed.label,
 			showCurrentValue: parsed.showCurrentValue,
 			format: parsed.format,
 			unitScale: parsed.unitScale,
 			precision: parsed.precision,
-			userTitle: readPayloadTitle(ev.payload),
-			lastRenderedTitle: "",
 		};
 		this.states.set(ev.action.id, state);
 		await this.applySubscription(state);
-	}
-
-	override onTitleParametersDidChange(
-		ev: TitleParametersDidChangeEvent<DataRefWriteSettings>,
-	): Promise<void> {
-		const state = this.states.get(ev.action.id);
-		if (!state) return Promise.resolve();
-		const incoming = ev.payload.title ?? "";
-		if (incoming === state.lastRenderedTitle) return Promise.resolve();
-		state.userTitle = extractUserTitle(incoming);
-		state.lastRenderedTitle = "";
-		if (state.showCurrentValue) {
-			this.render(state);
-		}
-		return Promise.resolve();
 	}
 
 	override onWillDisappear(ev: WillDisappearEvent<DataRefWriteSettings>): Promise<void> {
@@ -101,6 +78,7 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 		const pathChanged = parsed.path !== state.path;
 		const displayChanged = parsed.showCurrentValue !== state.showCurrentValue;
 
+		state.label = parsed.label;
 		state.format = parsed.format;
 		state.unitScale = parsed.unitScale;
 		state.precision = parsed.precision;
@@ -111,7 +89,7 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 			state.showCurrentValue = parsed.showCurrentValue;
 			state.lastValue = undefined;
 			if (!state.showCurrentValue) {
-				await this.applyTitle(state, state.userTitle);
+				await state.action.setTitle(state.label);
 			}
 			await this.applySubscription(state);
 			return;
@@ -154,7 +132,7 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 		if (!state.showCurrentValue || !state.path) return;
 
 		if (this.xplane.status() !== "connected") {
-			await this.applyTitle(state, combineTitle(state.userTitle, DISCONNECTED_SUFFIX));
+			await state.action.setTitle(combineTitle(state.label, DISCONNECTED_SUFFIX));
 			await state.action.showAlert();
 			return;
 		}
@@ -166,7 +144,7 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 			});
 		} catch (err) {
 			streamDeck.logger.warn(`dataref-write: subscribe failed for ${state.path}`, err);
-			await this.applyTitle(state, combineTitle(state.userTitle, NOT_FOUND_SUFFIX));
+			await state.action.setTitle(combineTitle(state.label, NOT_FOUND_SUFFIX));
 			await state.action.showAlert();
 		}
 	}
@@ -186,22 +164,17 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 			unitScale: state.unitScale,
 			precision: state.precision,
 		});
-		this.applyTitle(state, combineTitle(state.userTitle, valueText)).catch((err) =>
-			streamDeck.logger.warn("dataref-write: setTitle failed", err),
-		);
-	}
-
-	private async applyTitle(state: ActionState, text: string): Promise<void> {
-		state.lastRenderedTitle = text;
-		await state.action.setTitle(text);
+		state.action
+			.setTitle(combineTitle(state.label, valueText))
+			.catch((err) => streamDeck.logger.warn("dataref-write: setTitle failed", err));
 	}
 
 	private onXPlaneDisconnected(): void {
 		for (const state of this.states.values()) {
 			if (!state.showCurrentValue || !state.path) continue;
-			this.applyTitle(state, combineTitle(state.userTitle, DISCONNECTED_SUFFIX)).catch(
-				(err) => streamDeck.logger.warn("dataref-write: setTitle failed", err),
-			);
+			state.action
+				.setTitle(combineTitle(state.label, DISCONNECTED_SUFFIX))
+				.catch((err) => streamDeck.logger.warn("dataref-write: setTitle failed", err));
 			state.action
 				.showAlert()
 				.catch((err) => streamDeck.logger.warn("dataref-write: showAlert failed", err));
@@ -224,16 +197,19 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 
 function parseSettings(s: DataRefWriteSettings): {
 	path: string;
+	label: string;
 	showCurrentValue: boolean;
 	format: string;
 	unitScale?: number;
 	precision?: number;
 } {
 	const path = s.datarefPath?.trim() ?? "";
+	const label = s.label?.trim() ?? "";
 	const formatRaw = s.format?.trim();
 	const format = formatRaw && formatRaw.length > 0 ? formatRaw : "%s";
 	return {
 		path,
+		label,
 		showCurrentValue: s.showCurrentValue === true,
 		format,
 		unitScale: toFiniteNumber(s.unitScale),
