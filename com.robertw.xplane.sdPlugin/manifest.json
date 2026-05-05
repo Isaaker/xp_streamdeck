@@ -1,0 +1,42 @@
+{
+	"Name": "X-Plane",
+	"Version": "0.1.0.0",
+	"Author": "Robert Wellinger",
+	"Actions": [
+		{
+			"Name": "Pause",
+			"UUID": "com.robertw.xplane.command-pause",
+			"Icon": "imgs/actions/pause/icon",
+			"Tooltip": "Toggles X-Plane simulator pause (sim/operation/pause_toggle).",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/pause/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		}
+	],
+	"Category": "X-Plane",
+	"CategoryIcon": "imgs/plugin/category-icon",
+	"CodePath": "bin/plugin.js",
+	"Description": "Control X-Plane 12 from your Stream Deck via the native Web API.",
+	"Icon": "imgs/plugin/marketplace",
+	"SDKVersion": 3,
+	"Software": {
+		"MinimumVersion": "7.1"
+	},
+	"OS": [
+		{
+			"Platform": "mac",
+			"MinimumVersion": "12"
+		}
+	],
+	"Nodejs": {
+		"Version": "24",
+		"Debug": "enabled"
+	},
+	"UUID": "com.robertw.xplane"
+}
