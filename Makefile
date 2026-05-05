@@ -28,7 +28,7 @@ test: ## Type-check the source (no test framework configured yet)
 	npx tsc --noEmit
 
 package: build ## Build a distributable .streamDeckPlugin (uses streamdeck pack — see M08)
-	streamdeck pack $(SDPLUGIN_DIR)
+	streamdeck pack -f $(SDPLUGIN_DIR)
 
 cleanup_tags: ## Remove local tags that no longer exist on origin
 	git fetch --prune --prune-tags origin
