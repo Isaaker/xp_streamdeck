@@ -6,7 +6,7 @@ SDPLUGIN_DIR := $(PLUGIN_UUID).sdPlugin
 MAIN_BRANCH  := main
 STREAMDECK   := npx --no-install streamdeck
 
-.PHONY: help setup build deploy clean distclean test package cleanup_tags cleanup_branches cleanup_actions
+.PHONY: help setup build deploy clean distclean test smoke package cleanup_tags cleanup_branches cleanup_actions
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} \
@@ -30,6 +30,9 @@ distclean: clean ## Like clean, plus wipe node_modules (full reset; needs `make 
 
 test: ## Type-check the source (no test framework configured yet)
 	npx tsc --noEmit
+
+smoke: ## Run the X-Plane client smoke script (X-Plane must be running)
+	npm run --silent smoke
 
 package: build ## Build a distributable .streamDeckPlugin (uses streamdeck pack — see M08)
 	$(STREAMDECK) pack -f $(SDPLUGIN_DIR)

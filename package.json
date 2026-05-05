@@ -7,7 +7,8 @@
     "type": "module",
     "scripts": {
         "build": "rollup -c",
-        "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.robertw.xplane\""
+        "watch": "rollup -c -w --watch.onEnd=\"streamdeck restart com.robertw.xplane\"",
+        "smoke": "tsx scripts/smoke-client.ts"
     },
     "devDependencies": {
         "@elgato/cli": "^1.7.4",
@@ -17,11 +18,14 @@
         "@rollup/plugin-typescript": "^12.1.0",
         "@tsconfig/node20": "^20.1.2",
         "@types/node": "~24.1.0",
+        "@types/ws": "^8.18.1",
         "rollup": "^4.0.2",
         "tslib": "^2.6.2",
+        "tsx": "^4.21.0",
         "typescript": "^5.2.2"
     },
     "dependencies": {
-        "@elgato/streamdeck": "^2.1.0"
+        "@elgato/streamdeck": "^2.1.0",
+        "ws": "^8.20.0"
     }
 }
