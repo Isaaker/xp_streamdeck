@@ -1,6 +1,6 @@
 # M05 — Action: `dataref-write` (write fixed value)
 
-**Status:** Not started
+**Status:** Implemented (pending hardware verification)
 **Estimated effort:** 3–5 h
 **Depends on:** M02 (client), M03 (PI pattern), M04 (optional display reuse)
 

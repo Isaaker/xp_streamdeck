@@ -30,6 +30,20 @@
 					"TitleAlignment": "middle"
 				}
 			]
+		},
+		{
+			"Name": "DataRef Write",
+			"UUID": "com.robertw.xplane.dataref-write",
+			"Icon": "imgs/actions/dataref-write/icon",
+			"Tooltip": "Write a fixed value to an X-Plane DataRef on press.",
+			"PropertyInspectorPath": "ui/dataref-write.html",
+			"Controllers": ["Keypad"],
+			"States": [
+				{
+					"Image": "imgs/actions/dataref-write/key",
+					"TitleAlignment": "middle"
+				}
+			]
 		}
 	],
 	"Category": "X-Plane",

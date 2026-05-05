@@ -2,6 +2,7 @@ import streamDeck from "@elgato/streamdeck";
 
 import { XPlaneCommand } from "./actions/command";
 import { XPlaneDataRefDisplay } from "./actions/dataref-display";
+import { XPlaneDataRefWrite } from "./actions/dataref-write";
 import { XPlaneClient } from "./xplane";
 
 streamDeck.logger.setLevel("info");
@@ -14,6 +15,7 @@ xplane.on("error", (err) => streamDeck.logger.warn("X-Plane: error", err));
 
 streamDeck.actions.registerAction(new XPlaneCommand(xplane));
 streamDeck.actions.registerAction(new XPlaneDataRefDisplay(xplane));
+streamDeck.actions.registerAction(new XPlaneDataRefWrite(xplane));
 
 xplane.connect();
 streamDeck.connect().catch((err) => streamDeck.logger.error("streamDeck.connect failed", err));
