@@ -4,8 +4,51 @@ Native Stream Deck plugin for X-Plane 12 on macOS, talking to the X-Plane Web AP
 
 ## Prerequisites
 
+- **X-Plane 12.1.1 or newer** — the built-in Web API was introduced in 12.1.1 and is enabled by default.
 - Node.js 20.19.5 (pinned via `.nvmrc` — run `nvm use` in this directory).
 - The Elgato Stream Deck CLI ships as a devDependency, so no global install is needed; invoke it via `npx streamdeck …` (or install globally with `npm i -g @elgato/cli` if you prefer the bare `streamdeck` command).
+
+## X-Plane Web API setup
+
+X-Plane 12.1.1+ runs the Web API automatically on `http://localhost:8086/api/v3` — **no menu toggle is needed to turn it on**. The toggles in *Settings → Network* labelled *"iPhone, iPad and External Apps"* are unrelated to the Web API; they control the legacy UDP interfaces.
+
+The only relevant setting is opt-out:
+
+- *Settings → Network → **Disable Incoming Traffic*** — must remain **unchecked**, otherwise every Web API call returns `403 Forbidden`.
+
+If you launched X-Plane from the command line with `--no_web_server`, the API is off; restart without that flag. To use a non-default port, use `--web_server_port=<N>` — but note this plugin currently hard-codes `8086` (will be configurable in M03+).
+
+### Quick API smoke test
+
+Before debugging the plugin, verify the API responds:
+
+```bash
+curl -i 'http://localhost:8086/api/v3/datarefs/count'
+```
+
+| Response | Meaning |
+| --- | --- |
+| `HTTP/1.1 200 OK` + JSON | API healthy → if the plugin still fails, look at plugin logs |
+| `HTTP/1.1 403 Forbidden` | *Disable Incoming Traffic* is checked — uncheck and restart X-Plane |
+| `Connection refused` | Web API not running — check X-Plane version and that it wasn't started with `--no_web_server` |
+
+X-Plane's own log usually shows a line like `Web server listening on port 8086` at startup; check `Log.txt` if in doubt:
+
+```bash
+grep -i "web" "$HOME/X-Plane 12/Log.txt"
+# Mac App Store install instead:
+# grep -i "web" "$HOME/Library/Containers/com.laminarresearch.X-Plane/Data/Log.txt"
+```
+
+### Plugin-side logs
+
+Once the API is up, plugin activity goes to:
+
+```bash
+tail -f ~/Library/Logs/ElgatoStreamDeck/com.robertw.xplane*.log
+```
+
+Each press should produce `Resolved sim/operation/pause_toggle -> id=…` and `Activated …`. If nothing appears on press, the plugin isn't loaded — re-run `npx streamdeck restart com.robertw.xplane`.
 
 ## Build & install (development)
 
