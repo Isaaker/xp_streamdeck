@@ -9,6 +9,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { persistImage } from "../util/image-cache";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
 type TriggerMode = "write" | "command";
@@ -43,8 +44,16 @@ interface ActionState {
 	valueOn: number;
 	triggerMode: TriggerMode;
 	commandPath: string;
+	// Resolved paths (or pass-through values) ready for setImage. Data URLs
+	// from settings are persisted to disk as files via persistImage so we
+	// hand Stream Deck a real path — Data URLs on multi-state actions have
+	// proven unreliable.
 	imageOff?: string;
 	imageOn?: string;
+	// Last raw setting values seen, used to detect changes and avoid
+	// re-persisting an unchanged image.
+	imageOffRaw?: string;
+	imageOnRaw?: string;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 	currentState: number;
@@ -75,11 +84,10 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			valueOn: parsed.valueOn,
 			triggerMode: parsed.triggerMode,
 			commandPath: parsed.commandPath,
-			imageOff: parsed.imageOff,
-			imageOn: parsed.imageOn,
 			currentState: UNINITIALIZED_STATE,
 		};
 		this.states.set(ev.action.id, state);
+		await this.syncImages(ev.action.id, state, parsed);
 		await this.applySubscription(state);
 	}
 
@@ -104,8 +112,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		state.valueOn = parsed.valueOn;
 		state.triggerMode = parsed.triggerMode;
 		state.commandPath = parsed.commandPath;
-		state.imageOff = parsed.imageOff;
-		state.imageOn = parsed.imageOn;
+		await this.syncImages(ev.action.id, state, parsed);
 
 		if (pathChanged) {
 			this.dropSubscription(state);
@@ -121,6 +128,31 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		state.currentState = UNINITIALIZED_STATE;
 		if (state.lastValue !== undefined) {
 			await this.renderState(state, state.lastValue);
+		}
+	}
+
+	private async syncImages(
+		actionId: string,
+		state: ActionState,
+		parsed: ParsedSettings,
+	): Promise<void> {
+		if (parsed.imageOff !== state.imageOffRaw) {
+			state.imageOffRaw = parsed.imageOff;
+			try {
+				state.imageOff = await persistImage(actionId, "off", parsed.imageOff);
+			} catch (err) {
+				streamDeck.logger.warn("dataref-toggle: persistImage off failed", err);
+				state.imageOff = parsed.imageOff;
+			}
+		}
+		if (parsed.imageOn !== state.imageOnRaw) {
+			state.imageOnRaw = parsed.imageOn;
+			try {
+				state.imageOn = await persistImage(actionId, "on", parsed.imageOn);
+			} catch (err) {
+				streamDeck.logger.warn("dataref-toggle: persistImage on failed", err);
+				state.imageOn = parsed.imageOn;
+			}
 		}
 	}
 

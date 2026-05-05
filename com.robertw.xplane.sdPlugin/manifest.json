@@ -52,6 +52,7 @@
 			"Tooltip": "Two-state DataRef button: image follows live value, click toggles via write or command.",
 			"PropertyInspectorPath": "ui/dataref-toggle.html",
 			"Controllers": ["Keypad"],
+			"DisableAutomaticStates": true,
 			"States": [
 				{
 					"Image": "imgs/states/off",

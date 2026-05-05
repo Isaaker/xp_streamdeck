@@ -156,11 +156,56 @@
 						img.src = dataUrl;
 					});
 
+				// Local cache of the latest settings. We keep this in sync via the
+				// didReceiveSettings stream so that updates triggered by other
+				// sdpi-components inputs (datarefPath, valueOff, …) stay in our
+				// baseline. setSettings() on Stream Deck *replaces* the entire
+				// settings object — if we read a stale/empty baseline before
+				// writing imageOn, every other field would be wiped (this is the
+				// regression observed by the user when clicking Reset).
+				let cached = null;
+				let cacheReady = false;
+
+				const refreshFromSdk = async () => {
+					try {
+						const s = await client.getSettings();
+						if (s && typeof s === "object") cached = s;
+					} catch (err) {
+						console.error("getSettings failed", err);
+					}
+				};
+
+				const ready = (async () => {
+					await refreshFromSdk();
+					cacheReady = true;
+					const s = cached ?? {};
+					setThumb(thumbOff, s.imageOff ?? "");
+					setThumb(thumbOn, s.imageOn ?? "");
+				})();
+
+				const live = client.didReceiveSettings;
+				if (live && typeof live.subscribe === "function") {
+					live.subscribe((arg) => {
+						const s = arg?.payload?.settings ?? arg?.settings;
+						if (s && typeof s === "object") cached = s;
+					});
+				}
+
 				const updateSetting = async (key, value) => {
-					const current = (await client.getSettings()) ?? {};
-					const next = { ...current };
+					if (!cacheReady) await ready;
+					// Re-read fresh state right before writing to minimise the
+					// window between read and write.
+					await refreshFromSdk();
+					if (!cached || typeof cached !== "object") {
+						console.warn(
+							`dataref-toggle PI: refusing to write ${key} — no baseline settings available`,
+						);
+						return;
+					}
+					const next = { ...cached };
 					if (value === undefined) delete next[key];
 					else next[key] = value;
+					cached = next;
 					await client.setSettings(next);
 				};
 
@@ -202,13 +247,6 @@
 						setThumb(thumbOn, "");
 						await updateSetting("imageOn", undefined);
 					});
-
-				// Hydrate previews from persisted settings.
-				client.getSettings().then((settings) => {
-					const s = settings ?? {};
-					setThumb(thumbOff, s.imageOff ?? "");
-					setThumb(thumbOn, s.imageOn ?? "");
-				});
 			})();
 		</script>
 	</body>
