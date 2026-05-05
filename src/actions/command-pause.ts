@@ -20,7 +20,11 @@ async function resolveCommandId(): Promise<number> {
 }
 
 async function activateCommand(id: number): Promise<void> {
-	const res = await fetch(`${XPLANE_API_BASE}/command/${id}/activate`, { method: "POST" });
+	const res = await fetch(`${XPLANE_API_BASE}/command/${id}/activate`, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ duration: 0 }),
+	});
 	if (!res.ok) {
 		throw new Error(`X-Plane activate failed: HTTP ${res.status}`);
 	}
