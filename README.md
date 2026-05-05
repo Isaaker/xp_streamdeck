@@ -61,6 +61,39 @@ npx streamdeck restart com.robertw.xplane
 
 After this, the **X-Plane → Pause** action appears in the Stream Deck app's action list. Drop it onto a key, press it, and X-Plane toggles pause (`sim/operation/pause_toggle`).
 
+## Actions
+
+### DataRef Display
+
+Shows a live X-Plane DataRef value as the button title. Pure read-only — no click action.
+
+Property Inspector fields:
+
+- **DataRef Path** — the X-Plane DataRef, e.g. `sim/cockpit/autopilot/heading_mag`.
+- **Format** — printf-style template (`%s`, `%d`, `%f`, `%.Nf`, `%%`). Default `%s`.
+- **Unit Scale** — optional multiplier applied before formatting (e.g. radians→degrees, m/s→kt, Pa→inHg).
+- **Precision** — optional decimals; only used when the format token has no explicit precision.
+
+#### Example: QNH in inHg
+
+X-Plane exposes `sim/weather/aircraft/qnh_pas` as a float in **Pascal**. To show it as `29.92 inHg` on a button:
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/weather/aircraft/qnh_pas` |
+| Format | `%.2f inHg` |
+| Unit Scale | `0.0002953` |
+| Precision | *(leave empty)* |
+
+Background: 1 inHg = 3386.389 Pa, so the conversion factor is `1 / 3386.389 ≈ 0.0002953`. Standard QNH 101325 Pa × 0.0002953 = **29.9213** → with `%.2f` → `29.92 inHg`.
+
+For **hPa/mb** (1013) instead:
+
+| Field | Value |
+| --- | --- |
+| Format | `%.0f hPa` |
+| Unit Scale | `0.01` |
+
 ## Common Make targets
 
 Run `make help` for the full list. Most-used: `make build`, `make clean`, `make distclean`, `make setup`, `make package`.
