@@ -2,12 +2,19 @@ import streamDeck, {
 	action,
 	type DidReceiveSettingsEvent,
 	SingletonAction,
+	type TitleParametersDidChangeEvent,
 	type WillAppearEvent,
 	type WillDisappearEvent,
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
-import { DISCONNECTED_TITLE, NOT_FOUND_TITLE } from "../util/error-tile";
+import {
+	combineTitle,
+	DISCONNECTED_SUFFIX,
+	extractUserTitle,
+	NOT_FOUND_SUFFIX,
+	readPayloadTitle,
+} from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -24,6 +31,8 @@ interface ActionState {
 	format: string;
 	unitScale?: number;
 	precision?: number;
+	userTitle: string;
+	lastRenderedTitle: string;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 }
@@ -46,6 +55,8 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 			format: parsed.format,
 			unitScale: parsed.unitScale,
 			precision: parsed.precision,
+			userTitle: readPayloadTitle(ev.payload),
+			lastRenderedTitle: "",
 		};
 		this.states.set(ev.action.id, state);
 		await this.applySubscription(state);
@@ -59,6 +70,22 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 			state.handle = undefined;
 		}
 		this.states.delete(ev.action.id);
+		return Promise.resolve();
+	}
+
+	override onTitleParametersDidChange(
+		ev: TitleParametersDidChangeEvent<DataRefDisplaySettings>,
+	): Promise<void> {
+		const state = this.states.get(ev.action.id);
+		if (!state) return Promise.resolve();
+		const incoming = ev.payload.title ?? "";
+		// Stream Deck echoes our own setTitle() calls back through this event;
+		// ignore them so we don't promote a rendered "ALT\n3000" string into
+		// the user-title slot.
+		if (incoming === state.lastRenderedTitle) return Promise.resolve();
+		state.userTitle = extractUserTitle(incoming);
+		state.lastRenderedTitle = "";
+		this.render(state);
 		return Promise.resolve();
 	}
 
@@ -91,12 +118,12 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 
 	private async applySubscription(state: ActionState): Promise<void> {
 		if (!state.path) {
-			await state.action.setTitle("");
+			await this.applyTitle(state, state.userTitle);
 			return;
 		}
 
 		if (this.xplane.status() !== "connected") {
-			await state.action.setTitle(DISCONNECTED_TITLE);
+			await this.applyTitle(state, combineTitle(state.userTitle, DISCONNECTED_SUFFIX));
 			await state.action.showAlert();
 			return;
 		}
@@ -108,29 +135,35 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 			});
 		} catch (err) {
 			streamDeck.logger.warn(`dataref-display: subscribe failed for ${state.path}`, err);
-			await state.action.setTitle(NOT_FOUND_TITLE);
+			await this.applyTitle(state, combineTitle(state.userTitle, NOT_FOUND_SUFFIX));
 			await state.action.showAlert();
 		}
 	}
 
 	private render(state: ActionState): void {
 		if (state.lastValue === undefined) return;
-		const text = formatDataRefValue(state.lastValue, {
+		const valueText = formatDataRefValue(state.lastValue, {
 			format: state.format,
 			unitScale: state.unitScale,
 			precision: state.precision,
 		});
-		state.action
-			.setTitle(text)
-			.catch((err) => streamDeck.logger.warn("dataref-display: setTitle failed", err));
+		const title = combineTitle(state.userTitle, valueText);
+		this.applyTitle(state, title).catch((err) =>
+			streamDeck.logger.warn("dataref-display: setTitle failed", err),
+		);
+	}
+
+	private async applyTitle(state: ActionState, text: string): Promise<void> {
+		state.lastRenderedTitle = text;
+		await state.action.setTitle(text);
 	}
 
 	private onXPlaneDisconnected(): void {
 		for (const state of this.states.values()) {
 			if (!state.path) continue;
-			state.action
-				.setTitle(DISCONNECTED_TITLE)
-				.catch((err) => streamDeck.logger.warn("dataref-display: setTitle failed", err));
+			this.applyTitle(state, combineTitle(state.userTitle, DISCONNECTED_SUFFIX)).catch(
+				(err) => streamDeck.logger.warn("dataref-display: setTitle failed", err),
+			);
 			state.action
 				.showAlert()
 				.catch((err) => streamDeck.logger.warn("dataref-display: showAlert failed", err));
@@ -138,9 +171,6 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 	}
 
 	private onXPlaneConnected(): void {
-		// Existing handles auto-rebind via the multiplexer; the next dataref update
-		// will refresh the title. Only states without a handle (subscription failed
-		// because X-Plane was offline at onWillAppear) need to be re-attempted here.
 		for (const state of this.states.values()) {
 			if (state.path && !state.handle) {
 				this.applySubscription(state).catch((err) =>

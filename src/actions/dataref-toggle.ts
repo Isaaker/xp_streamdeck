@@ -4,12 +4,19 @@ import streamDeck, {
 	type KeyAction,
 	type KeyDownEvent,
 	SingletonAction,
+	type TitleParametersDidChangeEvent,
 	type WillAppearEvent,
 	type WillDisappearEvent,
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
-import { clearTile, setDisconnected, setNotFound } from "../util/error-tile";
+import {
+	combineTitle,
+	DISCONNECTED_SUFFIX,
+	extractUserTitle,
+	NOT_FOUND_SUFFIX,
+	readPayloadTitle,
+} from "../util/error-tile";
 import { persistImage } from "../util/image-cache";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -55,6 +62,8 @@ interface ActionState {
 	// re-persisting an unchanged image.
 	imageOffRaw?: string;
 	imageOnRaw?: string;
+	userTitle: string;
+	lastRenderedTitle: string;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 	currentState: number;
@@ -85,11 +94,32 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			valueOn: parsed.valueOn,
 			triggerMode: parsed.triggerMode,
 			commandPath: parsed.commandPath,
+			userTitle: readPayloadTitle(ev.payload),
+			lastRenderedTitle: "",
 			currentState: UNINITIALIZED_STATE,
 		};
 		this.states.set(ev.action.id, state);
 		await this.syncImages(ev.action.id, state, parsed);
 		await this.applySubscription(state);
+	}
+
+	override onTitleParametersDidChange(
+		ev: TitleParametersDidChangeEvent<DataRefToggleSettings>,
+	): Promise<void> {
+		const state = this.states.get(ev.action.id);
+		if (!state) return Promise.resolve();
+		const incoming = ev.payload.title ?? "";
+		if (incoming === state.lastRenderedTitle) return Promise.resolve();
+		state.userTitle = extractUserTitle(incoming);
+		state.lastRenderedTitle = "";
+		// Force the next renderState to re-apply the title alongside state/image.
+		state.currentState = UNINITIALIZED_STATE;
+		if (state.lastValue !== undefined) {
+			this.renderState(state, state.lastValue).catch((err) =>
+				streamDeck.logger.warn("dataref-toggle: re-render after title change failed", err),
+			);
+		}
+		return Promise.resolve();
 	}
 
 	override onWillDisappear(ev: WillDisappearEvent<DataRefToggleSettings>): Promise<void> {
@@ -199,11 +229,16 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		}
 	}
 
+	private async applyTitle(state: ActionState, text: string): Promise<void> {
+		state.lastRenderedTitle = text;
+		await state.action.setTitle(text);
+	}
+
 	private async applySubscription(state: ActionState): Promise<void> {
 		if (!state.path) return;
 
 		if (this.xplane.status() !== "connected") {
-			await setDisconnected(state.action);
+			await this.applyTitle(state, combineTitle(state.userTitle, DISCONNECTED_SUFFIX));
 			return;
 		}
 
@@ -236,7 +271,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			}
 		} catch (err) {
 			streamDeck.logger.warn(`dataref-toggle: subscribe failed for ${state.path}`, err);
-			await setNotFound(state.action);
+			await this.applyTitle(state, combineTitle(state.userTitle, NOT_FOUND_SUFFIX));
 			await state.action.showAlert();
 		}
 	}
@@ -255,8 +290,9 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			`dataref-toggle: setState ${target} for ${state.path} (value=${describeValue(value)}, off=${state.valueOff}, on=${state.valueOn})`,
 		);
 		state.currentState = target;
-		// Once we have valid data, drop any disconnected/not-found overlay.
-		await clearTile(state.action);
+		// Once we have valid data, drop any disconnected/not-found overlay
+		// while preserving the user-provided title label.
+		await this.applyTitle(state, state.userTitle);
 		await state.action.setState(target);
 
 		// Stream Deck does not always refresh the visible image after setState
@@ -275,8 +311,8 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			// Force the next renderState to push state+image again so the
 			// "X-Plane" title overlay is cleanly replaced on reconnect.
 			state.currentState = UNINITIALIZED_STATE;
-			setDisconnected(state.action).catch((err) =>
-				streamDeck.logger.warn("dataref-toggle: setDisconnected failed", err),
+			this.applyTitle(state, combineTitle(state.userTitle, DISCONNECTED_SUFFIX)).catch(
+				(err) => streamDeck.logger.warn("dataref-toggle: setDisconnected failed", err),
 			);
 		}
 	}

@@ -4,12 +4,18 @@ import streamDeck, {
 	type KeyDownEvent,
 	type KeyUpEvent,
 	SingletonAction,
+	type TitleParametersDidChangeEvent,
 	type WillAppearEvent,
 	type WillDisappearEvent,
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
-import { clearTile, setDisconnected } from "../util/error-tile";
+import {
+	combineTitle,
+	DISCONNECTED_SUFFIX,
+	extractUserTitle,
+	readPayloadTitle,
+} from "../util/error-tile";
 import type { XPlaneClient } from "../xplane";
 
 type CommandSettings = JsonObject & {
@@ -18,9 +24,15 @@ type CommandSettings = JsonObject & {
 	hideConfirmation?: boolean;
 };
 
+interface VisibleEntry {
+	action: KeyAction<CommandSettings>;
+	userTitle: string;
+	lastRenderedTitle: string;
+}
+
 @action({ UUID: "com.robertw.xplane.command" })
 export class XPlaneCommand extends SingletonAction<CommandSettings> {
-	private readonly visible = new Map<string, KeyAction<CommandSettings>>();
+	private readonly visible = new Map<string, VisibleEntry>();
 
 	constructor(private readonly xplane: XPlaneClient) {
 		super();
@@ -30,14 +42,37 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 
 	override async onWillAppear(ev: WillAppearEvent<CommandSettings>): Promise<void> {
 		if (!ev.action.isKey()) return;
-		this.visible.set(ev.action.id, ev.action);
+		const entry: VisibleEntry = {
+			action: ev.action,
+			userTitle: readPayloadTitle(ev.payload),
+			lastRenderedTitle: "",
+		};
+		this.visible.set(ev.action.id, entry);
 		if (this.xplane.status() !== "connected") {
-			await setDisconnected(ev.action);
+			await this.applyTitle(entry, combineTitle(entry.userTitle, DISCONNECTED_SUFFIX));
 		}
 	}
 
 	override onWillDisappear(ev: WillDisappearEvent<CommandSettings>): Promise<void> {
 		this.visible.delete(ev.action.id);
+		return Promise.resolve();
+	}
+
+	override onTitleParametersDidChange(
+		ev: TitleParametersDidChangeEvent<CommandSettings>,
+	): Promise<void> {
+		const entry = this.visible.get(ev.action.id);
+		if (!entry) return Promise.resolve();
+		const incoming = ev.payload.title ?? "";
+		if (incoming === entry.lastRenderedTitle) return Promise.resolve();
+		entry.userTitle = extractUserTitle(incoming);
+		entry.lastRenderedTitle = "";
+		// If currently disconnected, repaint the suffix on top of the new label.
+		if (this.xplane.status() !== "connected") {
+			this.applyTitle(entry, combineTitle(entry.userTitle, DISCONNECTED_SUFFIX)).catch(
+				(err) => streamDeck.logger.warn("command: setTitle failed", err),
+			);
+		}
 		return Promise.resolve();
 	}
 
@@ -86,17 +121,24 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 		}
 	}
 
+	private async applyTitle(entry: VisibleEntry, text: string): Promise<void> {
+		entry.lastRenderedTitle = text;
+		await entry.action.setTitle(text);
+	}
+
 	private onXPlaneDisconnected(): void {
-		for (const a of this.visible.values()) {
-			setDisconnected(a).catch((err) =>
-				streamDeck.logger.warn("command: setDisconnected failed", err),
+		for (const entry of this.visible.values()) {
+			this.applyTitle(entry, combineTitle(entry.userTitle, DISCONNECTED_SUFFIX)).catch(
+				(err) => streamDeck.logger.warn("command: setTitle failed", err),
 			);
 		}
 	}
 
 	private onXPlaneConnected(): void {
-		for (const a of this.visible.values()) {
-			clearTile(a).catch((err) => streamDeck.logger.warn("command: clearTile failed", err));
+		for (const entry of this.visible.values()) {
+			this.applyTitle(entry, entry.userTitle).catch((err) =>
+				streamDeck.logger.warn("command: setTitle failed", err),
+			);
 		}
 	}
 }
