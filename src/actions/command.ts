@@ -11,6 +11,7 @@ import type { XPlaneClient } from "../xplane";
 type CommandSettings = JsonObject & {
 	commandPath?: string;
 	holdMode?: boolean;
+	showConfirmation?: boolean;
 };
 
 @action({ UUID: "com.robertw.xplane.command" })
@@ -22,6 +23,7 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	override async onKeyDown(ev: KeyDownEvent<CommandSettings>): Promise<void> {
 		const path = ev.payload.settings?.commandPath?.trim();
 		const holdMode = ev.payload.settings?.holdMode === true;
+		const showConfirmation = ev.payload.settings?.showConfirmation !== false;
 
 		if (!path) {
 			streamDeck.logger.warn("command: commandPath is empty");
@@ -38,7 +40,9 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 				await this.xplane.activateCommand(id);
 				streamDeck.logger.info(`command activate: ${path} (id=${id})`);
 			}
-			await ev.action.showOk();
+			if (showConfirmation) {
+				await ev.action.showOk();
+			}
 		} catch (err) {
 			streamDeck.logger.error(`command failed: ${path}`, err);
 			await ev.action.showAlert();
