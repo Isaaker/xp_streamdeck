@@ -138,6 +138,15 @@ export const catalog: IconDef[] = [
 	{ kind: "display", name: "wind_spd", label: "W-SPD", group: "readouts" },
 	{ kind: "display", name: "wind_temp", label: "W-TEMP", group: "readouts" },
 
+	// === Plain-color background tiles (no label, no accent) ===
+	// Useful as filler/separators between functional clusters on the deck.
+	{ kind: "background", name: "bg_black", color: "#000000", group: "backgrounds" },
+	{ kind: "background", name: "bg_white", color: "#ffffff", group: "backgrounds" },
+	{ kind: "background", name: "bg_yellow", color: "#ffeb00", group: "backgrounds" },
+	{ kind: "background", name: "bg_red", color: "#ef4444", group: "backgrounds" },
+	{ kind: "background", name: "bg_green", color: "#22c55e", group: "backgrounds" },
+	{ kind: "background", name: "bg_orange", color: "#f59e0b", group: "backgrounds" },
+
 	// === G1000 — text command buttons (orange accent) ===
 	{ kind: "command", name: "g_menu", label: "MENU", group: "g1000" },
 	{ kind: "command", name: "g_fpl", label: "FPL", group: "g1000" },
@@ -156,13 +165,4 @@ export const catalog: IconDef[] = [
 	{ kind: "knob", name: "g_inner_left", variant: "inner-ccw", group: "g1000" },
 	{ kind: "knob", name: "g_inner_right", variant: "inner-cw", group: "g1000" },
 	{ kind: "knob", name: "g_push", variant: "push", group: "g1000" },
-
-	// === Plain-color background tiles (no label, no accent) ===
-	// Useful as filler/separators between functional clusters on the deck.
-	{ kind: "background", name: "bg_black", color: "#000000", group: "backgrounds" },
-	{ kind: "background", name: "bg_white", color: "#ffffff", group: "backgrounds" },
-	{ kind: "background", name: "bg_yellow", color: "#ffeb00", group: "backgrounds" },
-	{ kind: "background", name: "bg_red", color: "#ef4444", group: "backgrounds" },
-	{ kind: "background", name: "bg_green", color: "#22c55e", group: "backgrounds" },
-	{ kind: "background", name: "bg_orange", color: "#f59e0b", group: "backgrounds" },
 ];

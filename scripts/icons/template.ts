@@ -20,6 +20,12 @@ const BAR_OFF = "#1f1f1f";
 const FONT_STACK =
 	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif";
 
+// Labels are user-defined strings that get inlined into SVG <text> content,
+// so any of `< > &` would break the XML parser. We escape on the way in.
+function escapeXml(s: string): string {
+	return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
 // === Toggle (on/off button) layout ===
 // Labels up to 4 chars (the AP family — VNAV is the design max) render at 44px.
 // Longer labels (lights, controls) shrink in a fixed staircase so they stay
@@ -78,7 +84,7 @@ export function renderToggleIcon(def: ToggleIcon, state: IconState): string {
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
   <text x="${SIZE / 2}" y="${baselineY}" text-anchor="middle"
         font-family="${FONT_STACK}" font-size="${fontSize}" font-weight="800"
-        fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>
   ${glow}
   <rect x="${TOGGLE_BAR_INSET_X}" y="${barY}" width="${barWidth}" height="${TOGGLE_BAR_HEIGHT}" rx="${TOGGLE_BAR_RADIUS}" fill="${barFill}"/>
 </svg>`;
@@ -140,7 +146,7 @@ export function renderNudgeIcon(def: NudgeIcon): string {
 	const labelEl = hasLabel
 		? `<text x="${cx}" y="${NUDGE_LABEL_BASELINE_Y}" text-anchor="middle"
         font-family="${FONT_STACK}" font-size="${NUDGE_LABEL_FONT_SIZE}" font-weight="800"
-        fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>`
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>`
 		: "";
 
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
@@ -158,7 +164,7 @@ export function renderDisplayIcon(def: DisplayIcon): string {
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
   <text x="${SIZE / 2}" y="${DISPLAY_LABEL_BASELINE_Y}" text-anchor="middle"
         font-family="${FONT_STACK}" font-size="${DISPLAY_LABEL_FONT_SIZE}" font-weight="700"
-        fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>
   <rect x="${lineX}" y="${DISPLAY_ACCENT_LINE_Y}" width="${DISPLAY_ACCENT_LINE_WIDTH}" height="${DISPLAY_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
 </svg>`;
 }
@@ -182,7 +188,7 @@ export function renderCommandIcon(def: CommandIcon): string {
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
   <text x="${SIZE / 2}" y="${baselineY}" text-anchor="middle"
         font-family="${FONT_STACK}" font-size="${fontSize}" font-weight="800"
-        fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>
   <rect x="${COMMAND_ACCENT_LINE_INSET_X}" y="${lineY}" width="${lineWidth}" height="${COMMAND_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
 </svg>`;
 }
