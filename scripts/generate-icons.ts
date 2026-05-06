@@ -5,7 +5,9 @@ import { catalog } from "./icons/catalog.ts";
 import {
 	type IconState,
 	renderBackgroundIcon,
+	renderCommandIcon,
 	renderDisplayIcon,
+	renderKnobIcon,
 	renderNudgeIcon,
 	renderSimOfflineIcon,
 	renderToggleIcon,
@@ -37,6 +39,8 @@ async function main(): Promise<void> {
 	let toggleCount = 0;
 	let displayCount = 0;
 	let nudgeCount = 0;
+	let commandCount = 0;
+	let knobCount = 0;
 	let backgroundCount = 0;
 
 	for (const def of catalog) {
@@ -58,6 +62,16 @@ async function main(): Promise<void> {
 			const png = await renderPng(svg, 144);
 			await writeFile(resolve(groupDir, `${def.name}.png`), png);
 			nudgeCount += 1;
+		} else if (def.kind === "command") {
+			const svg = renderCommandIcon(def);
+			const png = await renderPng(svg, 144);
+			await writeFile(resolve(groupDir, `${def.name}.png`), png);
+			commandCount += 1;
+		} else if (def.kind === "knob") {
+			const svg = renderKnobIcon(def);
+			const png = await renderPng(svg, 144);
+			await writeFile(resolve(groupDir, `${def.name}.png`), png);
+			knobCount += 1;
 		} else {
 			const svg = renderBackgroundIcon(def);
 			const png = await renderPng(svg, 144);
@@ -66,10 +80,13 @@ async function main(): Promise<void> {
 		}
 	}
 
+	const total =
+		toggleCount + displayCount + nudgeCount + commandCount + knobCount + backgroundCount;
 	console.log(
-		`Wrote ${toggleCount + displayCount + nudgeCount + backgroundCount} PNGs to ${OUT_DIR} ` +
+		`Wrote ${total} PNGs to ${OUT_DIR} ` +
 			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges + ` +
-			`${backgroundCount} backgrounds, grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
+			`${commandCount} commands + ${knobCount} knobs + ${backgroundCount} backgrounds, ` +
+			`grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
 	);
 
 	await mkdir(BUNDLE_IMGS_DIR, { recursive: true });

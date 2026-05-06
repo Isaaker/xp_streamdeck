@@ -1,7 +1,11 @@
+// @ts-ignore
+// @ts-ignore
 import {
 	type BackgroundIcon,
+	type CommandIcon,
 	type DisplayIcon,
 	GROUP_ACCENT,
+	type KnobIcon,
 	type NudgeIcon,
 	type ToggleIcon,
 } from "./catalog.ts";
@@ -112,7 +116,8 @@ function trianglePath(dir: Direction, cx: number, cy: number, w: number, h: numb
 export function renderNudgeIcon(def: NudgeIcon): string {
 	const accent = GROUP_ACCENT[def.group];
 	const cx = SIZE / 2;
-	const cy = NUDGE_ARROW_CENTER_Y;
+	const hasLabel = typeof def.label === "string" && def.label.length > 0;
+	const cy = hasLabel ? NUDGE_ARROW_CENTER_Y : SIZE / 2;
 
 	let arrows: string;
 	if (def.double) {
@@ -132,11 +137,15 @@ export function renderNudgeIcon(def: NudgeIcon): string {
 		arrows = `<path d="${trianglePath(def.direction, cx, cy, w, h)}" fill="${accent}"/>`;
 	}
 
+	const labelEl = hasLabel
+		? `<text x="${cx}" y="${NUDGE_LABEL_BASELINE_Y}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${NUDGE_LABEL_FONT_SIZE}" font-weight="800"
+        fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>`
+		: "";
+
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
-  <text x="${cx}" y="${NUDGE_LABEL_BASELINE_Y}" text-anchor="middle"
-        font-family="${FONT_STACK}" font-size="${NUDGE_LABEL_FONT_SIZE}" font-weight="800"
-        fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>
+  ${labelEl}
   ${arrows}
 </svg>`;
 }
@@ -151,6 +160,107 @@ export function renderDisplayIcon(def: DisplayIcon): string {
         font-family="${FONT_STACK}" font-size="${DISPLAY_LABEL_FONT_SIZE}" font-weight="700"
         fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>
   <rect x="${lineX}" y="${DISPLAY_ACCENT_LINE_Y}" width="${DISPLAY_ACCENT_LINE_WIDTH}" height="${DISPLAY_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
+</svg>`;
+}
+
+// === Command (single-press text button) layout ===
+// Reuses the toggle's label-sizing staircase so commands and toggles look
+// uniform side-by-side. The bottom accent is a thin static stripe (no
+// on/off, no glow) to visually distinguish "action" from "state".
+const COMMAND_ACCENT_LINE_HEIGHT = 4;
+const COMMAND_ACCENT_LINE_INSET_X = 14;
+const COMMAND_ACCENT_LINE_INSET_BOTTOM = 18;
+
+export function renderCommandIcon(def: CommandIcon): string {
+	const accent = GROUP_ACCENT[def.group];
+	const fontSize = toggleFontSize(def.label);
+	const baselineY = toggleBaselineY(fontSize);
+	const lineWidth = SIZE - COMMAND_ACCENT_LINE_INSET_X * 2;
+	const lineY = SIZE - COMMAND_ACCENT_LINE_INSET_BOTTOM - COMMAND_ACCENT_LINE_HEIGHT;
+
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <text x="${SIZE / 2}" y="${baselineY}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${fontSize}" font-weight="800"
+        fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>
+  <rect x="${COMMAND_ACCENT_LINE_INSET_X}" y="${lineY}" width="${lineWidth}" height="${COMMAND_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
+</svg>`;
+}
+
+// === Knob (G1000 dual-concentric rotary) layout ===
+// Big arc + arrowhead = outer knob; small arc + arrowhead = inner knob.
+// CW = right-rotate, CCW = left-rotate. The 90° gap at the top makes
+// rotation direction unambiguous (the arrow points "into" the gap,
+// continuing the motion).
+// `push` is the click-the-knob action: outline ring + filled center dot.
+const KNOB_CENTER = SIZE / 2;
+const KNOB_OUTER_RADIUS = 50;
+const KNOB_OUTER_STROKE = 10;
+const KNOB_OUTER_ARROW = 22;
+const KNOB_INNER_RADIUS = 28;
+const KNOB_INNER_STROKE = 6;
+const KNOB_INNER_ARROW = 14;
+const KNOB_PUSH_RING_RADIUS = 42;
+const KNOB_PUSH_RING_STROKE = 6;
+const KNOB_PUSH_DOT_RADIUS = 14;
+// Arc spans 270° with a 90° gap at the top centered on -90° (straight up).
+// Right side of the gap = -45°, left side = -135°.
+const KNOB_GAP_START_DEG = -45;
+const KNOB_GAP_END_DEG = -135;
+
+function pointOnCircle(cx: number, cy: number, r: number, angleDeg: number) {
+	const rad = (angleDeg * Math.PI) / 180;
+	return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+export function renderKnobIcon(def: KnobIcon): string {
+	const accent = GROUP_ACCENT[def.group];
+	const cx = KNOB_CENTER;
+	const cy = KNOB_CENTER;
+
+	if (def.variant === "push") {
+		return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <circle cx="${cx}" cy="${cy}" r="${KNOB_PUSH_RING_RADIUS}" stroke="${accent}" stroke-width="${KNOB_PUSH_RING_STROKE}" fill="none"/>
+  <circle cx="${cx}" cy="${cy}" r="${KNOB_PUSH_DOT_RADIUS}" fill="${accent}"/>
+</svg>`;
+	}
+
+	const isOuter = def.variant === "outer-cw" || def.variant === "outer-ccw";
+	const isCw = def.variant === "outer-cw" || def.variant === "inner-cw";
+	const r = isOuter ? KNOB_OUTER_RADIUS : KNOB_INNER_RADIUS;
+	const stroke = isOuter ? KNOB_OUTER_STROKE : KNOB_INNER_STROKE;
+	const arrowSize = isOuter ? KNOB_OUTER_ARROW : KNOB_INNER_ARROW;
+
+	// CW arc sweeps from gap-start (-45°, upper-right) clockwise the long way
+	// around to gap-end (-135°, upper-left). CCW is the mirror.
+	const startAngle = isCw ? KNOB_GAP_START_DEG : KNOB_GAP_END_DEG;
+	const endAngle = isCw ? KNOB_GAP_END_DEG : KNOB_GAP_START_DEG;
+	const sweepFlag = isCw ? 1 : 0;
+	const start = pointOnCircle(cx, cy, r, startAngle);
+	const end = pointOnCircle(cx, cy, r, endAngle);
+
+	// Tangent at the end of the arc, in the direction of motion. In screen
+	// coords the CW tangent at angle θ is (-sin θ, cos θ); CCW negates it.
+	const endRad = (endAngle * Math.PI) / 180;
+	const sign = isCw ? 1 : -1;
+	const tx = sign * -Math.sin(endRad);
+	const ty = sign * Math.cos(endRad);
+	// Perpendicular to tangent (used for the arrowhead's base).
+	const px = -ty;
+	const py = tx;
+	const tipX = end.x + tx * arrowSize;
+	const tipY = end.y + ty * arrowSize;
+	const baseLX = end.x + (px * arrowSize) / 2;
+	const baseLY = end.y + (py * arrowSize) / 2;
+	const baseRX = end.x - (px * arrowSize) / 2;
+	const baseRY = end.y - (py * arrowSize) / 2;
+
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <path d="M${start.x},${start.y} A${r},${r} 0 1 ${sweepFlag} ${end.x},${end.y}"
+        stroke="${accent}" stroke-width="${stroke}" fill="none" stroke-linecap="round"/>
+  <polygon points="${tipX},${tipY} ${baseLX},${baseLY} ${baseRX},${baseRY}" fill="${accent}"/>
 </svg>`;
 }
 
