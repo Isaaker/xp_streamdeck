@@ -46,6 +46,8 @@ export type KnobIcon = {
 	name: string;
 	group: IconGroup;
 	variant: "outer-cw" | "outer-ccw" | "inner-cw" | "inner-ccw" | "push";
+	// Only honored by the `push` variant; renders a caption above the symbol.
+	label?: string;
 };
 // Solid-color filler tile — no label, no accent, just the fill.
 export type BackgroundIcon = {
@@ -87,6 +89,7 @@ export const catalog: IconDef[] = [
 	// === Autopilot — nudge buttons (single press → CommandRef) ===
 	{ kind: "nudge", name: "hdg_left", label: "HDG", direction: "left", group: "autopilot" },
 	{ kind: "nudge", name: "hdg_right", label: "HDG", direction: "right", group: "autopilot" },
+	{ kind: "knob", name: "hdg_sync", variant: "push", label: "HDG SYNC", group: "autopilot" },
 	{ kind: "nudge", name: "src_left", label: "SRC", direction: "left", group: "autopilot" },
 	{ kind: "nudge", name: "src_right", label: "SRC", direction: "right", group: "autopilot" },
 	{ kind: "nudge", name: "alt_up", label: "ALT", direction: "up", group: "autopilot" },

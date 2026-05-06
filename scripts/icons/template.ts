@@ -209,6 +209,13 @@ const KNOB_INNER_ARROW = 14;
 const KNOB_PUSH_RING_RADIUS = 42;
 const KNOB_PUSH_RING_STROKE = 6;
 const KNOB_PUSH_DOT_RADIUS = 14;
+// Labeled push variant: caption sits in the top third (display-style, no
+// accent stripe — the ring/dot is the accent), symbol shrinks and shifts
+// down so it stays visually balanced under the label.
+const KNOB_PUSH_LABELED_LABEL_BASELINE_Y = 32;
+const KNOB_PUSH_LABELED_CY = 94;
+const KNOB_PUSH_LABELED_RING_RADIUS = 32;
+const KNOB_PUSH_LABELED_DOT_RADIUS = 11;
 // Arc spans 270° with a 90° gap at the top centered on -90° (straight up).
 // Right side of the gap = -45°, left side = -135°.
 const KNOB_GAP_START_DEG = -45;
@@ -225,6 +232,19 @@ export function renderKnobIcon(def: KnobIcon): string {
 	const cy = KNOB_CENTER;
 
 	if (def.variant === "push") {
+		const hasLabel = typeof def.label === "string" && def.label.length > 0;
+		if (hasLabel) {
+			const fontSize = toggleFontSize(def.label as string);
+			const symbolCy = KNOB_PUSH_LABELED_CY;
+			return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <text x="${cx}" y="${KNOB_PUSH_LABELED_LABEL_BASELINE_Y}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${fontSize}" font-weight="800"
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label as string)}</text>
+  <circle cx="${cx}" cy="${symbolCy}" r="${KNOB_PUSH_LABELED_RING_RADIUS}" stroke="${accent}" stroke-width="${KNOB_PUSH_RING_STROKE}" fill="none"/>
+  <circle cx="${cx}" cy="${symbolCy}" r="${KNOB_PUSH_LABELED_DOT_RADIUS}" fill="${accent}"/>
+</svg>`;
+		}
 		return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
   <circle cx="${cx}" cy="${cy}" r="${KNOB_PUSH_RING_RADIUS}" stroke="${accent}" stroke-width="${KNOB_PUSH_RING_STROKE}" fill="none"/>
