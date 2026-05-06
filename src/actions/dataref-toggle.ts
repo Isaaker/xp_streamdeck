@@ -24,6 +24,7 @@ type DataRefToggleSettings = JsonObject & {
 	commandPath?: string;
 	imageOff?: string;
 	imageOn?: string;
+	strictOnMatch?: boolean;
 };
 
 const STATE_OFF = 0;
@@ -37,6 +38,7 @@ interface ParsedSettings {
 	commandPath: string;
 	imageOff?: string;
 	imageOn?: string;
+	strictOnMatch: boolean;
 }
 
 interface ActionState {
@@ -46,6 +48,7 @@ interface ActionState {
 	valueOn: number;
 	triggerMode: TriggerMode;
 	commandPath: string;
+	strictOnMatch: boolean;
 	// Resolved paths (or pass-through values) ready for setImage. Data URLs
 	// from settings are persisted to disk as files via persistImage so we
 	// hand Stream Deck a real path — Data URLs on multi-state actions have
@@ -86,6 +89,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			valueOn: parsed.valueOn,
 			triggerMode: parsed.triggerMode,
 			commandPath: parsed.commandPath,
+			strictOnMatch: parsed.strictOnMatch,
 			currentState: UNINITIALIZED_STATE,
 		};
 		this.states.set(ev.action.id, state);
@@ -114,6 +118,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		state.valueOn = parsed.valueOn;
 		state.triggerMode = parsed.triggerMode;
 		state.commandPath = parsed.commandPath;
+		state.strictOnMatch = parsed.strictOnMatch;
 		await this.syncImages(ev.action.id, state, parsed);
 
 		if (pathChanged) {
@@ -188,7 +193,12 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 						? state.lastValue
 						: applyIndex(await this.xplane.readDataRef(drId), index);
 				const isOn =
-					mapValueToStateIndex(current, parsed.valueOff, parsed.valueOn) === STATE_ON;
+					mapValueToStateIndex(
+						current,
+						parsed.valueOff,
+						parsed.valueOn,
+						parsed.strictOnMatch,
+					) === STATE_ON;
 				const target = isOn ? parsed.valueOff : parsed.valueOn;
 				await this.xplane.writeDataRef(drId, target, index);
 				streamDeck.logger.info(
@@ -266,10 +276,15 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 	}
 
 	private async renderState(state: ActionState, value: DataRefValue): Promise<void> {
-		const target = mapValueToStateIndex(value, state.valueOff, state.valueOn);
+		const target = mapValueToStateIndex(
+			value,
+			state.valueOff,
+			state.valueOn,
+			state.strictOnMatch,
+		);
 		if (target === state.currentState) return;
 		streamDeck.logger.info(
-			`dataref-toggle: setState ${target} for ${state.path} (value=${describeValue(value)}, off=${state.valueOff}, on=${state.valueOn})`,
+			`dataref-toggle: setState ${target} for ${state.path} (value=${describeValue(value)}, off=${state.valueOff}, on=${state.valueOn}, strict=${state.strictOnMatch})`,
 		);
 		state.currentState = target;
 		// Once we have valid data, drop any disconnected/not-found overlay.
@@ -323,7 +338,17 @@ function parseSettings(s: DataRefToggleSettings): ParsedSettings {
 	const imageOff =
 		typeof s.imageOff === "string" && s.imageOff.length > 0 ? s.imageOff : undefined;
 	const imageOn = typeof s.imageOn === "string" && s.imageOn.length > 0 ? s.imageOn : undefined;
-	return { path, valueOff, valueOn, triggerMode, commandPath, imageOff, imageOn };
+	const strictOnMatch = s.strictOnMatch === true;
+	return {
+		path,
+		valueOff,
+		valueOn,
+		triggerMode,
+		commandPath,
+		imageOff,
+		imageOn,
+		strictOnMatch,
+	};
 }
 
 function toFiniteNumber(v: unknown): number | undefined {
@@ -364,9 +389,15 @@ function mapValueToStateIndex(
 	value: DataRefValue,
 	valueOff: number,
 	valueOn: number,
+	strictOnMatch: boolean,
 ): typeof STATE_OFF | typeof STATE_ON {
 	const num = coerceNumber(value);
 	if (num === undefined) return STATE_OFF;
+	if (strictOnMatch) {
+		// Tolerance to absorb X-Plane occasionally returning integer modes as
+		// floats (e.g. 3.0). Harmless for clean integers.
+		return Math.abs(num - valueOn) < 1e-6 ? STATE_ON : STATE_OFF;
+	}
 	if (valueOff === 0 && valueOn === 1) {
 		return num >= 0.5 ? STATE_ON : STATE_OFF;
 	}

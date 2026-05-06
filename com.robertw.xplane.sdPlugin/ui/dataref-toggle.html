@@ -78,6 +78,11 @@
 				inputmode="decimal"
 			></sdpi-textfield>
 		</sdpi-item>
+		<sdpi-item label="Strict ON Match">
+			<sdpi-checkbox setting="strictOnMatch">
+				Treat only <code>value === Value ON</code> as ON (everything else is OFF)
+			</sdpi-checkbox>
+		</sdpi-item>
 		<sdpi-item label="Trigger Mode">
 			<sdpi-select setting="triggerMode" default="write">
 				<option value="write">Write DataRef (toggle value)</option>
