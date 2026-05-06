@@ -5,7 +5,7 @@ Native Stream Deck plugin for X-Plane 12 on macOS, talking to the X-Plane Web AP
 ## Prerequisites
 
 - **X-Plane 12.1.1 or newer** — the built-in Web API was introduced in 12.1.1 and is enabled by default.
-- Node.js 20.19.5 (pinned via `.nvmrc` — run `nvm use` in this directory).
+- Node.js 24 (pinned via `.nvmrc` — run `nvm use` in this directory).
 - The Elgato Stream Deck CLI ships as a devDependency, so no global install is needed; invoke it via `npx streamdeck …` (or install globally with `npm i -g @elgato/cli` if you prefer the bare `streamdeck` command).
 
 ## X-Plane Web API setup
@@ -97,7 +97,9 @@ Shows a live X-Plane DataRef value as the button title. Pure read-only — no cl
 
 Property Inspector fields:
 
-- **DataRef Path** — the X-Plane DataRef, e.g. `sim/cockpit/autopilot/heading_mag`.
+- **DataRef Path** — the X-Plane DataRef, e.g. `sim/cockpit/autopilot/heading_mag`. Supports array indexing (see [Array DataRefs](#array-datarefs)).
+- **Live Value** — read-only preview of the current value while editing the path. Without `[N]` an array DataRef shows its full contents (handy for picking the right index); with `[N]` only the indexed element is shown.
+- **Label** — optional caption rendered above the value (e.g. `ALT`).
 - **Format** — printf-style template (`%s`, `%d`, `%f`, `%.Nf`, `%%`). Default `%s`.
 - **Unit Scale** — optional multiplier applied before formatting (e.g. radians→degrees, m/s→kt, Pa→inHg).
 - **Precision** — optional decimals; only used when the format token has no explicit precision.
@@ -121,6 +123,102 @@ For **hPa/mb** (1013) instead:
 | --- | --- |
 | Format | `%.0f hPa` |
 | Unit Scale | `0.01` |
+
+### DataRef Toggle
+
+Two-state action that flips a DataRef value (or activates a CommandRef) on key press, and reflects the live state on the button by switching between two images. Use it for binary or near-binary controls (gear, flaps detents, lights, fuel pumps, …).
+
+Property Inspector fields:
+
+- **DataRef Path** — the X-Plane DataRef to read for the visible state. Supports array indexing (see [Array DataRefs](#array-datarefs)).
+- **Live Value** — read-only preview of the current value while editing the path.
+- **Value OFF** / **Value ON** — the two values that map to the OFF / ON image. Defaults to `0` / `1`. The visible state is chosen by closest distance to either value (or `≥ 0.5` for the default 0/1 case).
+- **Trigger Mode** — `Write DataRef (toggle value)` writes the opposite value on each press. `Activate Command` instead fires a CommandRef on press (state still comes from the DataRef) — useful when the aircraft exposes a "toggle" command but the underlying DataRef is the actual state to display.
+- **Command Path** — only used when *Trigger Mode* is `Activate Command`.
+- **Image OFF** / **Image ON** — optional custom 144×144 PNG/JPG/SVG per state; uploads are downscaled to 144 px and persisted to disk so multi-state image switching stays reliable. Leave empty to use the default `imgs/states/{off,on}` images.
+
+#### Example: gear handle
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/cockpit2/controls/gear_handle_down` |
+| Value OFF | `0` |
+| Value ON | `1` |
+| Trigger Mode | `Write DataRef (toggle value)` |
+
+Press → toggles gear up/down; the button flips between OFF/ON image as the DataRef actually changes.
+
+#### Example: gear via command, state via DataRef
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/cockpit2/controls/gear_handle_down` |
+| Trigger Mode | `Activate Command` |
+| Command Path | `sim/flight_controls/landing_gear_toggle` |
+
+Useful for aircraft where the gear command runs an animation/sound but the simple DataRef write would skip it.
+
+### DataRef Write
+
+Single-press action that writes a fixed numeric value to a DataRef. Use it when you want a button that *sets* a specific value (e.g. flaps to detent 2, parking brake to 1) rather than toggling.
+
+Property Inspector fields:
+
+- **DataRef Path** — the X-Plane DataRef to write. Supports array indexing (see [Array DataRefs](#array-datarefs)).
+- **Live Value** — read-only preview of the current value while editing the path.
+- **Value** — the numeric value written on press.
+- **Label** — optional caption rendered above the live value (only used when *Show current value* is checked).
+- **Show current value** — when checked, subscribes to the DataRef and renders its live value on the button title (same formatting pipeline as DataRef Display).
+- **Format** / **Unit Scale** / **Precision** — printf formatting, only used when *Show current value* is checked. See [DataRef Display](#dataref-display) for details.
+- **Hide green confirmation icon** — opt-out of the `showOk()` flash on success. Errors still always show the alert icon.
+
+#### Example: parking brake on
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/flightmodel/controls/parkbrake` |
+| Value | `1` |
+
+#### Example: flaps to detent 2
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/flightmodel/controls/flaprqst` |
+| Value | `0.5` |
+| Show current value | *(checked)* |
+| Format | `FLP %.0f%%` |
+| Unit Scale | `100` |
+
+### Array DataRefs
+
+Some X-Plane DataRefs are arrays — one value per engine, per cylinder, per aerodynamic surface, etc. Examples:
+
+- `sim/cockpit/engine/fuel_pump_on` — `int[16]`, one slot per engine.
+- `sim/flightmodel/engine/ENGN_running` — `int[16]`, one per engine.
+- `sim/cockpit2/switches/landing_lights_on` — `int[10]`.
+
+Append `[N]` to the DataRef path in any of the three DataRef actions (Display, Toggle, Write) to address a single element. Without `[N]`, Display falls back to element `[0]` (legacy behaviour); Toggle and Write target the DataRef as a whole, which is fine for scalar DataRefs but unreliable for arrays — always use `[N]` when the DataRef is an array.
+
+#### Example: fuel pump for engine 1
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/cockpit/engine/fuel_pump_on[0]` |
+| Value OFF | `0` |
+| Value ON | `1` |
+
+The Toggle action reads only `fuel_pump_on[0]` for the visible state and writes only that index on press (via `PATCH …/value?index=0`); engines 2–16 stay untouched. To put each engine on its own key, drop the same action four times and change the index to `[0]` / `[1]` / `[2]` / `[3]`. All four share a single WebSocket subscription under the hood.
+
+#### Live Value behaviour
+
+In the Property Inspector's *Live Value* row:
+
+- Path **without** `[N]` on an array DataRef → shows the entire array (e.g. `[0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0]`). Useful for figuring out which index does what before committing to one.
+- Path **with** `[N]` → shows only that scalar.
+- Path with `[N]` but DataRef is not an array → shows `not an array`.
+- Path with `[N]` but `N` is out of range → shows `index N out of bounds (length M)`.
+
+In all error cases the action tile shows the standard `?` not-found suffix at runtime, and Toggle/Write trigger `showAlert()` on press.
 
 ## Button icons
 
