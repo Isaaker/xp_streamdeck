@@ -114,4 +114,5 @@ export const catalog: IconDef[] = [
 	{ kind: "background", name: "bg_white", color: "#ffffff", group: "backgrounds" },
 	{ kind: "background", name: "bg_yellow", color: "#ffeb00", group: "backgrounds" },
 	{ kind: "background", name: "bg_red", color: "#ef4444", group: "backgrounds" },
+    { kind: "background", name: "bg_green", color: "#22c55e", group: "backgrounds" },
 ];
