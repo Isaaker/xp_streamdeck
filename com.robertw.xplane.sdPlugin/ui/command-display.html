@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane Command + Display</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
+		<style>
+			.live-preview {
+				font-family: monospace;
+				color: #aaa;
+				font-size: 11px;
+				word-break: break-all;
+			}
+			.live-preview[data-state="not-found"],
+			.live-preview[data-state="error"] {
+				color: #d97;
+			}
+		</style>
+	</head>
+	<body>
+		<sdpi-item label="Command Path">
+			<sdpi-textfield
+				setting="commandPath"
+				placeholder="sim/GPS/g1000n1_softkey1"
+				id="commandField"
+				required
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Feedback">
+			<sdpi-checkbox
+				setting="hideConfirmation"
+				label="Hide green confirmation icon on success"
+			></sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item label="DataRef Path">
+			<sdpi-textfield
+				setting="datarefPath"
+				placeholder="optional, string DataRef shown as title"
+				id="datarefField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Live Value">
+			<span class="live-preview" id="datarefPreview"></span>
+		</sdpi-item>
+		<sdpi-item label="Label">
+			<sdpi-textfield
+				setting="label"
+				placeholder="optional, prefixed above the live value"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Format">
+			<sdpi-textfield
+				setting="format"
+				placeholder="%.0f° (default: %s)"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Unit Scale">
+			<sdpi-textfield
+				setting="unitScale"
+				placeholder="e.g. 1.94384 (m/s → kt)"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Precision">
+			<sdpi-textfield
+				setting="precision"
+				placeholder="decimals — overridden by explicit %.Nf"
+				inputmode="numeric"
+			></sdpi-textfield>
+		</sdpi-item>
+		<script>
+			(async () => {
+				const commandField = document.getElementById("commandField");
+				const datarefField = document.getElementById("datarefField");
+				const preview = document.getElementById("datarefPreview");
+				if (window.XPlanePI) {
+					if (commandField) {
+						await window.XPlanePI.attachAutocomplete(commandField, "command");
+					}
+					if (datarefField) {
+						await window.XPlanePI.attachAutocomplete(datarefField, "dataref");
+						await window.XPlanePI.attachLivePreview(datarefField, preview);
+					}
+				}
+			})();
+		</script>
+	</body>
+</html>

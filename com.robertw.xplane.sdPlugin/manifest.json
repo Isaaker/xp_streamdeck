@@ -18,6 +18,20 @@
 			]
 		},
 		{
+			"Name": "Command + Display",
+			"UUID": "com.robertw.xplane.command-display",
+			"Icon": "imgs/actions/command-display/icon",
+			"Tooltip": "Fire an X-Plane CommandRef on press; show a live DataRef as the title (e.g. G1000 softkeys).",
+			"PropertyInspectorPath": "ui/command-display.html",
+			"Controllers": ["Keypad"],
+			"States": [
+				{
+					"Image": "imgs/actions/command-display/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
 			"Name": "DataRef Display",
 			"UUID": "com.robertw.xplane.dataref-display",
 			"Icon": "imgs/actions/dataref-display/icon",
