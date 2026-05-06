@@ -7,7 +7,12 @@ type IconBase = {
 
 export type ToggleIcon = IconBase & { kind: "toggle" };
 export type DisplayIcon = IconBase & { kind: "display" };
-export type IconDef = ToggleIcon | DisplayIcon;
+export type NudgeIcon = IconBase & {
+	kind: "nudge";
+	direction: "up" | "down" | "left" | "right";
+	double?: boolean;
+};
+export type IconDef = ToggleIcon | DisplayIcon | NudgeIcon;
 
 export const catalog: IconDef[] = [
 	// === Autopilot mode toggles — pressed to engage/disengage ===
@@ -54,4 +59,89 @@ export const catalog: IconDef[] = [
 	{ kind: "display", name: "ap_alt", label: "AP ALT", accent: "#a855f7", group: "AP-SET" },
 	{ kind: "display", name: "ap_vs", label: "AP V/S", accent: "#a855f7", group: "AP-SET" },
 	{ kind: "display", name: "ap_src", label: "AP SRC", accent: "#22c55e", group: "AP-SET" },
+
+	// === Nudge buttons (single press → fire a CommandRef; no on/off state) ===
+	// Use with the `command` action; pair with `Hold Mode` for continuous spin.
+	{
+		kind: "nudge",
+		name: "hdg_left",
+		label: "HDG",
+		direction: "left",
+		accent: "#3b82f6",
+		group: "AP-NUDGE",
+	},
+	{
+		kind: "nudge",
+		name: "hdg_right",
+		label: "HDG",
+		direction: "right",
+		accent: "#3b82f6",
+		group: "AP-NUDGE",
+	},
+	{
+		kind: "nudge",
+		name: "src_left",
+		label: "SRC",
+		direction: "left",
+		accent: "#22c55e",
+		group: "AP-NUDGE",
+	},
+	{
+		kind: "nudge",
+		name: "src_right",
+		label: "SRC",
+		direction: "right",
+		accent: "#22c55e",
+		group: "AP-NUDGE",
+	},
+	{
+		kind: "nudge",
+		name: "alt_up",
+		label: "ALT",
+		direction: "up",
+		accent: "#a855f7",
+		group: "AP-NUDGE",
+	},
+	{
+		kind: "nudge",
+		name: "alt_up_x2",
+		label: "ALT",
+		direction: "up",
+		double: true,
+		accent: "#a855f7",
+		group: "AP-NUDGE",
+	},
+	{
+		kind: "nudge",
+		name: "alt_down",
+		label: "ALT",
+		direction: "down",
+		accent: "#a855f7",
+		group: "AP-NUDGE",
+	},
+	{
+		kind: "nudge",
+		name: "alt_down_x2",
+		label: "ALT",
+		direction: "down",
+		double: true,
+		accent: "#a855f7",
+		group: "AP-NUDGE",
+	},
+	{
+		kind: "nudge",
+		name: "vs_up",
+		label: "VS",
+		direction: "up",
+		accent: "#a855f7",
+		group: "AP-NUDGE",
+	},
+	{
+		kind: "nudge",
+		name: "vs_down",
+		label: "VS",
+		direction: "down",
+		accent: "#a855f7",
+		group: "AP-NUDGE",
+	},
 ];

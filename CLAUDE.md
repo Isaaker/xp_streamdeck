@@ -80,17 +80,22 @@ To keep buttons visually consistent (one of M01's pain points was inconsistent p
 
 - **Entry:** `make icons` → `npm run icons` → `tsx scripts/generate-icons.ts`.
 - **Output:** `out/icons/*.png` (144×144, gitignored, wiped by `make clean`).
-- **Two icon kinds, one catalog (discriminated union on `kind`):**
+- **Three icon kinds, one catalog (discriminated union on `kind`):**
   - **`toggle`** — for buttons that flip a state. Produces `<name>_on.png` + `<name>_off.png`. Bold label + LED bar at bottom (lit/dark by state).
   - **`display`** — for the `dataref-display` action. Produces a single `<name>.png`. Caption + accent line in the top third; the lower ⅔ is intentionally empty so Stream Deck's `setTitle()` overlay (the live value) sits cleanly underneath.
+  - **`nudge`** — single-press command button (heading bug ±, altitude bug ±, etc.). Produces a single `<name>.png`. Bold label at top, big filled triangle in the accent color in the lower portion (single triangle for normal step, two stacked for `double: true` coarse step).
 - **Adding an icon = one catalog row.** In `scripts/icons/catalog.ts`:
   ```ts
   { kind: 'toggle',  name: 'apu',     label: 'APU', accent: '#ef4444', group: 'ENG' },
   { kind: 'display', name: 'cur_oat', label: 'OAT', accent: '#94a3b8', group: 'INST' },
+  { kind: 'nudge',   name: 'crs_left', label: 'CRS', direction: 'left', accent: '#3b82f6', group: 'AP-NUDGE' },
   ```
   No template change needed unless you want a new visual *kind*.
-- **Visual style is centralized** in `scripts/icons/template.ts` — two render functions (`renderToggleIcon`, `renderDisplayIcon`), all layout/color constants at the top, one constant block per kind. Change once, re-run `make icons`, every icon of that kind updates identically. **Do not** branch per-icon style inside a renderer; if a new visual shape is needed (e.g. glyph icons, two-line displays), add a third `kind` to the union plus a third render function.
-- **Label sizing.** Toggle labels are fixed at 44px (designed for 4-character max — `VNAV`); display labels at 22px (designed for 6-character max — `AP HDG`, `W SPD`). Longer labels overflow — pick shorter wording rather than shrinking the font.
+- **Visual style is centralized** in `scripts/icons/template.ts` — three render functions (`renderToggleIcon`, `renderDisplayIcon`, `renderNudgeIcon`), all layout/color constants at the top of each block. Change once, re-run `make icons`, every icon of that kind updates identically. **Do not** branch per-icon style inside a renderer; if a new visual shape is needed (e.g. two-line text), add a fourth `kind` to the union plus a fourth render function.
+- **Label sizing.**
+  - **Toggle:** ≤4 chars at 44px; longer labels auto-shrink in fixed steps (5→36, 6→30, 7→26, 8→22, 9→20, 10+→18) via `toggleFontSize()`. Labels of the same length always render at the same size — groups stay uniform within themselves.
+  - **Display:** fixed 22px (designed for 6-character max — `AP HDG`, `W SPD`).
+  - **Nudge:** fixed 36px label (≤4 chars expected — the arrow is the visual focus, not the label).
 - **Color palette by function group:**
   - Toggle: engage = green (`#22c55e`), lateral = blue (`#3b82f6`), vertical = purple (`#a855f7`), approach = orange (`#f59e0b`).
   - Display: matches the toggle palette where the readout corresponds to a mode; gray (`#94a3b8`) for ambient/environmental readouts (BARO, WIND, OAT).

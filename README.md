@@ -130,10 +130,11 @@ Button images shown on the Stream Deck are generated locally by a small TypeScri
 make icons
 ```
 
-Two kinds of icons are produced from a single catalog (`scripts/icons/catalog.ts`):
+Three kinds of icons are produced from a single catalog (`scripts/icons/catalog.ts`):
 
 - **`toggle`** — for action buttons that flip a state (AP HDG mode, FD on/off, …). Generates an `_on` + `_off` pair: bold uppercase label centered, colored LED bar at the bottom (lit in the accent color when ON, dark grey when OFF, with a soft glow).
 - **`display`** — for the **`dataref-display`** action (live X-Plane readouts: current altitude, wind, AP setpoints, …). Generates a single PNG: small caption + thin accent line in the top third, rest of the key left empty so Stream Deck's title overlay can render the live value cleanly underneath.
+- **`nudge`** — for single-press command buttons that increment/decrement an AP setpoint (heading bug, altitude target, V/S, source). Generates a single PNG: bold label at the top, big filled triangle in the accent color pointing in the action direction. Pair with the `command` action (with `Hold Mode` for continuous spin).
 
 Output: `out/icons/<name>_on.png` + `<name>_off.png` for toggles, `out/icons/<name>.png` for displays. All 144×144. The `out/` folder is gitignored and wiped by `make clean`.
 
@@ -144,17 +145,23 @@ Output: `out/icons/<name>_on.png` + `<name>_off.png` for toggles, `out/icons/<na
 
    ```ts
    // toggle button
-   { kind: 'toggle',  name: 'apu',     label: 'APU',     accent: '#ef4444', group: 'ENG' },
+   { kind: 'toggle',  name: 'apu',     label: 'APU', accent: '#ef4444', group: 'ENG' },
 
    // live readout (header for the dataref-display action)
-   { kind: 'display', name: 'cur_oat', label: 'OAT',     accent: '#94a3b8', group: 'INST' },
+   { kind: 'display', name: 'cur_oat', label: 'OAT', accent: '#94a3b8', group: 'INST' },
+
+   // nudge button (single press → CommandRef; arrow indicates direction)
+   { kind: 'nudge',   name: 'crs_left', label: 'CRS', direction: 'left',  accent: '#3b82f6', group: 'AP-NUDGE' },
+   { kind: 'nudge',   name: 'crs_x2',   label: 'CRS', direction: 'right', double: true, accent: '#3b82f6', group: 'AP-NUDGE' },
    ```
 
-   - `kind` — `'toggle'` for on/off buttons, `'display'` for live-readout headers.
-   - `name` — file-name stem; must be unique. Output: `apu_on.png` + `apu_off.png` (toggle) or `cur_oat.png` (display).
-   - `label` — text shown on the icon. **Toggle:** keep ≤ 4 characters (`VNAV` is the design max). **Display:** ≤ 6 characters comfortably (`AP HDG`, `W SPD`).
-   - `accent` — hex color. For toggles: the LED-bar ON color. For displays: the accent line under the caption. Use the established palette where it fits a group, or pick a new color for a new group.
-   - `group` — free-text grouping tag (`AP`, `INST`, `AP-SET`, `ENG`, `LIGHTS`, …). Human-only; the renderer ignores it.
+   - `kind` — `'toggle'` for on/off buttons, `'display'` for live-readout headers, `'nudge'` for single-press arrow buttons.
+   - `name` — file-name stem; must be unique. Output: `apu_on.png` + `apu_off.png` (toggle) or `cur_oat.png` / `crs_left.png` (display, nudge).
+   - `label` — text shown on the icon. **Toggle:** ≤ 4 chars renders at 44px; longer labels auto-shrink in fixed steps (5→36, 6→30, 7→26, 8→22, 9→20, 10+→18). **Display:** ≤ 6 characters comfortably (`AP HDG`, `W SPD`). **Nudge:** ≤ 4 characters (`HDG`, `SRC`, `ALT`, `VS`); the arrow is the visual focus.
+   - `accent` — hex color. For toggles: the LED-bar ON color. For displays: the accent line under the caption. For nudges: the arrow fill color. Use the established palette where it fits a group, or pick a new color for a new group.
+   - `group` — free-text grouping tag (`AP`, `INST`, `AP-SET`, `AP-NUDGE`, `ENG`, `LIGHTS`, `CTRL`, …). Human-only; the renderer ignores it.
+   - `direction` *(nudge only)* — `'up'` / `'down'` / `'left'` / `'right'`. Arrow points this way.
+   - `double` *(nudge only, optional)* — `true` renders two stacked triangles for "coarse step" semantics (e.g. ALT ↑↑ for big increments).
 3. Run `make icons`. The new files appear in `out/icons/`.
 4. In the Stream Deck app: drag the PNG onto a key. For a `display` icon, configure the `dataref-display` action (DataRef path + format) on that key — the live value renders as the title in the empty zone of the icon.
 

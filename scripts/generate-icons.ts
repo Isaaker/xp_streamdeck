@@ -2,7 +2,12 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import sharp from "sharp";
 import { catalog } from "./icons/catalog.ts";
-import { type IconState, renderDisplayIcon, renderToggleIcon } from "./icons/template.ts";
+import {
+	type IconState,
+	renderDisplayIcon,
+	renderNudgeIcon,
+	renderToggleIcon,
+} from "./icons/template.ts";
 
 const OUT_DIR = resolve(process.cwd(), "out/icons");
 const STATES: IconState[] = ["on", "off"];
@@ -16,6 +21,7 @@ async function main(): Promise<void> {
 
 	let toggleCount = 0;
 	let displayCount = 0;
+	let nudgeCount = 0;
 
 	for (const def of catalog) {
 		if (def.kind === "toggle") {
@@ -25,17 +31,22 @@ async function main(): Promise<void> {
 				await writeFile(resolve(OUT_DIR, `${def.name}_${state}.png`), png);
 				toggleCount += 1;
 			}
-		} else {
+		} else if (def.kind === "display") {
 			const svg = renderDisplayIcon(def);
 			const png = await renderPng(svg, 144);
 			await writeFile(resolve(OUT_DIR, `${def.name}.png`), png);
 			displayCount += 1;
+		} else {
+			const svg = renderNudgeIcon(def);
+			const png = await renderPng(svg, 144);
+			await writeFile(resolve(OUT_DIR, `${def.name}.png`), png);
+			nudgeCount += 1;
 		}
 	}
 
 	console.log(
-		`Wrote ${toggleCount + displayCount} PNGs to ${OUT_DIR} ` +
-			`(${toggleCount} toggle states + ${displayCount} display headers, all 144×144)`,
+		`Wrote ${toggleCount + displayCount + nudgeCount} PNGs to ${OUT_DIR} ` +
+			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges, all 144×144)`,
 	);
 }
 

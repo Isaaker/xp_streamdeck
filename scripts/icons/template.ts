@@ -1,4 +1,4 @@
-import type { DisplayIcon, ToggleIcon } from "./catalog.ts";
+import type { DisplayIcon, NudgeIcon, ToggleIcon } from "./catalog.ts";
 
 export type IconState = "on" | "off";
 
@@ -70,6 +70,66 @@ export function renderToggleIcon(def: ToggleIcon, state: IconState): string {
         fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>
   ${glow}
   <rect x="${TOGGLE_BAR_INSET_X}" y="${barY}" width="${barWidth}" height="${TOGGLE_BAR_HEIGHT}" rx="${TOGGLE_BAR_RADIUS}" fill="${barFill}"/>
+</svg>`;
+}
+
+// === Nudge (single-press action button: label + filled triangle) layout ===
+// Same visual DNA as the toggle (label top, accent at bottom), but the LED bar
+// is replaced by a big filled triangle pointing in the action direction.
+const NUDGE_LABEL_FONT_SIZE = 36;
+const NUDGE_LABEL_BASELINE_Y = 50;
+const NUDGE_ARROW_CENTER_Y = 102;
+const NUDGE_SINGLE_W = 60;
+const NUDGE_SINGLE_H = 50;
+const NUDGE_DOUBLE_W = 50;
+const NUDGE_DOUBLE_H = 28;
+const NUDGE_DOUBLE_GAP = 6;
+
+type Direction = "up" | "down" | "left" | "right";
+
+function trianglePath(dir: Direction, cx: number, cy: number, w: number, h: number): string {
+	const halfW = w / 2;
+	const halfH = h / 2;
+	switch (dir) {
+		case "up":
+			return `M${cx},${cy - halfH} L${cx - halfW},${cy + halfH} L${cx + halfW},${cy + halfH} Z`;
+		case "down":
+			return `M${cx},${cy + halfH} L${cx - halfW},${cy - halfH} L${cx + halfW},${cy - halfH} Z`;
+		case "left":
+			return `M${cx - halfW},${cy} L${cx + halfW},${cy - halfH} L${cx + halfW},${cy + halfH} Z`;
+		case "right":
+			return `M${cx + halfW},${cy} L${cx - halfW},${cy - halfH} L${cx - halfW},${cy + halfH} Z`;
+	}
+}
+
+export function renderNudgeIcon(def: NudgeIcon): string {
+	const cx = SIZE / 2;
+	const cy = NUDGE_ARROW_CENTER_Y;
+
+	let arrows: string;
+	if (def.double) {
+		const isVertical = def.direction === "up" || def.direction === "down";
+		const w = isVertical ? NUDGE_DOUBLE_W : NUDGE_DOUBLE_H;
+		const h = isVertical ? NUDGE_DOUBLE_H : NUDGE_DOUBLE_W;
+		const offset = (isVertical ? h : w) / 2 + NUDGE_DOUBLE_GAP / 2;
+		const c1 = isVertical ? { cx, cy: cy - offset } : { cx: cx - offset, cy };
+		const c2 = isVertical ? { cx, cy: cy + offset } : { cx: cx + offset, cy };
+		arrows =
+			`<path d="${trianglePath(def.direction, c1.cx, c1.cy, w, h)}" fill="${def.accent}"/>` +
+			`<path d="${trianglePath(def.direction, c2.cx, c2.cy, w, h)}" fill="${def.accent}"/>`;
+	} else {
+		const isVertical = def.direction === "up" || def.direction === "down";
+		const w = isVertical ? NUDGE_SINGLE_W : NUDGE_SINGLE_H;
+		const h = isVertical ? NUDGE_SINGLE_H : NUDGE_SINGLE_W;
+		arrows = `<path d="${trianglePath(def.direction, cx, cy, w, h)}" fill="${def.accent}"/>`;
+	}
+
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <text x="${cx}" y="${NUDGE_LABEL_BASELINE_Y}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${NUDGE_LABEL_FONT_SIZE}" font-weight="800"
+        fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>
+  ${arrows}
 </svg>`;
 }
 
