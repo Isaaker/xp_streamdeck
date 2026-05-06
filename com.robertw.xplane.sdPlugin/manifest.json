@@ -63,6 +63,20 @@
 					"TitleAlignment": "middle"
 				}
 			]
+		},
+		{
+			"Name": "Background Tile",
+			"UUID": "com.robertw.xplane.background",
+			"Icon": "imgs/actions/background/icon",
+			"Tooltip": "Decorative tile with no action — for visual separators and background fills.",
+			"PropertyInspectorPath": "ui/background.html",
+			"Controllers": ["Keypad"],
+			"States": [
+				{
+					"Image": "imgs/actions/background/key",
+					"TitleAlignment": "middle"
+				}
+			]
 		}
 	],
 	"Category": "X-Plane",

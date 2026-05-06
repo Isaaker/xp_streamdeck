@@ -1,5 +1,6 @@
 import streamDeck from "@elgato/streamdeck";
 
+import { XPlaneBackground } from "./actions/background";
 import { XPlaneCommand } from "./actions/command";
 import { XPlaneDataRefDisplay } from "./actions/dataref-display";
 import { XPlaneDataRefToggle } from "./actions/dataref-toggle";
@@ -18,6 +19,7 @@ streamDeck.actions.registerAction(new XPlaneCommand(xplane));
 streamDeck.actions.registerAction(new XPlaneDataRefDisplay(xplane));
 streamDeck.actions.registerAction(new XPlaneDataRefWrite(xplane));
 streamDeck.actions.registerAction(new XPlaneDataRefToggle(xplane));
+streamDeck.actions.registerAction(new XPlaneBackground());
 
 xplane.connect();
 streamDeck.connect().catch((err) => streamDeck.logger.error("streamDeck.connect failed", err));

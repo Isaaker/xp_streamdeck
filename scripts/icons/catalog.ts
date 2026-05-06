@@ -94,23 +94,23 @@ export const catalog: IconDef[] = [
 	// === Cockpit controls / system switches (toggles) ===
 	{ kind: "toggle", name: "parkbrake", label: "PARK BRK", group: "cockpit" },
 	{ kind: "toggle", name: "master_bat", label: "MASTER BAT", group: "cockpit" },
-    { kind: "toggle", name: "master_alt", label: "MASTER ALT", group: "cockpit" },
+	{ kind: "toggle", name: "master_alt", label: "MASTER ALT", group: "cockpit" },
 	{ kind: "toggle", name: "avionics", label: "AVIONICS", group: "cockpit" },
 	{ kind: "toggle", name: "pitot_heat", label: "PITOT HEAT", group: "cockpit" },
 	{ kind: "toggle", name: "fuelpump", label: "FUEL PUMP", group: "cockpit" },
-    { kind: "toggle", name: "motor_start", label: "MAGN START", group: "cockpit" },
+	{ kind: "toggle", name: "motor_start", label: "MAGN START", group: "cockpit" },
 
 	// === Live readouts (display-only, no on/off) ===
 	// Layout reserves the lower 2/3 of the key for the Stream Deck title overlay.
 	{ kind: "display", name: "cur_hdg", label: "HDG", group: "readouts" },
 	{ kind: "display", name: "cur_alt", label: "ALT", group: "readouts" },
 	{ kind: "display", name: "cur_ias", label: "IAS", group: "readouts" },
-    { kind: "display", name: "cur_spd", label: "SPD", group: "readouts" },
+	{ kind: "display", name: "cur_spd", label: "SPD", group: "readouts" },
 	{ kind: "display", name: "cur_vs", label: "V/S", group: "readouts" },
 	{ kind: "display", name: "cur_baro", label: "W-BARO", group: "readouts" },
 	{ kind: "display", name: "wind_dir", label: "W-DIR", group: "readouts" },
 	{ kind: "display", name: "wind_spd", label: "W-SPD", group: "readouts" },
-    { kind: "display", name: "wind_temp", label: "W-TEMP", group: "readouts" },
+	{ kind: "display", name: "wind_temp", label: "W-TEMP", group: "readouts" },
 
 	// === Plain-color background tiles (no label, no accent) ===
 	// Useful as filler/separators between functional clusters on the deck.
@@ -118,5 +118,5 @@ export const catalog: IconDef[] = [
 	{ kind: "background", name: "bg_white", color: "#ffffff", group: "backgrounds" },
 	{ kind: "background", name: "bg_yellow", color: "#ffeb00", group: "backgrounds" },
 	{ kind: "background", name: "bg_red", color: "#ef4444", group: "backgrounds" },
-    { kind: "background", name: "bg_green", color: "#22c55e", group: "backgrounds" },
+	{ kind: "background", name: "bg_green", color: "#22c55e", group: "backgrounds" },
 ];
