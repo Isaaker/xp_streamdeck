@@ -7,6 +7,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { combineTitle, DISCONNECTED_SUFFIX, NOT_FOUND_SUFFIX } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
@@ -105,10 +106,24 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 			return;
 		}
 
+		const { basePath, index } = parseDataRefPath(state.path);
+
 		try {
-			state.handle = await this.xplane.subscribe(state.path, (value) => {
-				state.lastValue = value;
-				this.render(state);
+			state.handle = await this.xplane.subscribe(basePath, (raw) => {
+				try {
+					state.lastValue = applyIndex(raw, index);
+					this.render(state);
+				} catch (err) {
+					streamDeck.logger.warn(
+						`dataref-display: index apply failed for ${state.path}`,
+						err,
+					);
+					state.action
+						.setTitle(combineTitle(state.label, NOT_FOUND_SUFFIX))
+						.catch((e) =>
+							streamDeck.logger.warn("dataref-display: setTitle failed", e),
+						);
+				}
 			});
 		} catch (err) {
 			streamDeck.logger.warn(`dataref-display: subscribe failed for ${state.path}`, err);

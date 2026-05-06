@@ -9,6 +9,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setDisconnected, setNotFound } from "../util/error-tile";
 import { persistImage } from "../util/image-cache";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
@@ -180,15 +181,16 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 					`dataref-toggle: command activate ${parsed.commandPath} (id=${cmdId})`,
 				);
 			} else {
-				const drId = await this.xplane.getDataRefId(parsed.path);
+				const { basePath, index } = parseDataRefPath(parsed.path);
+				const drId = await this.xplane.getDataRefId(basePath);
 				const current =
 					state?.lastValue !== undefined
 						? state.lastValue
-						: await this.xplane.readDataRef(drId);
+						: applyIndex(await this.xplane.readDataRef(drId), index);
 				const isOn =
 					mapValueToStateIndex(current, parsed.valueOff, parsed.valueOn) === STATE_ON;
 				const target = isOn ? parsed.valueOff : parsed.valueOn;
-				await this.xplane.writeDataRef(drId, target);
+				await this.xplane.writeDataRef(drId, target, index);
 				streamDeck.logger.info(
 					`dataref-toggle: write ${parsed.path} = ${target} (id=${drId})`,
 				);
@@ -207,8 +209,23 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			return;
 		}
 
+		const { basePath, index } = parseDataRefPath(state.path);
+
 		try {
-			state.handle = await this.xplane.subscribe(state.path, (value) => {
+			state.handle = await this.xplane.subscribe(basePath, (raw) => {
+				let value: DataRefValue;
+				try {
+					value = applyIndex(raw, index);
+				} catch (err) {
+					streamDeck.logger.warn(
+						`dataref-toggle: index apply failed for ${state.path}`,
+						err,
+					);
+					setNotFound(state.action).catch((e) =>
+						streamDeck.logger.warn("dataref-toggle: setNotFound failed", e),
+					);
+					return;
+				}
 				const prev = state.lastValue;
 				state.lastValue = value;
 				if (!sameValue(prev, value)) {
@@ -224,8 +241,8 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			// Seed the visible state immediately via REST so the first frame is
 			// correct even before the subscription delivers its first update.
 			try {
-				const id = await this.xplane.getDataRefId(state.path);
-				const initial = await this.xplane.readDataRef(id);
+				const id = await this.xplane.getDataRefId(basePath);
+				const initial = applyIndex(await this.xplane.readDataRef(id), index);
 				state.lastValue = initial;
 				await this.renderState(state, initial);
 			} catch (err) {

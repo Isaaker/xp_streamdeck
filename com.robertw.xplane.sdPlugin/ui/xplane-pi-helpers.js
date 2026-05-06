@@ -16,6 +16,14 @@
 	const PREVIEW_INTERVAL_MS = 1000;
 	const FETCH_TIMEOUT_MS = 2000;
 
+	const PATH_RE = /^(.+?)(?:\[(\d+)\])?$/;
+	const parseDataRefPath = (input) => {
+		const trimmed = String(input ?? "").trim();
+		const m = PATH_RE.exec(trimmed);
+		if (!m) return { basePath: trimmed };
+		return { basePath: m[1], index: m[2] !== undefined ? Number(m[2]) : undefined };
+	};
+
 	const getClient = () => window.SDPIComponents?.streamDeckClient;
 
 	// ---------------- Settings cache ----------------
@@ -149,19 +157,28 @@
 
 	// ---------------- Live DataRef preview ----------------
 
-	const fetchDataRefValue = async (name) => {
+	const fetchDataRefValue = async (rawName) => {
+		const { basePath, index } = parseDataRefPath(rawName);
 		try {
 			const r1 = await fetchWithTimeout(
-				`${API_BASE}/datarefs?filter[name]=${encodeURIComponent(name)}`,
+				`${API_BASE}/datarefs?filter[name]=${encodeURIComponent(basePath)}`,
 			);
 			if (!r1.ok) return { state: "error" };
 			const body = await r1.json();
-			const match = body?.data?.find((d) => d?.name === name) ?? body?.data?.[0];
+			const match = body?.data?.find((d) => d?.name === basePath) ?? body?.data?.[0];
 			if (!match || typeof match.id !== "number") return { state: "not-found" };
 			const r2 = await fetchWithTimeout(`${API_BASE}/datarefs/${match.id}/value`);
 			if (!r2.ok) return { state: "error" };
 			const valBody = await r2.json();
-			return { state: "ok", value: valBody?.data };
+			const raw = valBody?.data;
+			if (index === undefined) return { state: "ok", value: raw };
+			if (!Array.isArray(raw)) {
+				return { state: "error", message: "not an array" };
+			}
+			if (index < 0 || index >= raw.length) {
+				return { state: "error", message: `index ${index} out of bounds (length ${raw.length})` };
+			}
+			return { state: "ok", value: raw[index] };
 		} catch {
 			return { state: "error" };
 		}
@@ -178,7 +195,7 @@
 			case "not-found":
 				return "Not found";
 			case "error":
-				return "X-Plane unreachable";
+				return result.message ? result.message : "X-Plane unreachable";
 			default:
 				return "";
 		}

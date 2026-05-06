@@ -96,8 +96,9 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 		return body.data;
 	}
 
-	async writeDataRef(id: number, value: DataRefValue): Promise<void> {
-		const url = `${this.restBase()}/datarefs/${id}/value`;
+	async writeDataRef(id: number, value: DataRefValue, index?: number): Promise<void> {
+		const idxQuery = index !== undefined ? `?index=${index}` : "";
+		const url = `${this.restBase()}/datarefs/${id}/value${idxQuery}`;
 		await this.fetchJson(url, {
 			method: "PATCH",
 			headers: { "Content-Type": "application/json" },
