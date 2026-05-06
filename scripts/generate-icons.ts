@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { catalog } from "./icons/catalog.ts";
 import {
 	type IconState,
+	renderBackgroundIcon,
 	renderDisplayIcon,
 	renderNudgeIcon,
 	renderSimOfflineIcon,
@@ -36,6 +37,7 @@ async function main(): Promise<void> {
 	let toggleCount = 0;
 	let displayCount = 0;
 	let nudgeCount = 0;
+	let backgroundCount = 0;
 
 	for (const def of catalog) {
 		const groupDir = await ensureGroupDir(def.group);
@@ -51,18 +53,23 @@ async function main(): Promise<void> {
 			const png = await renderPng(svg, 144);
 			await writeFile(resolve(groupDir, `${def.name}.png`), png);
 			displayCount += 1;
-		} else {
+		} else if (def.kind === "nudge") {
 			const svg = renderNudgeIcon(def);
 			const png = await renderPng(svg, 144);
 			await writeFile(resolve(groupDir, `${def.name}.png`), png);
 			nudgeCount += 1;
+		} else {
+			const svg = renderBackgroundIcon(def);
+			const png = await renderPng(svg, 144);
+			await writeFile(resolve(groupDir, `${def.name}.png`), png);
+			backgroundCount += 1;
 		}
 	}
 
 	console.log(
-		`Wrote ${toggleCount + displayCount + nudgeCount} PNGs to ${OUT_DIR} ` +
-			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges, ` +
-			`grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
+		`Wrote ${toggleCount + displayCount + nudgeCount + backgroundCount} PNGs to ${OUT_DIR} ` +
+			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges + ` +
+			`${backgroundCount} backgrounds, grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
 	);
 
 	await mkdir(BUNDLE_IMGS_DIR, { recursive: true });

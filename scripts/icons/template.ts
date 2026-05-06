@@ -1,4 +1,10 @@
-import { type DisplayIcon, GROUP_ACCENT, type NudgeIcon, type ToggleIcon } from "./catalog.ts";
+import {
+	type BackgroundIcon,
+	type DisplayIcon,
+	GROUP_ACCENT,
+	type NudgeIcon,
+	type ToggleIcon,
+} from "./catalog.ts";
 
 export type IconState = "on" | "off";
 
@@ -145,6 +151,14 @@ export function renderDisplayIcon(def: DisplayIcon): string {
         font-family="${FONT_STACK}" font-size="${DISPLAY_LABEL_FONT_SIZE}" font-weight="700"
         fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>
   <rect x="${lineX}" y="${DISPLAY_ACCENT_LINE_Y}" width="${DISPLAY_ACCENT_LINE_WIDTH}" height="${DISPLAY_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
+</svg>`;
+}
+
+// === Background (solid-color filler tile) ===
+// Pure flat fill, no border, no text. Edge-to-edge.
+export function renderBackgroundIcon(def: BackgroundIcon): string {
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${def.color}"/>
 </svg>`;
 }
 

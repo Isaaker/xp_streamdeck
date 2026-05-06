@@ -233,6 +233,7 @@ Three kinds of icons are produced from a single catalog (`scripts/icons/catalog.
 - **`toggle`** — for action buttons that flip a state (AP HDG mode, FD on/off, …). Generates an `_on` + `_off` pair: bold uppercase label centered, colored LED bar at the bottom (lit in the accent color when ON, dark grey when OFF, with a soft glow).
 - **`display`** — for the **`dataref-display`** action (live X-Plane readouts: current altitude, wind, AP setpoints, …). Generates a single PNG: small caption + thin accent line in the top third, rest of the key left empty so Stream Deck's title overlay can render the live value cleanly underneath.
 - **`nudge`** — for single-press command buttons that increment/decrement an AP setpoint (heading bug, altitude target, V/S, source). Generates a single PNG: bold label at the top, big filled triangle in the accent color pointing in the action direction. Pair with the `command` action (with `Hold Mode` for continuous spin).
+- **`background`** — solid-color filler tile (no label, no accent). Generates a single PNG with the entire 144×144 painted in the entry's `color`. Useful as visual separators between functional clusters on the deck. Bundled set: black, white, yellow, red.
 
 ### Groups & color palette
 
@@ -244,6 +245,7 @@ Each catalog entry belongs to exactly one group. The group decides **both** the 
 | `lights`    | green   | `#22c55e` | BCN, LAND, TAXI, NAV, STROBE                                          |
 | `cockpit`   | green   | `#22c55e` | PARK BRK, FUEL PUMP, MASTER BAT, AVIONICS, PITOT HEAT                 |
 | `readouts`  | white   | `#ffffff` | Live values: HDG, ALT, IAS, V/S, BARO, WIND, W SPD                    |
+| `backgrounds` | n/a   | per entry | Solid-color filler tiles (`bg_black`, `bg_white`, `bg_yellow`, `bg_red`) |
 
 The mapping lives in `GROUP_ACCENT` at the top of `scripts/icons/catalog.ts` — change a hex there and every icon in that group updates after the next `make icons`.
 
@@ -274,14 +276,18 @@ Toggles produce `<name>_on.png` + `<name>_off.png`; displays and nudges produce 
    // nudge button (single press → CommandRef; arrow indicates direction)
    { kind: 'nudge',   name: 'crs_left', label: 'CRS', direction: 'left',  group: 'autopilot' },
    { kind: 'nudge',   name: 'crs_x2',   label: 'CRS', direction: 'right', double: true, group: 'autopilot' },
+
+   // solid-color filler tile (no label, no accent — color comes from `color`)
+   { kind: 'background', name: 'bg_orange', color: '#f59e0b', group: 'backgrounds' },
    ```
 
-   - `kind` — `'toggle'` for on/off buttons, `'display'` for live-readout headers, `'nudge'` for single-press arrow buttons.
+   - `kind` — `'toggle'` for on/off buttons, `'display'` for live-readout headers, `'nudge'` for single-press arrow buttons, `'background'` for plain-color filler tiles.
    - `name` — file-name stem; must be unique within its group. Output: `apu_on.png` + `apu_off.png` (toggle) or `cur_oat.png` / `crs_left.png` (display, nudge), inside the group's subdirectory.
    - `label` — text shown on the icon. **Toggle:** ≤ 4 chars renders at 44px; longer labels auto-shrink in fixed steps (5→36, 6→30, 7→26, 8→22, 9→20, 10+→18). **Display:** ≤ 6 characters comfortably (`AP HDG`, `W SPD`). **Nudge:** ≤ 4 characters (`HDG`, `SRC`, `ALT`, `VS`); the arrow is the visual focus.
    - `group` — one of `'autopilot'` / `'lights'` / `'cockpit'` / `'readouts'`. Drives **both** the accent color (see the table above) and the output subdirectory. To add a new group, extend the `IconGroup` type and `GROUP_ACCENT` map at the top of `catalog.ts`.
    - `direction` *(nudge only)* — `'up'` / `'down'` / `'left'` / `'right'`. Arrow points this way.
    - `double` *(nudge only, optional)* — `true` renders two stacked triangles for "coarse step" semantics (e.g. ALT ↑↑ for big increments).
+   - `color` *(background only)* — hex fill for the entire tile. The group's accent is ignored for this kind.
 3. Run `make icons`. The new files appear in `out/icons/<group>/`.
 4. In the Stream Deck app: drag the PNG onto a key. For a `display` icon, configure the `dataref-display` action (DataRef path + format) on that key — the live value renders as the title in the empty zone of the icon.
 

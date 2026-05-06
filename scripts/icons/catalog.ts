@@ -1,12 +1,17 @@
-export type IconGroup = "autopilot" | "lights" | "cockpit" | "readouts";
+export type IconGroup = "autopilot" | "lights" | "cockpit" | "readouts" | "backgrounds";
 
-// One accent color per group — keeps the whole set visually calm.
+// One accent color per functional group — keeps the whole set visually calm.
 // The group name is also the output subdirectory (out/icons/<group>/).
+// `backgrounds` is a non-functional bucket: solid color tiles used as filler
+// or visual separators on the deck. Its accent is unused (background icons
+// carry their color explicitly per entry); the value here is just a
+// placeholder so the Record stays exhaustive.
 export const GROUP_ACCENT: Record<IconGroup, string> = {
 	autopilot: "#ffeb00", // yellow
 	lights: "#22c55e", // green
 	cockpit: "#22c55e", // green
 	readouts: "#ffffff", // white
+	backgrounds: "#000000", // unused — background tiles carry their own color
 };
 
 type IconBase = {
@@ -22,7 +27,14 @@ export type NudgeIcon = IconBase & {
 	direction: "up" | "down" | "left" | "right";
 	double?: boolean;
 };
-export type IconDef = ToggleIcon | DisplayIcon | NudgeIcon;
+// Solid-color filler tile — no label, no accent, just the fill.
+export type BackgroundIcon = {
+	kind: "background";
+	name: string;
+	group: IconGroup;
+	color: string;
+};
+export type IconDef = ToggleIcon | DisplayIcon | NudgeIcon | BackgroundIcon;
 
 export const catalog: IconDef[] = [
 	// === Autopilot — mode toggles ===
@@ -95,4 +107,11 @@ export const catalog: IconDef[] = [
 	{ kind: "display", name: "cur_baro", label: "BARO", group: "readouts" },
 	{ kind: "display", name: "wind_dir", label: "WIND", group: "readouts" },
 	{ kind: "display", name: "wind_spd", label: "W SPD", group: "readouts" },
+
+	// === Plain-color background tiles (no label, no accent) ===
+	// Useful as filler/separators between functional clusters on the deck.
+	{ kind: "background", name: "bg_black", color: "#000000", group: "backgrounds" },
+	{ kind: "background", name: "bg_white", color: "#ffffff", group: "backgrounds" },
+	{ kind: "background", name: "bg_yellow", color: "#ffeb00", group: "backgrounds" },
+	{ kind: "background", name: "bg_red", color: "#ef4444", group: "backgrounds" },
 ];

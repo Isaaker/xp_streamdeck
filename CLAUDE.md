@@ -80,20 +80,23 @@ To keep buttons visually consistent (one of M01's pain points was inconsistent p
 
 - **Entry:** `make icons` → `npm run icons` → `tsx scripts/generate-icons.ts`.
 - **Output:** `out/icons/<group>/*.png` (144×144, gitignored, wiped by `make clean`). One subdirectory per group.
-- **Three icon kinds, one catalog (discriminated union on `kind`):**
+- **Four icon kinds, one catalog (discriminated union on `kind`):**
   - **`toggle`** — for buttons that flip a state. Produces `<name>_on.png` + `<name>_off.png`. Bold label + LED bar at bottom (lit/dark by state).
   - **`display`** — for the `dataref-display` action. Produces a single `<name>.png`. Caption + accent line in the top third; the lower ⅔ is intentionally empty so Stream Deck's `setTitle()` overlay (the live value) sits cleanly underneath.
   - **`nudge`** — single-press command button (heading bug ±, altitude bug ±, etc.). Produces a single `<name>.png`. Bold label at top, big filled triangle in the accent color in the lower portion (single triangle for normal step, two stacked for `double: true` coarse step).
+  - **`background`** — solid-color filler tile (no label, no accent line). Produces a single `<name>.png` painted edge-to-edge in the entry's `color`. Used for visual separators between functional clusters; lives in the `backgrounds` group.
 - **Groups drive both color and output directory.** One accent per group, declared once in `GROUP_ACCENT` at the top of `scripts/icons/catalog.ts`:
   - `autopilot` → yellow (`#eab308`) — AP/FD mode toggles, AP setpoint readouts, AP nudges
   - `lights` → green (`#22c55e`) — BCN, LAND, TAXI, NAV, STROBE
   - `cockpit` → green (`#22c55e`) — PARK BRK, FUEL PUMP, MASTER BAT, AVIONICS, PITOT HEAT
   - `readouts` → white (`#ffffff`) — live values (HDG, ALT, IAS, BARO, WIND, …)
+  - `backgrounds` → no group accent — solid-color filler tiles only; each entry carries its own `color`
 - **Adding an icon = one catalog row.** In `scripts/icons/catalog.ts`:
   ```ts
   { kind: 'toggle',  name: 'apu',     label: 'APU', group: 'cockpit' },
   { kind: 'display', name: 'cur_oat', label: 'OAT', group: 'readouts' },
   { kind: 'nudge',   name: 'crs_left', label: 'CRS', direction: 'left', group: 'autopilot' },
+  { kind: 'background', name: 'bg_orange', color: '#f59e0b', group: 'backgrounds' },
   ```
   No template change needed unless you want a new visual *kind*. To add a new color category, extend the `IconGroup` type + `GROUP_ACCENT` map.
 - **Visual style is centralized** in `scripts/icons/template.ts` — three render functions (`renderToggleIcon`, `renderDisplayIcon`, `renderNudgeIcon`), all layout/color constants at the top of each block. The accent color is resolved via `GROUP_ACCENT[def.group]` — never per-icon. Change once, re-run `make icons`, every icon of that kind updates identically. **Do not** branch per-icon style inside a renderer; if a new visual shape is needed (e.g. two-line text), add a fourth `kind` to the union plus a fourth render function.
