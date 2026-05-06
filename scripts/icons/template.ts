@@ -1,4 +1,4 @@
-import type { DisplayIcon, NudgeIcon, ToggleIcon } from "./catalog.ts";
+import { type DisplayIcon, GROUP_ACCENT, type NudgeIcon, type ToggleIcon } from "./catalog.ts";
 
 export type IconState = "on" | "off";
 
@@ -47,15 +47,16 @@ const DISPLAY_ACCENT_LINE_HEIGHT = 2;
 const DISPLAY_ACCENT_LINE_WIDTH = 64;
 
 export function renderToggleIcon(def: ToggleIcon, state: IconState): string {
+	const accent = GROUP_ACCENT[def.group];
 	const fontSize = toggleFontSize(def.label);
 	const baselineY = toggleBaselineY(fontSize);
-	const barFill = state === "on" ? def.accent : BAR_OFF;
+	const barFill = state === "on" ? accent : BAR_OFF;
 	const barWidth = SIZE - TOGGLE_BAR_INSET_X * 2;
 	const barY = SIZE - TOGGLE_BAR_INSET_BOTTOM - TOGGLE_BAR_HEIGHT;
 
 	const glow =
 		state === "on"
-			? `<rect x="${TOGGLE_BAR_INSET_X}" y="${barY}" width="${barWidth}" height="${TOGGLE_BAR_HEIGHT}" rx="${TOGGLE_BAR_RADIUS}" fill="${def.accent}" filter="url(#glow)" opacity="0.55"/>`
+			? `<rect x="${TOGGLE_BAR_INSET_X}" y="${barY}" width="${barWidth}" height="${TOGGLE_BAR_HEIGHT}" rx="${TOGGLE_BAR_RADIUS}" fill="${accent}" filter="url(#glow)" opacity="0.55"/>`
 			: "";
 
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
@@ -103,6 +104,7 @@ function trianglePath(dir: Direction, cx: number, cy: number, w: number, h: numb
 }
 
 export function renderNudgeIcon(def: NudgeIcon): string {
+	const accent = GROUP_ACCENT[def.group];
 	const cx = SIZE / 2;
 	const cy = NUDGE_ARROW_CENTER_Y;
 
@@ -115,13 +117,13 @@ export function renderNudgeIcon(def: NudgeIcon): string {
 		const c1 = isVertical ? { cx, cy: cy - offset } : { cx: cx - offset, cy };
 		const c2 = isVertical ? { cx, cy: cy + offset } : { cx: cx + offset, cy };
 		arrows =
-			`<path d="${trianglePath(def.direction, c1.cx, c1.cy, w, h)}" fill="${def.accent}"/>` +
-			`<path d="${trianglePath(def.direction, c2.cx, c2.cy, w, h)}" fill="${def.accent}"/>`;
+			`<path d="${trianglePath(def.direction, c1.cx, c1.cy, w, h)}" fill="${accent}"/>` +
+			`<path d="${trianglePath(def.direction, c2.cx, c2.cy, w, h)}" fill="${accent}"/>`;
 	} else {
 		const isVertical = def.direction === "up" || def.direction === "down";
 		const w = isVertical ? NUDGE_SINGLE_W : NUDGE_SINGLE_H;
 		const h = isVertical ? NUDGE_SINGLE_H : NUDGE_SINGLE_W;
-		arrows = `<path d="${trianglePath(def.direction, cx, cy, w, h)}" fill="${def.accent}"/>`;
+		arrows = `<path d="${trianglePath(def.direction, cx, cy, w, h)}" fill="${accent}"/>`;
 	}
 
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
@@ -134,6 +136,7 @@ export function renderNudgeIcon(def: NudgeIcon): string {
 }
 
 export function renderDisplayIcon(def: DisplayIcon): string {
+	const accent = GROUP_ACCENT[def.group];
 	const lineX = (SIZE - DISPLAY_ACCENT_LINE_WIDTH) / 2;
 
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
@@ -141,6 +144,6 @@ export function renderDisplayIcon(def: DisplayIcon): string {
   <text x="${SIZE / 2}" y="${DISPLAY_LABEL_BASELINE_Y}" text-anchor="middle"
         font-family="${FONT_STACK}" font-size="${DISPLAY_LABEL_FONT_SIZE}" font-weight="700"
         fill="${LABEL_COLOR}" letter-spacing="1">${def.label}</text>
-  <rect x="${lineX}" y="${DISPLAY_ACCENT_LINE_Y}" width="${DISPLAY_ACCENT_LINE_WIDTH}" height="${DISPLAY_ACCENT_LINE_HEIGHT}" fill="${def.accent}"/>
+  <rect x="${lineX}" y="${DISPLAY_ACCENT_LINE_Y}" width="${DISPLAY_ACCENT_LINE_WIDTH}" height="${DISPLAY_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
 </svg>`;
 }
