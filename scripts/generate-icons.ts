@@ -6,10 +6,14 @@ import {
 	type IconState,
 	renderDisplayIcon,
 	renderNudgeIcon,
+	renderSimOfflineIcon,
 	renderToggleIcon,
 } from "./icons/template.ts";
 
 const OUT_DIR = resolve(process.cwd(), "out/icons");
+// Bundle assets land directly inside the plugin bundle so the runtime can
+// reference them via relative path in setImage() (e.g. "imgs/sim_offline").
+const BUNDLE_IMGS_DIR = resolve(process.cwd(), "com.robertw.xplane.sdPlugin/imgs");
 const STATES: IconState[] = ["on", "off"];
 
 async function renderPng(svg: string, size: number): Promise<Buffer> {
@@ -60,6 +64,12 @@ async function main(): Promise<void> {
 			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges, ` +
 			`grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
 	);
+
+	await mkdir(BUNDLE_IMGS_DIR, { recursive: true });
+	const offlinePng = await renderPng(renderSimOfflineIcon(), 144);
+	const offlinePath = resolve(BUNDLE_IMGS_DIR, "sim_offline.png");
+	await writeFile(offlinePath, offlinePng);
+	console.log(`Wrote bundle asset: ${offlinePath}`);
 }
 
 main().catch((err) => {

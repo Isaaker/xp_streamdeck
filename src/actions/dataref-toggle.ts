@@ -10,7 +10,7 @@ import streamDeck, {
 import type { JsonObject } from "@elgato/utils";
 
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
-import { clearTile, setDisconnected, setNotFound } from "../util/error-tile";
+import { clearTile, setNotFound, setOffline } from "../util/error-tile";
 import { persistImage } from "../util/image-cache";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -72,8 +72,8 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 
 	constructor(private readonly xplane: XPlaneClient) {
 		super();
-		this.xplane.on("disconnected", () => this.onXPlaneDisconnected());
-		this.xplane.on("connected", () => this.onXPlaneConnected());
+		this.xplane.on("offline", () => this.onXPlaneOffline());
+		this.xplane.on("online", () => this.onXPlaneOnline());
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<DataRefToggleSettings>): Promise<void> {
@@ -204,8 +204,8 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 	private async applySubscription(state: ActionState): Promise<void> {
 		if (!state.path) return;
 
-		if (this.xplane.status() !== "connected") {
-			await setDisconnected(state.action);
+		if (this.xplane.isOffline()) {
+			await setOffline(state.action);
 			return;
 		}
 
@@ -286,19 +286,21 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		await state.action.setImage(image);
 	}
 
-	private onXPlaneDisconnected(): void {
+	private onXPlaneOffline(): void {
 		for (const state of this.states.values()) {
 			if (!state.path) continue;
-			// Force the next renderState to push state+image again so the
-			// "X-Plane" title overlay is cleanly replaced on reconnect.
+			// Drop the (already-broken) subscription so the next "online" cleanly
+			// re-subscribes, and force renderState to re-push state+image on
+			// the next live update so the offline placeholder gets replaced.
+			this.dropSubscription(state);
 			state.currentState = UNINITIALIZED_STATE;
-			setDisconnected(state.action).catch((err) =>
-				streamDeck.logger.warn("dataref-toggle: setDisconnected failed", err),
+			setOffline(state.action).catch((err) =>
+				streamDeck.logger.warn("dataref-toggle: setOffline failed", err),
 			);
 		}
 	}
 
-	private onXPlaneConnected(): void {
+	private onXPlaneOnline(): void {
 		for (const state of this.states.values()) {
 			if (state.path && !state.handle) {
 				this.applySubscription(state).catch((err) =>

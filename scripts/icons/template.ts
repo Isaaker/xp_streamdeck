@@ -147,3 +147,30 @@ export function renderDisplayIcon(def: DisplayIcon): string {
   <rect x="${lineX}" y="${DISPLAY_ACCENT_LINE_Y}" width="${DISPLAY_ACCENT_LINE_WIDTH}" height="${DISPLAY_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
 </svg>`;
 }
+
+// === Sim-offline placeholder (plugin-internal status icon) ===
+// Rendered into the plugin bundle so every action can swap to it via
+// setImage("imgs/sim_offline") whenever X-Plane is unreachable. The look is
+// deliberately distinct from the action icons: muted background, "SIM" word
+// in muted gray, "OFFLINE" word large in red — instantly readable as "no
+// connection" across the whole deck without per-button context.
+const OFFLINE_BG = "#1a1a1a";
+const OFFLINE_BORDER = "#7f1d1d";
+const OFFLINE_SIM_COLOR = "#94a3b8";
+const OFFLINE_TEXT_COLOR = "#ef4444";
+
+export function renderSimOfflineIcon(): string {
+	const borderInset = 4;
+	const borderSize = SIZE - borderInset * 2;
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${OFFLINE_BG}"/>
+  <rect x="${borderInset}" y="${borderInset}" width="${borderSize}" height="${borderSize}"
+        fill="none" stroke="${OFFLINE_BORDER}" stroke-width="3" rx="6"/>
+  <text x="${SIZE / 2}" y="58" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="22" font-weight="700"
+        fill="${OFFLINE_SIM_COLOR}" letter-spacing="3">SIM</text>
+  <text x="${SIZE / 2}" y="100" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="26" font-weight="800"
+        fill="${OFFLINE_TEXT_COLOR}" letter-spacing="2">OFFLINE</text>
+</svg>`;
+}

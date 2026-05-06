@@ -9,7 +9,7 @@ import streamDeck, {
 import type { JsonObject } from "@elgato/utils";
 
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
-import { combineTitle, DISCONNECTED_SUFFIX, NOT_FOUND_SUFFIX } from "../util/error-tile";
+import { clearOffline, combineTitle, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -42,8 +42,8 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 
 	constructor(private readonly xplane: XPlaneClient) {
 		super();
-		this.xplane.on("disconnected", () => this.onXPlaneDisconnected());
-		this.xplane.on("connected", () => this.onXPlaneConnected());
+		this.xplane.on("offline", () => this.onXPlaneOffline());
+		this.xplane.on("online", () => this.onXPlaneOnline());
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<DataRefWriteSettings>): Promise<void> {
@@ -58,6 +58,10 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 			precision: parsed.precision,
 		};
 		this.states.set(ev.action.id, state);
+		if (state.path && this.xplane.isOffline()) {
+			await setOffline(ev.action);
+			return;
+		}
 		await this.applySubscription(state);
 	}
 
@@ -133,9 +137,8 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 	private async applySubscription(state: ActionState): Promise<void> {
 		if (!state.showCurrentValue || !state.path) return;
 
-		if (this.xplane.status() !== "connected") {
-			await state.action.setTitle(combineTitle(state.label, DISCONNECTED_SUFFIX));
-			await state.action.showAlert();
+		if (this.xplane.isOffline()) {
+			await setOffline(state.action);
 			return;
 		}
 
@@ -183,28 +186,31 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 			.catch((err) => streamDeck.logger.warn("dataref-write: setTitle failed", err));
 	}
 
-	private onXPlaneDisconnected(): void {
+	private onXPlaneOffline(): void {
 		for (const state of this.states.values()) {
-			if (!state.showCurrentValue || !state.path) continue;
-			state.action
-				.setTitle(combineTitle(state.label, DISCONNECTED_SUFFIX))
-				.catch((err) => streamDeck.logger.warn("dataref-write: setTitle failed", err));
-			state.action
-				.showAlert()
-				.catch((err) => streamDeck.logger.warn("dataref-write: showAlert failed", err));
+			if (!state.path) continue;
+			if (state.handle) {
+				this.xplane.unsubscribe(state.handle);
+				state.handle = undefined;
+			}
+			state.lastValue = undefined;
+			setOffline(state.action).catch((err) =>
+				streamDeck.logger.warn("dataref-write: setOffline failed", err),
+			);
 		}
 	}
 
-	private onXPlaneConnected(): void {
+	private onXPlaneOnline(): void {
 		for (const state of this.states.values()) {
-			if (state.showCurrentValue && state.path && !state.handle) {
-				this.applySubscription(state).catch((err) =>
+			if (!state.path) continue;
+			clearOffline(state.action)
+				.then(() => this.applySubscription(state))
+				.catch((err) =>
 					streamDeck.logger.warn(
 						`dataref-write: re-subscribe failed for ${state.path}`,
 						err,
 					),
 				);
-			}
 		}
 	}
 }

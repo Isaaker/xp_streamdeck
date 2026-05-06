@@ -25,6 +25,10 @@ const DEFAULT_PORT = 8086;
 const DEFAULT_API_VERSION = "v3";
 const DEFAULT_RECONNECT: ReconnectOptions = { initialMs: 1000, maxMs: 30000 };
 const REQ_TIMEOUT_MS = 5000;
+// How long we tolerate "disconnected" before declaring the sim offline. Short
+// enough that the user notices, long enough to swallow brief WebSocket
+// hiccups (X-Plane reload, network blip) without flashing the offline tile.
+const OFFLINE_DELAY_MS = 3000;
 
 export class XPlaneClient extends EventEmitter implements SubscriptionTransport {
 	readonly logger: XPlaneLogger;
@@ -39,6 +43,9 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 	private connectAttempt = 0;
 	private reconnectTimer: NodeJS.Timeout | null = null;
 	private closed = false;
+
+	private offlineTimer: NodeJS.Timeout | null = null;
+	private offlineEmitted = false;
 
 	private dataRefIdByName = new Map<string, number>();
 	private commandIdByName = new Map<string, number>();
@@ -148,6 +155,7 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 			clearTimeout(this.reconnectTimer);
 			this.reconnectTimer = null;
 		}
+		this.cancelOfflineSignal();
 		if (this.ws) {
 			this.ws.removeAllListeners();
 			try {
@@ -175,6 +183,16 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 
 	status(): ConnectionStatus {
 		return this.wsState;
+	}
+
+	/**
+	 * True once `OFFLINE_DELAY_MS` has elapsed without a connection. Stays true
+	 * across short reconnect attempts; flips back to false the moment the WS
+	 * actually opens. Use this in `onWillAppear` to decide whether to show the
+	 * offline placeholder immediately at plugin start.
+	 */
+	isOffline(): boolean {
+		return this.offlineEmitted;
 	}
 
 	// ---------------- SubscriptionTransport ----------------
@@ -267,6 +285,11 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 		this.commandIdByName.clear();
 		this.subs.markAllUnsubscribed();
 		this.emit("connected");
+		this.cancelOfflineSignal();
+		if (this.offlineEmitted) {
+			this.offlineEmitted = false;
+			this.emit("online");
+		}
 		void this.subs.rebindAll().catch((err) => {
 			this.logger.warn("rebindAll failed", err);
 		});
@@ -284,7 +307,28 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 		this.pending.clear();
 		if (wasConnected) this.logger.info("X-Plane WS disconnected");
 		this.emit("disconnected");
-		if (!this.closed) this.scheduleReconnect();
+		if (!this.closed) {
+			this.scheduleReconnect();
+			this.scheduleOfflineSignal();
+		}
+	}
+
+	private scheduleOfflineSignal(): void {
+		if (this.offlineEmitted || this.offlineTimer) return;
+		this.offlineTimer = setTimeout(() => {
+			this.offlineTimer = null;
+			if (this.wsState === "connected" || this.closed) return;
+			this.offlineEmitted = true;
+			this.logger.info("X-Plane offline (no connection for >=3s)");
+			this.emit("offline");
+		}, OFFLINE_DELAY_MS);
+	}
+
+	private cancelOfflineSignal(): void {
+		if (this.offlineTimer) {
+			clearTimeout(this.offlineTimer);
+			this.offlineTimer = null;
+		}
 	}
 
 	private onWsError(err: unknown): void {

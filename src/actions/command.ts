@@ -9,7 +9,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
-import { clearTile, setDisconnected } from "../util/error-tile";
+import { clearOffline, setOffline } from "../util/error-tile";
 import type { XPlaneClient } from "../xplane";
 
 type CommandSettings = JsonObject & {
@@ -24,15 +24,15 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 
 	constructor(private readonly xplane: XPlaneClient) {
 		super();
-		this.xplane.on("disconnected", () => this.onXPlaneDisconnected());
-		this.xplane.on("connected", () => this.onXPlaneConnected());
+		this.xplane.on("offline", () => this.onXPlaneOffline());
+		this.xplane.on("online", () => this.onXPlaneOnline());
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<CommandSettings>): Promise<void> {
 		if (!ev.action.isKey()) return;
 		this.visible.set(ev.action.id, ev.action);
-		if (this.xplane.status() !== "connected") {
-			await setDisconnected(ev.action);
+		if (this.xplane.isOffline()) {
+			await setOffline(ev.action);
 		}
 	}
 
@@ -86,17 +86,17 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 		}
 	}
 
-	private onXPlaneDisconnected(): void {
+	private onXPlaneOffline(): void {
 		for (const a of this.visible.values()) {
-			setDisconnected(a).catch((err) =>
-				streamDeck.logger.warn("command: setDisconnected failed", err),
-			);
+			setOffline(a).catch((err) => streamDeck.logger.warn("command: setOffline failed", err));
 		}
 	}
 
-	private onXPlaneConnected(): void {
+	private onXPlaneOnline(): void {
 		for (const a of this.visible.values()) {
-			clearTile(a).catch((err) => streamDeck.logger.warn("command: clearTile failed", err));
+			clearOffline(a).catch((err) =>
+				streamDeck.logger.warn("command: clearOffline failed", err),
+			);
 		}
 	}
 }

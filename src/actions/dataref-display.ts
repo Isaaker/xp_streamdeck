@@ -8,7 +8,7 @@ import streamDeck, {
 import type { JsonObject } from "@elgato/utils";
 
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
-import { combineTitle, DISCONNECTED_SUFFIX, NOT_FOUND_SUFFIX } from "../util/error-tile";
+import { clearOffline, combineTitle, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -37,8 +37,8 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 
 	constructor(private readonly xplane: XPlaneClient) {
 		super();
-		this.xplane.on("disconnected", () => this.onXPlaneDisconnected());
-		this.xplane.on("connected", () => this.onXPlaneConnected());
+		this.xplane.on("offline", () => this.onXPlaneOffline());
+		this.xplane.on("online", () => this.onXPlaneOnline());
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<DataRefDisplaySettings>): Promise<void> {
@@ -100,9 +100,8 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 			return;
 		}
 
-		if (this.xplane.status() !== "connected") {
-			await state.action.setTitle(combineTitle(state.label, DISCONNECTED_SUFFIX));
-			await state.action.showAlert();
+		if (this.xplane.isOffline()) {
+			await setOffline(state.action);
 			return;
 		}
 
@@ -144,28 +143,35 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 			.catch((err) => streamDeck.logger.warn("dataref-display: setTitle failed", err));
 	}
 
-	private onXPlaneDisconnected(): void {
+	private onXPlaneOffline(): void {
 		for (const state of this.states.values()) {
 			if (!state.path) continue;
-			state.action
-				.setTitle(combineTitle(state.label, DISCONNECTED_SUFFIX))
-				.catch((err) => streamDeck.logger.warn("dataref-display: setTitle failed", err));
-			state.action
-				.showAlert()
-				.catch((err) => streamDeck.logger.warn("dataref-display: showAlert failed", err));
+			// The subscription is already broken at this point — drop our handle
+			// so the next "online" cleanly re-subscribes.
+			if (state.handle) {
+				this.xplane.unsubscribe(state.handle);
+				state.handle = undefined;
+			}
+			state.lastValue = undefined;
+			setOffline(state.action).catch((err) =>
+				streamDeck.logger.warn("dataref-display: setOffline failed", err),
+			);
 		}
 	}
 
-	private onXPlaneConnected(): void {
+	private onXPlaneOnline(): void {
 		for (const state of this.states.values()) {
-			if (state.path && !state.handle) {
-				this.applySubscription(state).catch((err) =>
+			if (!state.path) continue;
+			// Restore the user's image; the title will repopulate on first
+			// subscription update via render().
+			clearOffline(state.action)
+				.then(() => this.applySubscription(state))
+				.catch((err) =>
 					streamDeck.logger.warn(
 						`dataref-display: re-subscribe failed for ${state.path}`,
 						err,
 					),
 				);
-			}
 		}
 	}
 }
