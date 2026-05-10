@@ -15,12 +15,22 @@ import type { XPlaneClient } from "../xplane";
 type CommandSettings = JsonObject & {
 	commandPath?: string;
 	holdMode?: boolean;
+	autoRepeat?: boolean;
 	hideConfirmation?: boolean;
+};
+
+type Repeater = {
+	initial: NodeJS.Timeout | null;
+	interval: NodeJS.Timeout | null;
 };
 
 @action({ UUID: "com.robertw.xplane.command" })
 export class XPlaneCommand extends SingletonAction<CommandSettings> {
+	private static readonly REPEAT_INITIAL_DELAY_MS = 500;
+	private static readonly REPEAT_INTERVAL_MS = 200;
+
 	private readonly visible = new Map<string, KeyAction<CommandSettings>>();
+	private readonly repeaters = new Map<string, Repeater>();
 
 	constructor(private readonly xplane: XPlaneClient) {
 		super();
@@ -37,6 +47,7 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	}
 
 	override onWillDisappear(ev: WillDisappearEvent<CommandSettings>): Promise<void> {
+		this.stopRepeater(ev.action.id);
 		this.visible.delete(ev.action.id);
 		return Promise.resolve();
 	}
@@ -61,6 +72,9 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 				await this.xplane.activateCommand(id);
 				streamDeck.logger.info(`command activate: ${path} (id=${id})`);
 			}
+			if (!holdMode && ev.payload.settings?.autoRepeat === true) {
+				this.startRepeater(ev.action.id, id, path);
+			}
 			if (!hideConfirmation) {
 				await ev.action.showOk();
 			}
@@ -71,6 +85,8 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	}
 
 	override async onKeyUp(ev: KeyUpEvent<CommandSettings>): Promise<void> {
+		this.stopRepeater(ev.action.id);
+
 		const path = ev.payload.settings?.commandPath?.trim();
 		const holdMode = ev.payload.settings?.holdMode === true;
 
@@ -87,9 +103,33 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	}
 
 	private onXPlaneOffline(): void {
+		for (const id of [...this.repeaters.keys()]) {
+			this.stopRepeater(id);
+		}
 		for (const a of this.visible.values()) {
 			setOffline(a).catch((err) => streamDeck.logger.warn("command: setOffline failed", err));
 		}
+	}
+
+	private startRepeater(actionId: string, commandId: number, path: string): void {
+		this.stopRepeater(actionId);
+		const entry: Repeater = { initial: null, interval: null };
+		entry.initial = setTimeout(() => {
+			entry.interval = setInterval(() => {
+				this.xplane
+					.activateCommand(commandId)
+					.catch((err) => streamDeck.logger.error(`command repeat failed: ${path}`, err));
+			}, XPlaneCommand.REPEAT_INTERVAL_MS);
+		}, XPlaneCommand.REPEAT_INITIAL_DELAY_MS);
+		this.repeaters.set(actionId, entry);
+	}
+
+	private stopRepeater(actionId: string): void {
+		const r = this.repeaters.get(actionId);
+		if (!r) return;
+		if (r.initial) clearTimeout(r.initial);
+		if (r.interval) clearInterval(r.interval);
+		this.repeaters.delete(actionId);
 	}
 
 	private onXPlaneOnline(): void {
