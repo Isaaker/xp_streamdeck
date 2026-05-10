@@ -38,6 +38,15 @@ const TOGGLE_BAR_INSET_BOTTOM = 14;
 const TOGGLE_BAR_RADIUS = 3;
 
 const TOGGLE_LABEL_VISUAL_CENTER_Y = 64;
+// Two-line layout (used when ToggleIcon has a `sublabel`): main label sits
+// in the upper half above the LED bar, sublabel below. Centers chosen to
+// leave breathing room above the bar (which starts at y=116).
+const TOGGLE_TWO_LINE_MAIN_CENTER_Y = 42;
+const TOGGLE_TWO_LINE_SUB_CENTER_Y = 86;
+// Cap the main label at 40px in two-line layout so it doesn't crowd the
+// sublabel even when short (e.g. "ALT").
+const TOGGLE_TWO_LINE_MAIN_MAX = 40;
+const TOGGLE_TWO_LINE_SUB_FONT_SIZE = 32;
 
 function toggleFontSize(label: string): number {
 	const len = label.length;
@@ -54,6 +63,10 @@ function toggleBaselineY(fontSize: number): number {
 	return Math.round(TOGGLE_LABEL_VISUAL_CENTER_Y + fontSize * 0.35);
 }
 
+function baselineFor(fontSize: number, visualCenterY: number): number {
+	return Math.round(visualCenterY + fontSize * 0.35);
+}
+
 // === Display (live readout) layout ===
 // Caption + accent line live in the top ~⅓ so Stream Deck's title overlay
 // (live DataRef value) gets the lower ~⅔ of the key.
@@ -65,8 +78,6 @@ const DISPLAY_ACCENT_LINE_WIDTH = 64;
 
 export function renderToggleIcon(def: ToggleIcon, state: IconState): string {
 	const accent = GROUP_ACCENT[def.group];
-	const fontSize = toggleFontSize(def.label);
-	const baselineY = toggleBaselineY(fontSize);
 	const barFill = state === "on" ? accent : BAR_OFF;
 	const barWidth = SIZE - TOGGLE_BAR_INSET_X * 2;
 	const barY = SIZE - TOGGLE_BAR_INSET_BOTTOM - TOGGLE_BAR_HEIGHT;
@@ -76,6 +87,27 @@ export function renderToggleIcon(def: ToggleIcon, state: IconState): string {
 			? `<rect x="${TOGGLE_BAR_INSET_X}" y="${barY}" width="${barWidth}" height="${TOGGLE_BAR_HEIGHT}" rx="${TOGGLE_BAR_RADIUS}" fill="${accent}" filter="url(#glow)" opacity="0.55"/>`
 			: "";
 
+	const hasSublabel = typeof def.sublabel === "string" && def.sublabel.length > 0;
+	let labelEls: string;
+	if (hasSublabel) {
+		const mainSize = Math.min(toggleFontSize(def.label), TOGGLE_TWO_LINE_MAIN_MAX);
+		const mainY = baselineFor(mainSize, TOGGLE_TWO_LINE_MAIN_CENTER_Y);
+		const subY = baselineFor(TOGGLE_TWO_LINE_SUB_FONT_SIZE, TOGGLE_TWO_LINE_SUB_CENTER_Y);
+		labelEls =
+			`<text x="${SIZE / 2}" y="${mainY}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${mainSize}" font-weight="800"
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>` +
+			`<text x="${SIZE / 2}" y="${subY}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${TOGGLE_TWO_LINE_SUB_FONT_SIZE}" font-weight="800"
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.sublabel as string)}</text>`;
+	} else {
+		const fontSize = toggleFontSize(def.label);
+		const baselineY = toggleBaselineY(fontSize);
+		labelEls = `<text x="${SIZE / 2}" y="${baselineY}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${fontSize}" font-weight="800"
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>`;
+	}
+
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
   <defs>
     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
@@ -83,9 +115,7 @@ export function renderToggleIcon(def: ToggleIcon, state: IconState): string {
     </filter>
   </defs>
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
-  <text x="${SIZE / 2}" y="${baselineY}" text-anchor="middle"
-        font-family="${FONT_STACK}" font-size="${fontSize}" font-weight="800"
-        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>
+  ${labelEls}
   ${glow}
   <rect x="${TOGGLE_BAR_INSET_X}" y="${barY}" width="${barWidth}" height="${TOGGLE_BAR_HEIGHT}" rx="${TOGGLE_BAR_RADIUS}" fill="${barFill}"/>
 </svg>`;

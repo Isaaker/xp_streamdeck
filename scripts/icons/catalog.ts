@@ -21,7 +21,10 @@ type IconBase = {
 	group: IconGroup;
 };
 
-export type ToggleIcon = IconBase & { kind: "toggle" };
+// Optional `sublabel` stacks a second line below the main label (used for
+// twin-engine pairs like ALT/L, ALT/R, START/L, START/R — keeps the L/R
+// designator readable instead of squeezing "START L" into 26px inline).
+export type ToggleIcon = IconBase & { kind: "toggle"; sublabel?: string };
 export type DisplayIcon = IconBase & { kind: "display" };
 // `label` is optional so we can render bare directional arrows (e.g. G1000
 // cursor-up) — when absent the triangle centers vertically on the canvas.
@@ -132,6 +135,11 @@ export const catalog: IconDef[] = [
 	{ kind: "toggle", name: "pitot_heat", label: "PITOT HEAT", group: "cockpit" },
 	{ kind: "toggle", name: "fuelpump", label: "FUEL PUMP", group: "cockpit" },
 	{ kind: "toggle", name: "motor_start", label: "MAGN START", group: "cockpit" },
+	// Twin-engine variants: stacked label + L/R designator
+	{ kind: "toggle", name: "alt_l", label: "ALT", sublabel: "L", group: "cockpit" },
+	{ kind: "toggle", name: "alt_r", label: "ALT", sublabel: "R", group: "cockpit" },
+	{ kind: "toggle", name: "start_l", label: "START", sublabel: "L", group: "cockpit" },
+	{ kind: "toggle", name: "start_r", label: "START", sublabel: "R", group: "cockpit" },
 
 	// === Live readouts (display-only, no on/off) ===
 	// Layout reserves the lower 2/3 of the key for the Stream Deck title overlay.
