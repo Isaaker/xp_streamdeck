@@ -1,5 +1,5 @@
-// @ts-ignore
-// @ts-ignore
+// @ts-expect-error
+// @ts-expect-error
 import {
 	type BackgroundIcon,
 	type CommandIcon,

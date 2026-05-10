@@ -6,7 +6,7 @@ SDPLUGIN_DIR := $(PLUGIN_UUID).sdPlugin
 MAIN_BRANCH  := main
 STREAMDECK   := npx --no-install streamdeck
 
-.PHONY: help setup build deploy clean distclean test lint lint-fix format format-check check smoke icons package cleanup_tags cleanup_branches cleanup_actions
+.PHONY: help setup build deploy clean distclean test lint lint-fix format format-check check smoke icons package release cleanup_tags cleanup_branches cleanup_actions
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} \
@@ -54,6 +54,10 @@ icons: ## Generate Stream Deck button icons from scripts/icons/catalog.ts into o
 
 package: build ## Build a distributable .streamDeckPlugin (uses streamdeck pack — see M08)
 	$(STREAMDECK) pack -f $(SDPLUGIN_DIR)
+
+release: ## Bump version, commit, tag and push; CI publishes the release ZIP. Usage: make release VERSION=1.0.2
+	@if [ -z "$(VERSION)" ]; then echo "VERSION is required, e.g. make release VERSION=1.0.2"; exit 1; fi
+	node scripts/release.mjs $(VERSION)
 
 cleanup_tags: ## Remove local tags that no longer exist on origin
 	git fetch --prune --prune-tags origin

@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to release (e.g. v1.0.2)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint and type-check
+        run: make check
+
+      - name: Generate icons
+        run: make icons
+
+      - name: Build and pack plugin
+        run: make package
+
+      - name: Resolve version
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME:-${{ github.event.inputs.tag }}}"
+          echo "tag=$TAG"          >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}"  >> "$GITHUB_OUTPUT"
+
+      - name: Stage release contents
+        run: |
+          STAGE="release-stage/xp_streamdeck-${{ steps.ver.outputs.tag }}"
+          mkdir -p "$STAGE"
+          cp com.robertw.xplane.streamDeckPlugin "$STAGE/"
+          cp -R out/icons              "$STAGE/icons"
+          cp -R streamdeck-profiles    "$STAGE/profiles"
+          cp README.md INSTALL.md      "$STAGE/"
+          ls -la "$STAGE"
+
+      - name: Create ZIP
+        run: |
+          cd release-stage
+          zip -r "../xp_streamdeck-${{ steps.ver.outputs.tag }}.zip" "xp_streamdeck-${{ steps.ver.outputs.tag }}"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.tag }}
+          generate_release_notes: true
+          files: xp_streamdeck-${{ steps.ver.outputs.tag }}.zip
