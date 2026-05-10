@@ -15,23 +15,26 @@ if (!version || !/^\d+\.\d+\.\d+$/.test(version)) {
 }
 const tag = `v${version}`;
 
-function git(args, opts = {}) {
-    return execSync(`git ${args}`, { cwd: repoRoot, encoding: 'utf8', ...opts }).trim();
+function gitOutput(args) {
+    return execSync(`git ${args}`, { cwd: repoRoot, encoding: 'utf8' }).trim();
+}
+function gitRun(args) {
+    execSync(`git ${args}`, { cwd: repoRoot, stdio: 'inherit' });
 }
 
-const status = git('status --porcelain');
+const status = gitOutput('status --porcelain');
 if (status) {
-    console.error('Working tree is not clean. Commit or stash first:\n' + status);
+    console.error(`Working tree is not clean. Commit or stash first:\n${status}`);
     process.exit(1);
 }
 
-const branch = git('rev-parse --abbrev-ref HEAD');
+const branch = gitOutput('rev-parse --abbrev-ref HEAD');
 if (branch !== 'main') {
     console.error(`Releases must be cut from main, currently on '${branch}'.`);
     process.exit(1);
 }
 
-const existingTag = execSync(`git tag --list ${tag}`, { cwd: repoRoot, encoding: 'utf8' }).trim();
+const existingTag = gitOutput(`tag --list ${tag}`);
 if (existingTag) {
     console.error(`Tag ${tag} already exists.`);
     process.exit(1);
@@ -48,10 +51,10 @@ writeFileSync(manifestPath, `${JSON.stringify(manifest, null, '\t')}\n`);
 console.log(`Bumped package.json -> ${version}`);
 console.log(`Bumped manifest.json -> ${version}.0`);
 
-git(`add ${pkgPath} ${manifestPath}`, { stdio: 'inherit' });
-git(`commit -m "release: ${tag}"`, { stdio: 'inherit' });
-git(`tag ${tag}`, { stdio: 'inherit' });
-git('push', { stdio: 'inherit' });
-git(`push origin ${tag}`, { stdio: 'inherit' });
+gitRun(`add ${pkgPath} ${manifestPath}`);
+gitRun(`commit -m "release: ${tag}"`);
+gitRun(`tag ${tag}`);
+gitRun('push');
+gitRun(`push origin ${tag}`);
 
 console.log(`\n${tag} pushed. CI will build and publish the release.`);
