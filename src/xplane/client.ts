@@ -104,8 +104,33 @@ export class XPlaneClient extends EventEmitter implements SubscriptionTransport 
 	}
 
 	async writeDataRef(id: number, value: DataRefValue, index?: number): Promise<void> {
-		const idxQuery = index !== undefined ? `?index=${index}` : "";
-		const url = `${this.restBase()}/datarefs/${id}/value${idxQuery}`;
+		const url = `${this.restBase()}/datarefs/${id}/value`;
+		// X-Plane Web API has a known issue (observed across 12.1.x) where
+		// `PATCH .../value?index=N` returns 200 but silently ignores the write
+		// for any index ≠ 0 — no error surfaces. Workaround: read the whole
+		// array, swap the targeted element, write the full array back. Index 0
+		// hits this same path for consistency.
+		if (index !== undefined) {
+			const current = await this.readDataRef(id);
+			if (!Array.isArray(current)) {
+				throw new Error(
+					`writeDataRef: index=${index} given but DataRef ${id} is not an array`,
+				);
+			}
+			if (index < 0 || index >= current.length) {
+				throw new Error(
+					`writeDataRef: index ${index} out of bounds (array length ${current.length})`,
+				);
+			}
+			const next = current.slice();
+			next[index] = value as number;
+			await this.fetchJson(url, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ data: next }),
+			});
+			return;
+		}
 		await this.fetchJson(url, {
 			method: "PATCH",
 			headers: { "Content-Type": "application/json" },
