@@ -1,5 +1,7 @@
 # xp_streamdeck
 
+![X-Plane 12 cockpit with Stream Deck XL configurator showing autopilot controls](StreamDeck_cockpit.jpg)
+
 Native Stream Deck plugin for X-Plane 12 on macOS, talking to the X-Plane Web API on `localhost:8086`.
 
 ## Prerequisites
