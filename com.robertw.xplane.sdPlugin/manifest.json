@@ -9,7 +9,9 @@
 			"Icon": "imgs/actions/command/icon",
 			"Tooltip": "Trigger any X-Plane CommandRef by path.",
 			"PropertyInspectorPath": "ui/command.html",
-			"Controllers": ["Keypad"],
+			"Controllers": [
+				"Keypad"
+			],
 			"States": [
 				{
 					"Image": "imgs/actions/command/key",
@@ -23,7 +25,9 @@
 			"Icon": "imgs/actions/command-display/icon",
 			"Tooltip": "Fire an X-Plane CommandRef on press; show a live DataRef as the title (e.g. G1000 softkeys).",
 			"PropertyInspectorPath": "ui/command-display.html",
-			"Controllers": ["Keypad"],
+			"Controllers": [
+				"Keypad"
+			],
 			"States": [
 				{
 					"Image": "imgs/actions/command-display/key",
@@ -37,7 +41,9 @@
 			"Icon": "imgs/actions/dataref-display/icon",
 			"Tooltip": "Show a live X-Plane DataRef value as the button title.",
 			"PropertyInspectorPath": "ui/dataref-display.html",
-			"Controllers": ["Keypad"],
+			"Controllers": [
+				"Keypad"
+			],
 			"States": [
 				{
 					"Image": "imgs/actions/dataref-display/key",
@@ -51,7 +57,9 @@
 			"Icon": "imgs/actions/dataref-write/icon",
 			"Tooltip": "Write a fixed value to an X-Plane DataRef on press.",
 			"PropertyInspectorPath": "ui/dataref-write.html",
-			"Controllers": ["Keypad"],
+			"Controllers": [
+				"Keypad"
+			],
 			"States": [
 				{
 					"Image": "imgs/actions/dataref-write/key",
@@ -65,7 +73,9 @@
 			"Icon": "imgs/actions/dataref-toggle/icon",
 			"Tooltip": "Two-state DataRef button: image follows live value, click toggles via write or command.",
 			"PropertyInspectorPath": "ui/dataref-toggle.html",
-			"Controllers": ["Keypad"],
+			"Controllers": [
+				"Keypad"
+			],
 			"DisableAutomaticStates": true,
 			"States": [
 				{
@@ -84,7 +94,9 @@
 			"Icon": "imgs/actions/background/icon",
 			"Tooltip": "Decorative tile with no action — for visual separators and background fills.",
 			"PropertyInspectorPath": "ui/background.html",
-			"Controllers": ["Keypad"],
+			"Controllers": [
+				"Keypad"
+			],
 			"States": [
 				{
 					"Image": "imgs/actions/background/key",
