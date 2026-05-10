@@ -4,6 +4,7 @@ import {
 	type BackgroundIcon,
 	type CommandIcon,
 	type DisplayIcon,
+	type GcuKeyIcon,
 	GROUP_ACCENT,
 	type KnobIcon,
 	type NudgeIcon,
@@ -190,6 +191,30 @@ export function renderCommandIcon(def: CommandIcon): string {
         font-family="${FONT_STACK}" font-size="${fontSize}" font-weight="800"
         fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>
   <rect x="${COMMAND_ACCENT_LINE_INSET_X}" y="${lineY}" width="${lineWidth}" height="${COMMAND_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
+</svg>`;
+}
+
+// === GCU keypad key (G1000 keypad button) layout ===
+// Pure character display — no stripe, no border. The label gets the entire
+// canvas so single-character keys (0-9, A-Z) are readable at a glance from
+// the cockpit. Special keys (BKSP, SPC, +/-) shrink to fit.
+const GCU_KEY_VISUAL_CENTER_Y = 72;
+
+function gcuKeyFontSize(label: string): number {
+	const len = label.length;
+	if (len === 1) return 104;
+	if (len <= 3) return 48;
+	return 40;
+}
+
+export function renderGcuKeyIcon(def: GcuKeyIcon): string {
+	const fontSize = gcuKeyFontSize(def.label);
+	const baselineY = Math.round(GCU_KEY_VISUAL_CENTER_Y + fontSize * 0.35);
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <text x="${SIZE / 2}" y="${baselineY}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${fontSize}" font-weight="900"
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>
 </svg>`;
 }
 

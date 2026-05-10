@@ -56,13 +56,17 @@ export type BackgroundIcon = {
 	group: IconGroup;
 	color: string;
 };
+// G1000 GCU keypad button — solid dark tile, oversized bold character
+// centered. No accent stripe or border; the character is the icon.
+export type GcuKeyIcon = IconBase & { kind: "gcu_key" };
 export type IconDef =
 	| ToggleIcon
 	| DisplayIcon
 	| NudgeIcon
 	| CommandIcon
 	| KnobIcon
-	| BackgroundIcon;
+	| BackgroundIcon
+	| GcuKeyIcon;
 
 export const catalog: IconDef[] = [
 	// === Autopilot — mode toggles ===
@@ -168,4 +172,46 @@ export const catalog: IconDef[] = [
 	{ kind: "knob", name: "g_inner_left", variant: "inner-ccw", group: "g1000" },
 	{ kind: "knob", name: "g_inner_right", variant: "inner-cw", group: "g1000" },
 	{ kind: "knob", name: "g_push", variant: "push", group: "g1000" },
+
+	// === G1000 GCU — keypad buttons (digits, letters, special keys) ===
+	{ kind: "gcu_key", name: "gcu_0", label: "0", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_1", label: "1", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_2", label: "2", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_3", label: "3", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_4", label: "4", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_5", label: "5", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_6", label: "6", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_7", label: "7", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_8", label: "8", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_9", label: "9", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_a", label: "A", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_b", label: "B", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_c", label: "C", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_d", label: "D", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_e", label: "E", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_f", label: "F", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_g", label: "G", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_h", label: "H", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_i", label: "I", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_j", label: "J", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_k", label: "K", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_l", label: "L", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_m", label: "M", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_n", label: "N", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_o", label: "O", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_p", label: "P", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_q", label: "Q", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_r", label: "R", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_s", label: "S", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_t", label: "T", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_u", label: "U", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_v", label: "V", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_w", label: "W", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_x", label: "X", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_y", label: "Y", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_z", label: "Z", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_plusminus", label: "+/-", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_dot", label: ".", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_spc", label: "SPC", group: "g1000" },
+	{ kind: "gcu_key", name: "gcu_bksp", label: "BKSP", group: "g1000" },
 ];

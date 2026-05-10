@@ -7,6 +7,7 @@ import {
 	renderBackgroundIcon,
 	renderCommandIcon,
 	renderDisplayIcon,
+	renderGcuKeyIcon,
 	renderKnobIcon,
 	renderNudgeIcon,
 	renderSimOfflineIcon,
@@ -41,6 +42,7 @@ async function main(): Promise<void> {
 	let nudgeCount = 0;
 	let commandCount = 0;
 	let knobCount = 0;
+	let gcuKeyCount = 0;
 	let backgroundCount = 0;
 
 	for (const def of catalog) {
@@ -72,6 +74,11 @@ async function main(): Promise<void> {
 			const png = await renderPng(svg, 144);
 			await writeFile(resolve(groupDir, `${def.name}.png`), png);
 			knobCount += 1;
+		} else if (def.kind === "gcu_key") {
+			const svg = renderGcuKeyIcon(def);
+			const png = await renderPng(svg, 144);
+			await writeFile(resolve(groupDir, `${def.name}.png`), png);
+			gcuKeyCount += 1;
 		} else {
 			const svg = renderBackgroundIcon(def);
 			const png = await renderPng(svg, 144);
@@ -81,11 +88,17 @@ async function main(): Promise<void> {
 	}
 
 	const total =
-		toggleCount + displayCount + nudgeCount + commandCount + knobCount + backgroundCount;
+		toggleCount +
+		displayCount +
+		nudgeCount +
+		commandCount +
+		knobCount +
+		gcuKeyCount +
+		backgroundCount;
 	console.log(
 		`Wrote ${total} PNGs to ${OUT_DIR} ` +
 			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges + ` +
-			`${commandCount} commands + ${knobCount} knobs + ${backgroundCount} backgrounds, ` +
+			`${commandCount} commands + ${knobCount} knobs + ${gcuKeyCount} gcu_keys + ${backgroundCount} backgrounds, ` +
 			`grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
 	);
 
