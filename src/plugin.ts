@@ -6,6 +6,7 @@ import { XPlaneCommandDisplay } from "./actions/command-display";
 import { XPlaneDataRefDisplay } from "./actions/dataref-display";
 import { XPlaneDataRefToggle } from "./actions/dataref-toggle";
 import { XPlaneDataRefWrite } from "./actions/dataref-write";
+import { XPlaneRotary } from "./actions/rotary";
 import { XPlaneClient } from "./xplane";
 
 streamDeck.logger.setLevel("info");
@@ -18,6 +19,7 @@ xplane.on("error", (err) => streamDeck.logger.warn("X-Plane: error", err));
 
 streamDeck.actions.registerAction(new XPlaneCommand(xplane));
 streamDeck.actions.registerAction(new XPlaneCommandDisplay(xplane));
+streamDeck.actions.registerAction(new XPlaneRotary(xplane));
 streamDeck.actions.registerAction(new XPlaneDataRefDisplay(xplane));
 streamDeck.actions.registerAction(new XPlaneDataRefWrite(xplane));
 streamDeck.actions.registerAction(new XPlaneDataRefToggle(xplane));

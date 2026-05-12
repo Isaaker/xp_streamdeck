@@ -9,6 +9,7 @@ import {
 	renderDisplayIcon,
 	renderGcuKeyIcon,
 	renderKnobIcon,
+	renderNudgeDisplayIcon,
 	renderNudgeIcon,
 	renderSimOfflineIcon,
 	renderToggleIcon,
@@ -40,6 +41,7 @@ async function main(): Promise<void> {
 	let toggleCount = 0;
 	let displayCount = 0;
 	let nudgeCount = 0;
+	let nudgeDisplayCount = 0;
 	let commandCount = 0;
 	let knobCount = 0;
 	let gcuKeyCount = 0;
@@ -64,6 +66,11 @@ async function main(): Promise<void> {
 			const png = await renderPng(svg, 144);
 			await writeFile(resolve(groupDir, `${def.name}.png`), png);
 			nudgeCount += 1;
+		} else if (def.kind === "nudge-display") {
+			const svg = renderNudgeDisplayIcon(def);
+			const png = await renderPng(svg, 144);
+			await writeFile(resolve(groupDir, `${def.name}.png`), png);
+			nudgeDisplayCount += 1;
 		} else if (def.kind === "command") {
 			const svg = renderCommandIcon(def);
 			const png = await renderPng(svg, 144);
@@ -91,6 +98,7 @@ async function main(): Promise<void> {
 		toggleCount +
 		displayCount +
 		nudgeCount +
+		nudgeDisplayCount +
 		commandCount +
 		knobCount +
 		gcuKeyCount +
@@ -98,7 +106,8 @@ async function main(): Promise<void> {
 	console.log(
 		`Wrote ${total} PNGs to ${OUT_DIR} ` +
 			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges + ` +
-			`${commandCount} commands + ${knobCount} knobs + ${gcuKeyCount} gcu_keys + ${backgroundCount} backgrounds, ` +
+			`${nudgeDisplayCount} nudge-displays + ${commandCount} commands + ${knobCount} knobs + ` +
+			`${gcuKeyCount} gcu_keys + ${backgroundCount} backgrounds, ` +
 			`grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
 	);
 

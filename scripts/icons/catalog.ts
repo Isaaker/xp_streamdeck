@@ -40,6 +40,18 @@ export type NudgeIcon = {
 // with a thin static accent stripe instead of the toggle's LED bar — signals
 // "action ready" rather than "togglable".
 export type CommandIcon = IconBase & { kind: "command" };
+// Compact directional arrow + label, lower 2/3 reserved for the Stream Deck
+// title overlay. Used by the `rotary` action: each button fires a step
+// command in one direction while showing the live DataRef value as title.
+// Visually a hybrid of `nudge` (small arrow hint) and `display` (empty
+// readout area).
+export type NudgeDisplayIcon = {
+	kind: "nudge-display";
+	name: string;
+	label: string;
+	group: IconGroup;
+	direction: "up" | "down" | "left" | "right";
+};
 // G1000-style dual-concentric rotary knob indicator. `outer` is the big
 // outer ring (coarse adjustment), `inner` is the small inner knob (fine
 // adjustment). cw/ccw is the rotation direction. `push` is the click-the-
@@ -66,6 +78,7 @@ export type IconDef =
 	| ToggleIcon
 	| DisplayIcon
 	| NudgeIcon
+	| NudgeDisplayIcon
 	| CommandIcon
 	| KnobIcon
 	| BackgroundIcon
@@ -152,6 +165,40 @@ export const catalog: IconDef[] = [
 	{ kind: "display", name: "wind_dir", label: "W-DIR", group: "readouts" },
 	{ kind: "display", name: "wind_spd", label: "W-SPD", group: "readouts" },
 	{ kind: "display", name: "wind_temp", label: "W-TEMP", group: "readouts" },
+
+	// === Rotary (small directional arrow + label, lower ⅔ reserved for setTitle) ===
+	// Pair these to drive multi-position rotary switches (e.g. magneto OFF/R/L/BOTH/START)
+	// or continuous tuners (COM/NAV frequency, FMS cursor). Use them with the `rotary` action.
+	{
+		kind: "nudge-display",
+		name: "magneto_ccw",
+		label: "MAG",
+		direction: "left",
+		group: "cockpit",
+	},
+	{
+		kind: "nudge-display",
+		name: "magneto_cw",
+		label: "MAG",
+		direction: "right",
+		group: "cockpit",
+	},
+	{ kind: "nudge-display", name: "freq_mhz_up", label: "MHz", direction: "up", group: "g1000" },
+	{
+		kind: "nudge-display",
+		name: "freq_mhz_down",
+		label: "MHz",
+		direction: "down",
+		group: "g1000",
+	},
+	{ kind: "nudge-display", name: "freq_khz_up", label: "kHz", direction: "up", group: "g1000" },
+	{
+		kind: "nudge-display",
+		name: "freq_khz_down",
+		label: "kHz",
+		direction: "down",
+		group: "g1000",
+	},
 
 	// === Plain-color background tiles (no label, no accent) ===
 	// Useful as filler/separators between functional clusters on the deck.

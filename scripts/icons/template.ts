@@ -7,6 +7,7 @@ import {
 	type GcuKeyIcon,
 	GROUP_ACCENT,
 	type KnobIcon,
+	type NudgeDisplayIcon,
 	type NudgeIcon,
 	type ToggleIcon,
 } from "./catalog.ts";
@@ -184,6 +185,41 @@ export function renderNudgeIcon(def: NudgeIcon): string {
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
   ${labelEl}
   ${arrows}
+</svg>`;
+}
+
+// === Nudge-Display (rotary button: compact arrow + label, empty middle) layout ===
+// Top region: centered label + small directional arrow tucked in the top-right
+// corner. Lower 2/3 reserved for Stream Deck's title overlay (live DataRef
+// value), mirroring the `display` icon. The arrow is a hint, not a focal
+// element — the live readout is the focus.
+const NUDGE_DISPLAY_LABEL_FONT_SIZE = 20;
+const NUDGE_DISPLAY_LABEL_BASELINE_Y = 24;
+const NUDGE_DISPLAY_ACCENT_LINE_Y = 36;
+const NUDGE_DISPLAY_ACCENT_LINE_HEIGHT = 2;
+const NUDGE_DISPLAY_ACCENT_LINE_WIDTH = 64;
+const NUDGE_DISPLAY_ARROW_PERPENDICULAR = 18;
+const NUDGE_DISPLAY_ARROW_ALONG = 14;
+const NUDGE_DISPLAY_ARROW_MARGIN = 8;
+
+export function renderNudgeDisplayIcon(def: NudgeDisplayIcon): string {
+	const accent = GROUP_ACCENT[def.group];
+	const lineX = (SIZE - NUDGE_DISPLAY_ACCENT_LINE_WIDTH) / 2;
+
+	const isVertical = def.direction === "up" || def.direction === "down";
+	const arrowW = isVertical ? NUDGE_DISPLAY_ARROW_PERPENDICULAR : NUDGE_DISPLAY_ARROW_ALONG;
+	const arrowH = isVertical ? NUDGE_DISPLAY_ARROW_ALONG : NUDGE_DISPLAY_ARROW_PERPENDICULAR;
+	const arrowCx = SIZE - NUDGE_DISPLAY_ARROW_MARGIN - arrowW / 2;
+	const arrowCy = NUDGE_DISPLAY_ARROW_MARGIN + arrowH / 2;
+	const arrowPath = trianglePath(def.direction, arrowCx, arrowCy, arrowW, arrowH);
+
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <text x="${SIZE / 2}" y="${NUDGE_DISPLAY_LABEL_BASELINE_Y}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${NUDGE_DISPLAY_LABEL_FONT_SIZE}" font-weight="700"
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>
+  <path d="${arrowPath}" fill="${accent}"/>
+  <rect x="${lineX}" y="${NUDGE_DISPLAY_ACCENT_LINE_Y}" width="${NUDGE_DISPLAY_ACCENT_LINE_WIDTH}" height="${NUDGE_DISPLAY_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
 </svg>`;
 }
 

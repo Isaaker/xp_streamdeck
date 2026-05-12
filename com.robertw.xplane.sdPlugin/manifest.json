@@ -36,6 +36,22 @@
 			]
 		},
 		{
+			"Name": "Rotary",
+			"UUID": "com.robertw.xplane.rotary",
+			"Icon": "imgs/actions/rotary/icon",
+			"Tooltip": "Fire a CommandRef (optional begin/end HOLD on last enum position) and show a live DataRef value as title. For magneto, frequency tuning, FMS knobs, AP setpoints.",
+			"PropertyInspectorPath": "ui/rotary.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/rotary/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
 			"Name": "DataRef Display",
 			"UUID": "com.robertw.xplane.dataref-display",
 			"Icon": "imgs/actions/dataref-display/icon",

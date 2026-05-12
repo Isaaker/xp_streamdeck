@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane Rotary</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
+		<style>
+			.live-preview {
+				font-family: monospace;
+				color: #aaa;
+				font-size: 11px;
+				word-break: break-all;
+			}
+			.live-preview[data-state="not-found"],
+			.live-preview[data-state="error"] {
+				color: #d97;
+			}
+			.hint {
+				color: #888;
+				font-size: 11px;
+				padding: 4px 0;
+			}
+		</style>
+	</head>
+	<body>
+		<sdpi-item label="Command Path">
+			<sdpi-textfield
+				setting="commandPath"
+				placeholder="sim/magnetos/magnetos_up"
+				id="commandField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Feedback">
+			<sdpi-checkbox
+				setting="hideConfirmation"
+				label="Hide green confirmation icon on success"
+			></sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item label="Direction">
+			<sdpi-select setting="direction" default="right">
+				<option value="right">Right (CW)</option>
+				<option value="left">Left (CCW)</option>
+				<option value="up">Up</option>
+				<option value="down">Down</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item label="DataRef Path">
+			<sdpi-textfield
+				setting="datarefPath"
+				placeholder="sim/cockpit2/engine/actuators/ignition_key"
+				id="datarefField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Live Value">
+			<span class="live-preview" id="datarefPreview"></span>
+		</sdpi-item>
+		<sdpi-item label="Label">
+			<sdpi-textfield
+				setting="label"
+				placeholder="optional, stacked above the live value"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Format Mode">
+			<sdpi-select setting="formatMode" default="numeric">
+				<option value="numeric">Numeric (COM/NAV/FMS, setpoints)</option>
+				<option value="enum">Enum (Magneto, flap detents)</option>
+			</sdpi-select>
+		</sdpi-item>
+		<details>
+			<summary>Numeric mode</summary>
+			<sdpi-item label="Format">
+				<sdpi-textfield
+					setting="format"
+					placeholder="%.3f (default: %s)"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Unit">
+				<sdpi-textfield
+					setting="unit"
+					placeholder="MHz, ft, kt …"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Unit Scale">
+				<sdpi-textfield
+					setting="unitScale"
+					placeholder="e.g. 1.94384 (m/s → kt)"
+					inputmode="decimal"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Precision">
+				<sdpi-textfield
+					setting="precision"
+					placeholder="decimals — overridden by explicit %.Nf"
+					inputmode="numeric"
+				></sdpi-textfield>
+			</sdpi-item>
+		</details>
+		<details>
+			<summary>Enum mode</summary>
+			<sdpi-item label="Enum Map">
+				<sdpi-textfield
+					setting="enumMap"
+					placeholder="0=OFF,1=R,2=L,3=BOTH,4=START"
+				></sdpi-textfield>
+			</sdpi-item>
+			<div class="hint">
+				Comma-separated <code>index=label</code> pairs. The index must be a
+				non-negative integer matching the DataRef value.
+			</div>
+		</details>
+		<details>
+			<summary>HOLD on last position (enum only)</summary>
+			<sdpi-item label="HOLD on last">
+				<sdpi-checkbox
+					setting="holdOnLastPosition"
+					label="Use begin/end (hold) when advancing to the last enum position"
+				></sdpi-checkbox>
+			</sdpi-item>
+			<sdpi-item label="HOLD Command">
+				<sdpi-textfield
+					setting="holdCommand"
+					placeholder="sim/starters/engage_starter"
+					id="holdCommandField"
+				></sdpi-textfield>
+			</sdpi-item>
+			<div class="hint">
+				Triggered when the DataRef value equals the second-to-last index
+				and this button is pressed: the HOLD command begins on press and
+				ends on release (e.g. Cessna starter from BOTH → START).
+			</div>
+		</details>
+		<script>
+			(async () => {
+				const commandField = document.getElementById("commandField");
+				const datarefField = document.getElementById("datarefField");
+				const holdCommandField = document.getElementById("holdCommandField");
+				const preview = document.getElementById("datarefPreview");
+				if (window.XPlanePI) {
+					if (commandField) {
+						await window.XPlanePI.attachAutocomplete(commandField, "command");
+					}
+					if (holdCommandField) {
+						await window.XPlanePI.attachAutocomplete(holdCommandField, "command");
+					}
+					if (datarefField) {
+						await window.XPlanePI.attachAutocomplete(datarefField, "dataref");
+						await window.XPlanePI.attachLivePreview(datarefField, preview);
+					}
+				}
+			})();
+		</script>
+	</body>
+</html>
