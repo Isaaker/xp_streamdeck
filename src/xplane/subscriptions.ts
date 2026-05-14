@@ -31,16 +31,35 @@ class HandleImpl implements SubscriptionHandle {
 export class SubscriptionMultiplexer {
 	private byName = new Map<string, Entry>();
 	private byId = new Map<number, Entry>();
+	private inflight = new Map<string, Promise<Entry>>();
 
 	constructor(private readonly transport: SubscriptionTransport) {}
 
 	async subscribe(name: string, callback: DataRefCallback): Promise<SubscriptionHandle> {
 		let entry = this.byName.get(name);
 		if (!entry) {
-			const id = await this.transport.resolveDataRefId(name);
-			entry = { name, id, subscribed: false, pairs: new Set() };
-			this.byName.set(name, entry);
-			this.byId.set(id, entry);
+			// Coalesce parallel resolves for the same name so two callers don't each
+			// create their own Entry and race-overwrite byName/byId. Without this,
+			// two buttons subscribing to the same DataRef end up with one of them
+			// orphaned and never receiving deliver() fanouts.
+			let pending = this.inflight.get(name);
+			if (!pending) {
+				pending = (async () => {
+					try {
+						const id = await this.transport.resolveDataRefId(name);
+						const existing = this.byName.get(name);
+						if (existing) return existing;
+						const created: Entry = { name, id, subscribed: false, pairs: new Set() };
+						this.byName.set(name, created);
+						this.byId.set(id, created);
+						return created;
+					} finally {
+						this.inflight.delete(name);
+					}
+				})();
+				this.inflight.set(name, pending);
+			}
+			entry = await pending;
 		}
 		const handle = new HandleImpl(entry.name, entry.id);
 		entry.pairs.add({ handle, callback });
