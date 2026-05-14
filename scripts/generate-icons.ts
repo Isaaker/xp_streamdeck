@@ -8,6 +8,7 @@ import {
 	renderActionGlyph,
 	renderBackgroundIcon,
 	renderCommandIcon,
+	renderDefaultKeyIcon,
 	renderDisplayIcon,
 	renderGcuKeyIcon,
 	renderKnobIcon,
@@ -15,7 +16,24 @@ import {
 	renderNudgeIcon,
 	renderSimOfflineIcon,
 	renderToggleIcon,
+	renderToggleStateIcon,
+	renderViewIcon,
 } from "./icons/template.ts";
+
+// Action UUIDs whose key.png / key@2x.png should be the neutral default
+// (subtle blue-framed empty tile) instead of the glyph scaled up. The action
+// picker (icon.png) keeps the glyph in all cases.
+// `dataref-toggle` is intentionally excluded — its on/off state images take
+// over the moment the button is configured.
+const NEUTRAL_DEFAULT_KEY_ACTIONS: ReadonlySet<string> = new Set([
+	"command",
+	"command-display",
+	"rotary",
+	"dataref-display",
+	"dataref-write",
+	"multi-dataref-display",
+	"wind-display",
+]);
 
 const OUT_DIR = resolve(process.cwd(), "out/icons");
 // Bundle assets land directly inside the plugin bundle so the runtime can
@@ -48,6 +66,7 @@ async function main(): Promise<void> {
 	let knobCount = 0;
 	let gcuKeyCount = 0;
 	let backgroundCount = 0;
+	let viewCount = 0;
 
 	for (const def of catalog) {
 		const groupDir = await ensureGroupDir(def.group);
@@ -88,6 +107,11 @@ async function main(): Promise<void> {
 			const png = await renderPng(svg, 144);
 			await writeFile(resolve(groupDir, `${def.name}.png`), png);
 			gcuKeyCount += 1;
+		} else if (def.kind === "view") {
+			const svg = renderViewIcon(def);
+			const png = await renderPng(svg, 144);
+			await writeFile(resolve(groupDir, `${def.name}.png`), png);
+			viewCount += 1;
 		} else {
 			const svg = renderBackgroundIcon(def);
 			const png = await renderPng(svg, 144);
@@ -104,12 +128,13 @@ async function main(): Promise<void> {
 		commandCount +
 		knobCount +
 		gcuKeyCount +
-		backgroundCount;
+		backgroundCount +
+		viewCount;
 	console.log(
 		`Wrote ${total} PNGs to ${OUT_DIR} ` +
 			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges + ` +
 			`${nudgeDisplayCount} nudge-displays + ${commandCount} commands + ${knobCount} knobs + ` +
-			`${gcuKeyCount} gcu_keys + ${backgroundCount} backgrounds, ` +
+			`${gcuKeyCount} gcu_keys + ${backgroundCount} backgrounds + ${viewCount} views, ` +
 			`grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
 	);
 
@@ -127,12 +152,16 @@ async function main(): Promise<void> {
 		["key.png", 72],
 		["key@2x.png", 144],
 	];
+	const defaultKeySvg = renderDefaultKeyIcon();
 	let actionIconCount = 0;
 	for (const name of ACTION_ICON_NAMES) {
 		const actionDir = resolve(BUNDLE_IMGS_DIR, "actions", name);
 		await mkdir(actionDir, { recursive: true });
-		const svg = renderActionGlyph(name);
+		const glyphSvg = renderActionGlyph(name);
+		const useDefaultKey = NEUTRAL_DEFAULT_KEY_ACTIONS.has(name);
 		for (const [filename, size] of ACTION_ICON_SIZES) {
+			const isKey = filename.startsWith("key");
+			const svg = isKey && useDefaultKey ? defaultKeySvg : glyphSvg;
 			const png = await renderPng(svg, size);
 			await writeFile(resolve(actionDir, filename), png);
 			actionIconCount += 1;
@@ -141,6 +170,23 @@ async function main(): Promise<void> {
 	console.log(
 		`Wrote ${actionIconCount} action-icon PNGs across ${ACTION_ICON_NAMES.length} actions`,
 	);
+
+	// Toggle state defaults — manifest States[].Image for DataRef Toggle.
+	const STATES_DIR = resolve(BUNDLE_IMGS_DIR, "states");
+	await mkdir(STATES_DIR, { recursive: true });
+	const TOGGLE_STATE_SIZES: Array<[string, number]> = [
+		["off.png", 72],
+		["off@2x.png", 144],
+		["on.png", 72],
+		["on@2x.png", 144],
+	];
+	const toggleSvgs = { off: renderToggleStateIcon("off"), on: renderToggleStateIcon("on") };
+	for (const [filename, size] of TOGGLE_STATE_SIZES) {
+		const state: IconState = filename.startsWith("off") ? "off" : "on";
+		const png = await renderPng(toggleSvgs[state], size);
+		await writeFile(resolve(STATES_DIR, filename), png);
+	}
+	console.log(`Wrote 4 toggle-state PNGs to ${STATES_DIR}`);
 }
 
 main().catch((err) => {

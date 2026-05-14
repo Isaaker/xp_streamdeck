@@ -1,4 +1,11 @@
-export type IconGroup = "autopilot" | "lights" | "cockpit" | "readouts" | "backgrounds" | "g1000";
+export type IconGroup =
+	| "autopilot"
+	| "lights"
+	| "cockpit"
+	| "readouts"
+	| "backgrounds"
+	| "g1000"
+	| "views";
 
 // One accent color per functional group — keeps the whole set visually calm.
 // The group name is also the output subdirectory (out/icons/<group>/).
@@ -13,6 +20,7 @@ export const GROUP_ACCENT: Record<IconGroup, string> = {
 	readouts: "#ffffff", // white
 	backgrounds: "#000000", // unused — background tiles carry their own color
 	g1000: "#f59e0b", // orange — Garmin-style amber for G1000 command/knob buttons
+	views: "#3b82f6", // blue — saved cockpit view recall buttons
 };
 
 type IconBase = {
@@ -74,6 +82,14 @@ export type BackgroundIcon = {
 // G1000 GCU keypad button — solid dark tile, oversized bold character
 // centered. No accent stripe or border; the character is the icon.
 export type GcuKeyIcon = IconBase & { kind: "gcu_key" };
+// Cockpit view recall buttons — tiny "COCKPIT VIEW" header, oversized
+// number centered (01..20). Single-press command tile with blue accent.
+export type ViewIcon = {
+	kind: "view";
+	name: string;
+	number: number;
+	group: IconGroup;
+};
 export type IconDef =
 	| ToggleIcon
 	| DisplayIcon
@@ -82,7 +98,8 @@ export type IconDef =
 	| CommandIcon
 	| KnobIcon
 	| BackgroundIcon
-	| GcuKeyIcon;
+	| GcuKeyIcon
+	| ViewIcon;
 
 export const catalog: IconDef[] = [
 	// === Autopilot — mode toggles ===
@@ -222,6 +239,7 @@ export const catalog: IconDef[] = [
 	{ kind: "background", name: "bg_red", color: "#ef4444", group: "backgrounds" },
 	{ kind: "background", name: "bg_green", color: "#22c55e", group: "backgrounds" },
 	{ kind: "background", name: "bg_orange", color: "#f59e0b", group: "backgrounds" },
+	{ kind: "background", name: "bg_blue", color: "#3b82f6", group: "backgrounds" },
 
 	// === G1000 — text command buttons (orange accent) ===
 	{ kind: "command", name: "g_menu", label: "MENU", group: "g1000" },
@@ -283,4 +301,15 @@ export const catalog: IconDef[] = [
 	{ kind: "gcu_key", name: "gcu_dot", label: ".", group: "g1000" },
 	{ kind: "gcu_key", name: "gcu_spc", label: "SPC", group: "g1000" },
 	{ kind: "gcu_key", name: "gcu_bksp", label: "BKSP", group: "g1000" },
+
+	// === Cockpit view recall (1..20) — blue tiles, big number, "COCKPIT VIEW" header ===
+	...Array.from(
+		{ length: 20 },
+		(_, i): ViewIcon => ({
+			kind: "view",
+			name: `cockpit_view_${String(i + 1).padStart(2, "0")}`,
+			number: i + 1,
+			group: "views",
+		}),
+	),
 ];

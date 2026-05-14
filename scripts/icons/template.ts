@@ -10,6 +10,7 @@ import {
 	type NudgeDisplayIcon,
 	type NudgeIcon,
 	type ToggleIcon,
+	type ViewIcon,
 } from "./catalog.ts";
 
 export type IconState = "on" | "off";
@@ -408,6 +409,37 @@ export function renderKnobIcon(def: KnobIcon): string {
 </svg>`;
 }
 
+// === View (cockpit-view recall) layout ===
+// Tiny "COCKPIT VIEW" header at the top, oversized two-digit number centered,
+// blue accent stripe at the bottom (same DNA as the command kind but the
+// number is the focal element). Used for X-Plane's 20 saved cockpit views.
+const VIEW_HEADER_TEXT = "COCKPIT VIEW";
+const VIEW_HEADER_FONT_SIZE = 14;
+const VIEW_HEADER_BASELINE_Y = 24;
+const VIEW_NUMBER_FONT_SIZE = 72;
+const VIEW_NUMBER_VISUAL_CENTER_Y = 84;
+const VIEW_ACCENT_LINE_HEIGHT = 4;
+const VIEW_ACCENT_LINE_INSET_X = 14;
+const VIEW_ACCENT_LINE_INSET_BOTTOM = 18;
+
+export function renderViewIcon(def: ViewIcon): string {
+	const accent = GROUP_ACCENT[def.group];
+	const numberText = String(def.number).padStart(2, "0");
+	const numberY = Math.round(VIEW_NUMBER_VISUAL_CENTER_Y + VIEW_NUMBER_FONT_SIZE * 0.35);
+	const lineWidth = SIZE - VIEW_ACCENT_LINE_INSET_X * 2;
+	const lineY = SIZE - VIEW_ACCENT_LINE_INSET_BOTTOM - VIEW_ACCENT_LINE_HEIGHT;
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <text x="${SIZE / 2}" y="${VIEW_HEADER_BASELINE_Y}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${VIEW_HEADER_FONT_SIZE}" font-weight="600"
+        fill="${LABEL_COLOR}" letter-spacing="2">${VIEW_HEADER_TEXT}</text>
+  <text x="${SIZE / 2}" y="${numberY}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${VIEW_NUMBER_FONT_SIZE}" font-weight="800"
+        fill="${LABEL_COLOR}" letter-spacing="1">${numberText}</text>
+  <rect x="${VIEW_ACCENT_LINE_INSET_X}" y="${lineY}" width="${lineWidth}" height="${VIEW_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
+</svg>`;
+}
+
 // === Background (solid-color filler tile) ===
 // Pure flat fill, no border, no text. Edge-to-edge.
 export function renderBackgroundIcon(def: BackgroundIcon): string {
@@ -496,5 +528,48 @@ export function renderSimOfflineIcon(): string {
   <text x="${SIZE / 2}" y="100" text-anchor="middle"
         font-family="${FONT_STACK}" font-size="26" font-weight="800"
         fill="${OFFLINE_TEXT_COLOR}" letter-spacing="2">OFFLINE</text>
+</svg>`;
+}
+
+// === Toggle state defaults (DataRef Toggle off/on placeholder tiles) ===
+// Used as manifest States[].Image for the DataRef Toggle action. Both states
+// share the same dark background; only the handle position differs (left for
+// off, right for on). The user typically overrides these per-button via the
+// PI's image upload, so the defaults stay deliberately neutral.
+const TOGGLE_STATE_BG = "#0d0d0d";
+const TOGGLE_STATE_TRACK = "#2d2d2d";
+const TOGGLE_STATE_HANDLE = "#e0e0e0";
+
+export function renderToggleStateIcon(state: IconState): string {
+	const trackWidth = 100;
+	const trackHeight = 36;
+	const trackX = (SIZE - trackWidth) / 2;
+	const trackY = 30;
+	const trackCy = trackY + trackHeight / 2;
+	const handleRadius = trackHeight / 2 - 3;
+	const handleCx =
+		state === "off" ? trackX + handleRadius + 4 : trackX + trackWidth - handleRadius - 4;
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${TOGGLE_STATE_BG}"/>
+  <rect x="${trackX}" y="${trackY}" width="${trackWidth}" height="${trackHeight}" rx="${trackHeight / 2}" fill="${TOGGLE_STATE_TRACK}"/>
+  <circle cx="${handleCx}" cy="${trackCy}" r="${handleRadius}" fill="${TOGGLE_STATE_HANDLE}"/>
+</svg>`;
+}
+
+// === Default key (neutral fallback for view-style actions) ===
+// Used as States[].Image for actions whose action-picker icon is too busy to
+// double as a default button tile (DataRef Display, Multi DataRef Display,
+// etc.). Plain dark tile with a subtle blue frame — clearly "an empty
+// placeholder" without competing with whatever icon the user picks later.
+const DEFAULT_KEY_BG = "#0d0d0d";
+const DEFAULT_KEY_BORDER = "#1d4ed8";
+
+export function renderDefaultKeyIcon(): string {
+	const borderInset = 4;
+	const borderSize = SIZE - borderInset * 2;
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${DEFAULT_KEY_BG}"/>
+  <rect x="${borderInset}" y="${borderInset}" width="${borderSize}" height="${borderSize}"
+        fill="none" stroke="${DEFAULT_KEY_BORDER}" stroke-width="3" rx="6"/>
 </svg>`;
 }
