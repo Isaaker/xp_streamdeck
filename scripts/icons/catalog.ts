@@ -246,12 +246,19 @@ export const catalog: IconDef[] = [
 	{ kind: "command", name: "g_fpl", label: "FPL", group: "g1000" },
 	{ kind: "command", name: "g_clr", label: "CLR", group: "g1000" },
 	{ kind: "command", name: "g_ent", label: "ENT", group: "g1000" },
+	{ kind: "command", name: "g_cdi", label: "CDI", group: "g1000" },
+	{ kind: "command", name: "g_msg", label: "MSG", group: "g1000" },
+	{ kind: "command", name: "g_vnav", label: "VNAV", group: "g1000" },
+	{ kind: "command", name: "g_obs", label: "OBS", group: "g1000" },
 	{ kind: "command", name: "g_proc", label: "PROC", group: "g1000" },
 	{ kind: "command", name: "g_direct", label: "-D→", group: "g1000" },
 	{ kind: "command", name: "g_navcom", label: "<->", group: "g1000" },
 
-	// === G1000 — labelless up arrow (cursor / list navigation) ===
+	// === G1000 — labelless directional arrows (cursor / list navigation) ===
 	{ kind: "nudge", name: "g_up", direction: "up", group: "g1000" },
+	{ kind: "nudge", name: "g_down", direction: "down", group: "g1000" },
+	{ kind: "nudge", name: "g_left", direction: "left", group: "g1000" },
+	{ kind: "nudge", name: "g_right", direction: "right", group: "g1000" },
 
 	// === G1000 — dual-concentric rotary knob indicators ===
 	{ kind: "knob", name: "g_outer_left", variant: "outer-ccw", group: "g1000" },
