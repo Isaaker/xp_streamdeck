@@ -183,6 +183,20 @@ export const catalog: IconDef[] = [
 		direction: "right",
 		group: "cockpit",
 	},
+	{
+		kind: "nudge-display",
+		name: "flaps_up",
+		label: "FLAPS",
+		direction: "up",
+		group: "cockpit",
+	},
+	{
+		kind: "nudge-display",
+		name: "flaps_down",
+		label: "FLAPS",
+		direction: "down",
+		group: "cockpit",
+	},
 	{ kind: "nudge-display", name: "freq_mhz_up", label: "MHz", direction: "up", group: "g1000" },
 	{
 		kind: "nudge-display",

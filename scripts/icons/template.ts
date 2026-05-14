@@ -188,38 +188,65 @@ export function renderNudgeIcon(def: NudgeIcon): string {
 </svg>`;
 }
 
-// === Nudge-Display (rotary button: compact arrow + label, empty middle) layout ===
-// Top region: centered label + small directional arrow tucked in the top-right
-// corner. Lower 2/3 reserved for Stream Deck's title overlay (live DataRef
-// value), mirroring the `display` icon. The arrow is a hint, not a focal
-// element — the live readout is the focus.
+// === Nudge-Display (rotary button: edge-arrow + label, mid-area for title) ===
+// One long slender triangle pinned to the edge that matches the rotary's
+// direction (left → left edge, up → top edge, …). Label + accent line live
+// on the *opposite* edge so Stream Deck's centered title overlay (the live
+// DataRef value) never gets overdrawn:
+//   direction down/left/right → label TOP, accent below label, arrow on its
+//                                native edge, title overlay sits middle.
+//   direction up              → label BOTTOM, accent above label, arrow top,
+//                                title overlay sits middle.
 const NUDGE_DISPLAY_LABEL_FONT_SIZE = 20;
-const NUDGE_DISPLAY_LABEL_BASELINE_Y = 24;
-const NUDGE_DISPLAY_ACCENT_LINE_Y = 36;
+const NUDGE_DISPLAY_LABEL_BASELINE_Y_TOP = 24;
+const NUDGE_DISPLAY_LABEL_BASELINE_Y_BOTTOM = 132;
 const NUDGE_DISPLAY_ACCENT_LINE_HEIGHT = 2;
 const NUDGE_DISPLAY_ACCENT_LINE_WIDTH = 64;
-const NUDGE_DISPLAY_ARROW_PERPENDICULAR = 18;
-const NUDGE_DISPLAY_ARROW_ALONG = 14;
-const NUDGE_DISPLAY_ARROW_MARGIN = 8;
+const NUDGE_DISPLAY_ACCENT_LINE_Y_TOP = 36;
+const NUDGE_DISPLAY_ACCENT_LINE_Y_BOTTOM = 108;
+const NUDGE_DISPLAY_ARROW_THICKNESS = 22;
+const NUDGE_DISPLAY_ARROW_LENGTH = 100;
+const NUDGE_DISPLAY_ARROW_EDGE_MARGIN = 8;
 
 export function renderNudgeDisplayIcon(def: NudgeDisplayIcon): string {
 	const accent = GROUP_ACCENT[def.group];
-	const lineX = (SIZE - NUDGE_DISPLAY_ACCENT_LINE_WIDTH) / 2;
 
 	const isVertical = def.direction === "up" || def.direction === "down";
-	const arrowW = isVertical ? NUDGE_DISPLAY_ARROW_PERPENDICULAR : NUDGE_DISPLAY_ARROW_ALONG;
-	const arrowH = isVertical ? NUDGE_DISPLAY_ARROW_ALONG : NUDGE_DISPLAY_ARROW_PERPENDICULAR;
-	const arrowCx = SIZE - NUDGE_DISPLAY_ARROW_MARGIN - arrowW / 2;
-	const arrowCy = NUDGE_DISPLAY_ARROW_MARGIN + arrowH / 2;
+	const arrowW = isVertical ? NUDGE_DISPLAY_ARROW_LENGTH : NUDGE_DISPLAY_ARROW_THICKNESS;
+	const arrowH = isVertical ? NUDGE_DISPLAY_ARROW_THICKNESS : NUDGE_DISPLAY_ARROW_LENGTH;
+
+	let arrowCx = SIZE / 2;
+	let arrowCy = SIZE / 2;
+	switch (def.direction) {
+		case "left":
+			arrowCx = NUDGE_DISPLAY_ARROW_EDGE_MARGIN + arrowW / 2;
+			break;
+		case "right":
+			arrowCx = SIZE - NUDGE_DISPLAY_ARROW_EDGE_MARGIN - arrowW / 2;
+			break;
+		case "up":
+			arrowCy = NUDGE_DISPLAY_ARROW_EDGE_MARGIN + arrowH / 2;
+			break;
+		case "down":
+			arrowCy = SIZE - NUDGE_DISPLAY_ARROW_EDGE_MARGIN - arrowH / 2;
+			break;
+	}
 	const arrowPath = trianglePath(def.direction, arrowCx, arrowCy, arrowW, arrowH);
+
+	const isUp = def.direction === "up";
+	const labelBaselineY = isUp
+		? NUDGE_DISPLAY_LABEL_BASELINE_Y_BOTTOM
+		: NUDGE_DISPLAY_LABEL_BASELINE_Y_TOP;
+	const accentLineY = isUp ? NUDGE_DISPLAY_ACCENT_LINE_Y_BOTTOM : NUDGE_DISPLAY_ACCENT_LINE_Y_TOP;
+	const lineX = (SIZE - NUDGE_DISPLAY_ACCENT_LINE_WIDTH) / 2;
 
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
-  <text x="${SIZE / 2}" y="${NUDGE_DISPLAY_LABEL_BASELINE_Y}" text-anchor="middle"
+  <text x="${SIZE / 2}" y="${labelBaselineY}" text-anchor="middle"
         font-family="${FONT_STACK}" font-size="${NUDGE_DISPLAY_LABEL_FONT_SIZE}" font-weight="700"
         fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>
+  <rect x="${lineX}" y="${accentLineY}" width="${NUDGE_DISPLAY_ACCENT_LINE_WIDTH}" height="${NUDGE_DISPLAY_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
   <path d="${arrowPath}" fill="${accent}"/>
-  <rect x="${lineX}" y="${NUDGE_DISPLAY_ACCENT_LINE_Y}" width="${NUDGE_DISPLAY_ACCENT_LINE_WIDTH}" height="${NUDGE_DISPLAY_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
 </svg>`;
 }
 
@@ -387,6 +414,62 @@ export function renderBackgroundIcon(def: BackgroundIcon): string {
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
   <rect width="${SIZE}" height="${SIZE}" fill="${def.color}"/>
 </svg>`;
+}
+
+// === Action-Icons (Stream Deck library sidebar + button default-image) ===
+// One glyph per action UUID, rendered at multiple sizes by `make icons` into
+// com.robertw.xplane.sdPlugin/imgs/actions/<name>/{icon,key}{,@2x}.png. The
+// glyphs are deliberately uniform (white on transparent, 20-unit viewBox) so
+// the X-Plane category in the Stream Deck library reads as a coherent set.
+const ACTION_GLYPH_VIEWBOX = "0 0 20 20";
+
+const ACTION_GLYPHS: Record<string, string> = {
+	// Lightning bolt — "fire a command".
+	command: `<path d="M11.5,2 L5.5,11 L9.5,11 L8.5,18 L14.5,9 L10.5,9 L11.5,2 Z" fill="#ffffff"/>`,
+
+	// Bolt + display strip — "fire a command and show a value".
+	"command-display": `<path d="M9,1.5 L4,9 L7.5,9 L6.5,14 L11,7 L8,7 L9,1.5 Z" fill="#ffffff"/>
+    <rect x="2.5" y="14.5" width="15" height="3.5" rx="0.5" fill="none" stroke="#ffffff" stroke-width="1.2"/>`,
+
+	// Circular arrow — "rotate, step through positions".
+	rotary: `<path d="M16.5,10 A6.5,6.5 0 1 1 10,3.5" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+    <polygon points="16.8,10 14.5,7.5 14.5,12.5" fill="#ffffff"/>`,
+
+	// Screen / readout — "live DataRef value".
+	"dataref-display": `<rect x="2.5" y="5" width="15" height="10" rx="1" fill="none" stroke="#ffffff" stroke-width="1.5"/>
+    <line x1="5" y1="10" x2="15" y2="10" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>`,
+
+	// Toggle switch — "two-state DataRef".
+	"dataref-toggle": `<rect x="2.5" y="7" width="15" height="6" rx="3" fill="none" stroke="#ffffff" stroke-width="1.5"/>
+    <circle cx="13" cy="10" r="2" fill="#ffffff"/>`,
+
+	// Pen — "write a value to a DataRef".
+	"dataref-write": `<path d="M3,17 L4.5,12.5 L13,4 L16,7 L7.5,15.5 L3,17 Z" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round"/>
+    <line x1="11" y1="6" x2="14" y2="9" stroke="#ffffff" stroke-width="1.5"/>`,
+
+	// `background` deliberately omitted — its Stream Deck library tile keeps
+	// the original `+` placeholder so a fresh Background Tile button doesn't
+	// paint the whole key bright white. Users assign one of the colored
+	// `bg_*.png` files from out/icons/backgrounds/ after dropping the action.
+
+	// Three stacked lines — "multiple values at once".
+	"multi-dataref-display": `<line x1="3" y1="6" x2="17" y2="6" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="3" y1="10" x2="17" y2="10" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+    <line x1="3" y1="14" x2="17" y2="14" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>`,
+
+	// Compass arrow — "wind direction + speed".
+	"wind-display": `<g transform="translate(10,10) rotate(35)">
+      <line x1="0" y1="6" x2="0" y2="-3" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+      <polygon points="0,-7 3.2,-2.8 -3.2,-2.8" fill="#ffffff"/>
+    </g>`,
+};
+
+export const ACTION_ICON_NAMES = Object.keys(ACTION_GLYPHS);
+
+export function renderActionGlyph(name: string): string {
+	const inner = ACTION_GLYPHS[name];
+	if (!inner) throw new Error(`No action glyph defined for: ${name}`);
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="${ACTION_GLYPH_VIEWBOX}">${inner}</svg>`;
 }
 
 // === Sim-offline placeholder (plugin-internal status icon) ===

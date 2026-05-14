@@ -3,7 +3,9 @@ import { resolve } from "node:path";
 import sharp from "sharp";
 import { catalog } from "./icons/catalog.ts";
 import {
+	ACTION_ICON_NAMES,
 	type IconState,
+	renderActionGlyph,
 	renderBackgroundIcon,
 	renderCommandIcon,
 	renderDisplayIcon,
@@ -116,6 +118,29 @@ async function main(): Promise<void> {
 	const offlinePath = resolve(BUNDLE_IMGS_DIR, "sim_offline.png");
 	await writeFile(offlinePath, offlinePng);
 	console.log(`Wrote bundle asset: ${offlinePath}`);
+
+	// Action-icons: per-UUID glyphs, written into the plugin bundle so they
+	// show up in the Stream Deck library sidebar and as the default key image.
+	const ACTION_ICON_SIZES: Array<[string, number]> = [
+		["icon.png", 20],
+		["icon@2x.png", 40],
+		["key.png", 72],
+		["key@2x.png", 144],
+	];
+	let actionIconCount = 0;
+	for (const name of ACTION_ICON_NAMES) {
+		const actionDir = resolve(BUNDLE_IMGS_DIR, "actions", name);
+		await mkdir(actionDir, { recursive: true });
+		const svg = renderActionGlyph(name);
+		for (const [filename, size] of ACTION_ICON_SIZES) {
+			const png = await renderPng(svg, size);
+			await writeFile(resolve(actionDir, filename), png);
+			actionIconCount += 1;
+		}
+	}
+	console.log(
+		`Wrote ${actionIconCount} action-icon PNGs across ${ACTION_ICON_NAMES.length} actions`,
+	);
 }
 
 main().catch((err) => {

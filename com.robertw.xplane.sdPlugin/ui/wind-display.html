@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane Wind Display</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
+		<style>
+			.hint {
+				color: #888;
+				font-size: 11px;
+				padding: 4px 0;
+			}
+		</style>
+	</head>
+	<body>
+		<sdpi-item label="Label">
+			<sdpi-textfield setting="label" placeholder="WIND (default)"></sdpi-textfield>
+		</sdpi-item>
+
+		<sdpi-item label="Direction DataRef">
+			<sdpi-textfield
+				setting="directionDataRef"
+				placeholder="sim/cockpit2/gauges/indicators/wind_heading_deg_mag"
+				id="dirField"
+			></sdpi-textfield>
+		</sdpi-item>
+
+		<sdpi-item label="Speed DataRef">
+			<sdpi-textfield
+				setting="speedDataRef"
+				placeholder="sim/cockpit2/gauges/indicators/wind_speed_kts"
+				id="speedField"
+			></sdpi-textfield>
+		</sdpi-item>
+
+		<sdpi-item label="OAT DataRef (optional)">
+			<sdpi-textfield
+				setting="oatDataRef"
+				placeholder="sim/cockpit2/temperature/outside_air_temp_degc"
+				id="oatField"
+			></sdpi-textfield>
+		</sdpi-item>
+
+		<sdpi-item label="Speed Unit">
+			<sdpi-textfield setting="speedUnit" placeholder="kt (default)"></sdpi-textfield>
+		</sdpi-item>
+
+		<sdpi-item label="Arrow Convention">
+			<sdpi-select setting="arrowConvention" default="to">
+				<option value="to">Points where wind goes (PFD style)</option>
+				<option value="from">Points where wind comes from (weather chart)</option>
+			</sdpi-select>
+		</sdpi-item>
+
+		<div class="hint">
+			X-Plane's <code>wind_heading_deg_mag</code> reports the direction the wind
+			comes from. The default convention rotates the arrow by 180° so it points
+			downwind, matching most PFDs.
+		</div>
+
+		<script>
+			(async () => {
+				if (window.XPlanePI) {
+					for (const id of ["dirField", "speedField", "oatField"]) {
+						const f = document.getElementById(id);
+						if (f) await window.XPlanePI.attachAutocomplete(f, "dataref");
+					}
+				}
+			})();
+		</script>
+	</body>
+</html>

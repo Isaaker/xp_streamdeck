@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane Multi-DataRef Display</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
+		<style>
+			.live-preview {
+				font-family: monospace;
+				color: #aaa;
+				font-size: 11px;
+				word-break: break-all;
+			}
+			.live-preview[data-state="not-found"],
+			.live-preview[data-state="error"] {
+				color: #d97;
+			}
+			.hint {
+				color: #888;
+				font-size: 11px;
+				padding: 4px 0;
+			}
+		</style>
+	</head>
+	<body>
+		<sdpi-item label="Title">
+			<sdpi-textfield
+				setting="title"
+				placeholder="optional, top line above all slots (e.g. COM1)"
+			></sdpi-textfield>
+		</sdpi-item>
+
+		<details open>
+			<summary>Slot 1 (required)</summary>
+			<sdpi-item label="Label">
+				<sdpi-textfield setting="slot1Label" placeholder="A:"></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="DataRef Path">
+				<sdpi-textfield
+					setting="slot1DataRef"
+					placeholder="sim/..."
+					id="slot1DataRefField"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Live Value">
+				<span class="live-preview" id="slot1Preview"></span>
+			</sdpi-item>
+			<sdpi-item label="Format">
+				<sdpi-textfield
+					setting="slot1Format"
+					placeholder="%.3f (default: %s)"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Unit Scale">
+				<sdpi-textfield
+					setting="slot1UnitScale"
+					placeholder="e.g. 0.01"
+					inputmode="decimal"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Precision">
+				<sdpi-textfield
+					setting="slot1Precision"
+					placeholder="decimals — overridden by explicit %.Nf"
+					inputmode="numeric"
+				></sdpi-textfield>
+			</sdpi-item>
+		</details>
+
+		<details>
+			<summary>Slot 2 (optional)</summary>
+			<sdpi-item label="Label">
+				<sdpi-textfield setting="slot2Label" placeholder="S:"></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="DataRef Path">
+				<sdpi-textfield
+					setting="slot2DataRef"
+					placeholder="sim/..."
+					id="slot2DataRefField"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Live Value">
+				<span class="live-preview" id="slot2Preview"></span>
+			</sdpi-item>
+			<sdpi-item label="Format">
+				<sdpi-textfield
+					setting="slot2Format"
+					placeholder="%.3f (default: %s)"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Unit Scale">
+				<sdpi-textfield
+					setting="slot2UnitScale"
+					placeholder="e.g. 0.01"
+					inputmode="decimal"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Precision">
+				<sdpi-textfield
+					setting="slot2Precision"
+					placeholder="decimals — overridden by explicit %.Nf"
+					inputmode="numeric"
+				></sdpi-textfield>
+			</sdpi-item>
+		</details>
+
+		<details>
+			<summary>Slot 3 (optional)</summary>
+			<sdpi-item label="Label">
+				<sdpi-textfield setting="slot3Label" placeholder="T:"></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="DataRef Path">
+				<sdpi-textfield
+					setting="slot3DataRef"
+					placeholder="sim/..."
+					id="slot3DataRefField"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Live Value">
+				<span class="live-preview" id="slot3Preview"></span>
+			</sdpi-item>
+			<sdpi-item label="Format">
+				<sdpi-textfield
+					setting="slot3Format"
+					placeholder="%.3f (default: %s)"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Unit Scale">
+				<sdpi-textfield
+					setting="slot3UnitScale"
+					placeholder="e.g. 0.01"
+					inputmode="decimal"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Precision">
+				<sdpi-textfield
+					setting="slot3Precision"
+					placeholder="decimals — overridden by explicit %.Nf"
+					inputmode="numeric"
+				></sdpi-textfield>
+			</sdpi-item>
+		</details>
+
+		<div class="hint">
+			Title and active slots render as separate lines on the button. Leave a
+			slot's DataRef empty to skip it.
+		</div>
+
+		<script>
+			(async () => {
+				for (const i of [1, 2, 3]) {
+					const field = document.getElementById(`slot${i}DataRefField`);
+					const preview = document.getElementById(`slot${i}Preview`);
+					if (window.XPlanePI && field) {
+						await window.XPlanePI.attachAutocomplete(field, "dataref");
+						if (preview) {
+							await window.XPlanePI.attachLivePreview(field, preview);
+						}
+					}
+				}
+			})();
+		</script>
+	</body>
+</html>

@@ -249,11 +249,20 @@ export class XPlaneRotary extends SingletonAction<RotarySettings> {
 			if (!parsed.enumValid) {
 				valueText = NOT_FOUND_SUFFIX;
 			} else {
-				const idx = toIndexInteger(state.lastValue);
+				const idx = toIndexInteger(state.lastValue, parsed.unitScale);
 				if (idx === undefined) {
 					valueText = NOT_FOUND_SUFFIX;
 				} else {
-					valueText = parsed.enumLut.get(idx) ?? `?(${idx})`;
+					const label = parsed.enumLut.get(idx);
+					if (label === undefined) {
+						// Index falls between defined detents (e.g. flaps still
+						// travelling between 10° and 20°). Skip the title update
+						// so the last known detent stays visible until the new
+						// one settles — better than flashing "?(N)" through the
+						// transition.
+						return;
+					}
+					valueText = label;
 				}
 			}
 		} else {
@@ -304,7 +313,7 @@ function shouldHoldOnLast(state: ActionState | undefined, parsed: ParsedSettings
 	if (!parsed.holdCommand) return false;
 	if (parsed.enumLength < 2) return false;
 	if (!state || state.lastValue === undefined) return false;
-	const idx = toIndexInteger(state.lastValue);
+	const idx = toIndexInteger(state.lastValue, parsed.unitScale);
 	if (idx === undefined) return false;
 	// Trigger on the second-to-last index: pressing now would advance to the
 	// last position (which is the "hold" position, e.g. starter on Cessna).
@@ -375,21 +384,23 @@ function parseEnumMap(raw: string): {
 	return { enumLut: lut, enumLength, enumValid: valid };
 }
 
-function toIndexInteger(v: DataRefValue): number | undefined {
-	if (typeof v === "number") {
-		if (!Number.isFinite(v)) return undefined;
-		return Math.round(v);
-	}
+function toIndexInteger(v: DataRefValue, scale?: number): number | undefined {
+	const raw = toFiniteValue(v);
+	if (raw === undefined) return undefined;
+	const scaled = scale !== undefined && Number.isFinite(scale) ? raw * scale : raw;
+	return Math.round(scaled);
+}
+
+function toFiniteValue(v: DataRefValue): number | undefined {
+	if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
 	if (typeof v === "boolean") return v ? 1 : 0;
 	if (typeof v === "string") {
 		const n = Number(v);
-		if (!Number.isFinite(n)) return undefined;
-		return Math.round(n);
+		return Number.isFinite(n) ? n : undefined;
 	}
 	if (Array.isArray(v)) {
 		const first = v[0];
-		if (typeof first === "number" && Number.isFinite(first)) return Math.round(first);
-		return undefined;
+		if (typeof first === "number" && Number.isFinite(first)) return first;
 	}
 	return undefined;
 }

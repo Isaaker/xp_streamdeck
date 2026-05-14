@@ -68,6 +68,38 @@
 			]
 		},
 		{
+			"Name": "Multi DataRef Display",
+			"UUID": "com.robertw.xplane.multi-dataref-display",
+			"Icon": "imgs/actions/multi-dataref-display/icon",
+			"Tooltip": "Show up to 3 live DataRef values stacked on one button (COM A/S, Wind DIR/SPD/TEMP, …).",
+			"PropertyInspectorPath": "ui/multi-dataref-display.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/multi-dataref-display/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
+			"Name": "Wind Display",
+			"UUID": "com.robertw.xplane.wind-display",
+			"Icon": "imgs/actions/wind-display/icon",
+			"Tooltip": "Show wind direction as a rotating arrow plus wind speed (and optional OAT).",
+			"PropertyInspectorPath": "ui/wind-display.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/wind-display/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
 			"Name": "DataRef Write",
 			"UUID": "com.robertw.xplane.dataref-write",
 			"Icon": "imgs/actions/dataref-write/icon",

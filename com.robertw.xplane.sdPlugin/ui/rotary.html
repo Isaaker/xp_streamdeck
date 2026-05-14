@@ -67,6 +67,19 @@
 				<option value="enum">Enum (Magneto, flap detents)</option>
 			</sdpi-select>
 		</sdpi-item>
+		<sdpi-item label="Unit Scale">
+			<sdpi-textfield
+				setting="unitScale"
+				placeholder="e.g. 3 (ratio 0..1 → index 0..3) or 1.94384 (m/s → kt)"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<div class="hint">
+			Multiplies the raw DataRef value before formatting (numeric) or before
+			rounding to enum index (enum). Useful for ratio DataRefs like
+			<code>flap_handle_request_ratio</code>: scale by the number of detents
+			and the result lands on whole-integer enum keys.
+		</div>
 		<details>
 			<summary>Numeric mode</summary>
 			<sdpi-item label="Format">
@@ -79,13 +92,6 @@
 				<sdpi-textfield
 					setting="unit"
 					placeholder="MHz, ft, kt …"
-				></sdpi-textfield>
-			</sdpi-item>
-			<sdpi-item label="Unit Scale">
-				<sdpi-textfield
-					setting="unitScale"
-					placeholder="e.g. 1.94384 (m/s → kt)"
-					inputmode="decimal"
 				></sdpi-textfield>
 			</sdpi-item>
 			<sdpi-item label="Precision">
