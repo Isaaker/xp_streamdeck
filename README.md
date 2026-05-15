@@ -93,6 +93,79 @@ Press → X-Plane pauses; press again → resumes.
 
 Press and hold → heading bug rotates continuously; release → stops. Pair with `sim/autopilot/heading_down` on a second key for the opposite direction.
 
+### Command + Display
+
+Fires a CommandRef on key press while showing a live DataRef value as the button title. Designed for buttons that both trigger and report state — e.g. G1000 softkeys, autopilot mode buttons.
+
+Property Inspector fields:
+
+- **Command Path** — the CommandRef fired on `keyDown`, e.g. `sim/GPS/g1000n1_softkey1`.
+- **Hide green confirmation icon** — opt-out of the `showOk()` flash on success. Errors still always show the alert icon.
+- **DataRef Path** — optional DataRef rendered as the live title. Supports array indexing (see [Array DataRefs](#array-datarefs)).
+- **Live Value** — read-only preview while editing the path.
+- **Label** — optional caption rendered above the live value.
+- **Format** / **Unit Scale** / **Precision** — printf-style formatting; see [DataRef Display](#dataref-display) for details.
+
+#### Example: G1000 softkey 1 with live FMS frequency
+
+| Field | Value |
+| --- | --- |
+| Command Path | `sim/GPS/g1000n1_softkey1` |
+| DataRef Path | `sim/cockpit2/radios/actuators/com1_frequency_hz_833` |
+| Label | `SK1` |
+| Format | `%.3f` |
+| Unit Scale | `0.001` |
+
+### Rotary
+
+Fires a CommandRef on press and shows a live DataRef as the title — for rotary-knob-style controls driven by step commands. Works in two **Format Modes**:
+
+- **Numeric** — for continuous setpoints (COM/NAV/FMS frequencies, heading bug, altitude target). Renders the live value via printf with an optional unit suffix.
+- **Enum** — for discrete enums (magneto positions, flap detents). Renders the value as a label from an `index=label` map, e.g. `OFF/R/L/BOTH/START`.
+
+Optional **HOLD on last position** (enum mode only): when the DataRef sits one step before the last enum index and the user presses the key, the press fires a separate **HOLD Command** via the WebSocket begin/end pair instead of the regular step command. Designed for the Cessna starter: advancing `BOTH → START` should hold the starter engaged until the key is released, not click past it.
+
+Property Inspector fields:
+
+- **Command Path** — the step command (e.g. `sim/magnetos/magnetos_up`).
+- **Hide green confirmation icon** — opt-out of the `showOk()` flash on success.
+- **Direction** — visual hint only (rendered as part of the title): `Right (CW)`, `Left (CCW)`, `Up`, `Down`.
+- **DataRef Path** — the live value displayed on the button. Supports array indexing.
+- **Live Value** — read-only preview while editing the path.
+- **Label** — optional caption rendered above the live value.
+- **Format Mode** — `Numeric` or `Enum`.
+- **Unit Scale** — multiplier applied to the raw DataRef value before formatting (numeric) or before rounding to an enum index (enum). Useful for ratio DataRefs like `flap_handle_request_ratio`: scale by the number of detents.
+- **Numeric mode:** **Format** (printf) / **Unit** (suffix like `MHz`, `ft`, `kt`) / **Precision**.
+- **Enum mode:** **Enum Map** — comma-separated `index=label` pairs, e.g. `0=OFF,1=R,2=L,3=BOTH,4=START`.
+- **HOLD on last position** *(enum only)* — checkbox to enable the begin/end behaviour described above.
+- **HOLD Command** — the separate CommandRef used during the hold (e.g. `sim/starters/engage_starter`).
+
+#### Example: Cessna magneto switch (enum + HOLD)
+
+| Field | Value |
+| --- | --- |
+| Command Path | `sim/magnetos/magnetos_up` |
+| Direction | `Right (CW)` |
+| DataRef Path | `sim/cockpit2/engine/actuators/ignition_key` |
+| Format Mode | `Enum` |
+| Enum Map | `0=OFF,1=R,2=L,3=BOTH,4=START` |
+| HOLD on last position | *(checked)* |
+| HOLD Command | `sim/starters/engage_starter` |
+
+Pressing the key cycles OFF → R → L → BOTH; pressing at BOTH instead holds the starter engaged (`engage_starter` begin) until release.
+
+#### Example: COM1 frequency tuning (numeric)
+
+| Field | Value |
+| --- | --- |
+| Command Path | `sim/COM1/coarse_up` |
+| Direction | `Right (CW)` |
+| DataRef Path | `sim/cockpit2/radios/actuators/com1_frequency_hz_833` |
+| Format Mode | `Numeric` |
+| Format | `%.3f` |
+| Unit | `MHz` |
+| Unit Scale | `0.001` |
+
 ### DataRef Display
 
 Shows a live X-Plane DataRef value as the button title. Pure read-only — no click action.
@@ -126,6 +199,51 @@ For **hPa/mb** (1013) instead:
 | Format | `%.0f hPa` |
 | Unit Scale | `0.01` |
 
+### Multi DataRef Display
+
+Shows up to **three** live DataRef values stacked on one button — for things like COM A/S (active + standby frequency), wind DIR/SPD/TEMP, or any other grouped readout that needs to share one key. Pure read-only — no click action.
+
+Property Inspector fields:
+
+- **Title** — optional top-line caption rendered above all slots (e.g. `COM1`).
+- **Slot 1 / Slot 2 / Slot 3** — each slot is collapsible and has its own:
+  - **Label** — optional prefix (e.g. `A:`, `S:`).
+  - **DataRef Path** — the DataRef to subscribe to. Supports array indexing.
+  - **Live Value** — read-only preview while editing.
+  - **Format** / **Unit Scale** / **Precision** — printf-style formatting per slot (see [DataRef Display](#dataref-display)).
+- Slot 1 is required; slots 2 and 3 render only if their DataRef Path is set.
+
+#### Example: COM1 active + standby
+
+| Field | Value |
+| --- | --- |
+| Title | `COM1` |
+| Slot 1 Label | `A:` |
+| Slot 1 DataRef Path | `sim/cockpit2/radios/actuators/com1_frequency_hz_833` |
+| Slot 1 Format | `%.3f` |
+| Slot 1 Unit Scale | `0.001` |
+| Slot 2 Label | `S:` |
+| Slot 2 DataRef Path | `sim/cockpit2/radios/actuators/com1_standby_frequency_hz_833` |
+| Slot 2 Format | `%.3f` |
+| Slot 2 Unit Scale | `0.001` |
+
+### Wind Display
+
+Specialised readout: renders wind direction as a **rotating arrow icon** plus the wind speed (and optionally OAT) underneath. Reads the direction and speed DataRefs continuously and rotates a built-in arrow image to match the wind heading.
+
+Property Inspector fields:
+
+- **Label** — optional top-line caption; defaults to `WIND`.
+- **Direction DataRef** — wind heading in degrees, e.g. `sim/cockpit2/gauges/indicators/wind_heading_deg_mag`.
+- **Speed DataRef** — wind speed in the desired unit, e.g. `sim/cockpit2/gauges/indicators/wind_speed_kts`.
+- **OAT DataRef** *(optional)* — outside air temperature, e.g. `sim/cockpit2/temperature/outside_air_temp_degc`. Rendered as a third line if set.
+- **Speed Unit** — suffix appended to the speed value; defaults to `kt`.
+- **Arrow Convention** —
+  - `Points where wind goes (PFD style)` *(default)* — rotates the arrow 180° from the X-Plane heading, matching most glass cockpit PFDs.
+  - `Points where wind comes from (weather chart)` — matches METAR / weather chart convention.
+
+X-Plane's `wind_heading_deg_mag` reports the direction the wind **comes from**; the default convention flips this so the arrow points downwind.
+
 ### DataRef Toggle
 
 Two-state action that flips a DataRef value (or activates a CommandRef) on key press, and reflects the live state on the button by switching between two images. Use it for binary or near-binary controls (gear, flaps detents, lights, fuel pumps, …).
@@ -135,9 +253,16 @@ Property Inspector fields:
 - **DataRef Path** — the X-Plane DataRef to read for the visible state. Supports array indexing (see [Array DataRefs](#array-datarefs)).
 - **Live Value** — read-only preview of the current value while editing the path.
 - **Value OFF** / **Value ON** — the two values that map to the OFF / ON image. Defaults to `0` / `1`. The visible state is chosen by closest distance to either value (or `≥ 0.5` for the default 0/1 case).
-- **Trigger Mode** — `Write DataRef (toggle value)` writes the opposite value on each press. `Activate Command` instead fires a CommandRef on press (state still comes from the DataRef) — useful when the aircraft exposes a "toggle" command but the underlying DataRef is the actual state to display.
+- **Strict ON Match** — when checked, only `value === Value ON` (with float tolerance) counts as ON; everything else is OFF. Useful for multi-state enums where a single index is the "ON" state.
+- **Trigger Mode** —
+  - `Write DataRef` writes the opposite value on each press.
+  - `Activate Command` fires a single CommandRef on press; the visible state still comes from the DataRef. Useful when the aircraft exposes a "toggle" command but the DataRef is the actual state.
+  - `On/Off Command` fires one of **two** CommandRefs depending on the current DataRef state: at OFF the ON command fires, at ON the OFF command fires. For aircraft that expose separate `…_on` / `…_off` commands instead of a single toggle.
 - **Command Path** — only used when *Trigger Mode* is `Activate Command`.
+- **Command Path ON** / **Command Path OFF** — only used when *Trigger Mode* is `On/Off Command`.
 - **Image OFF** / **Image ON** — optional custom 144×144 PNG/JPG/SVG per state; uploads are downscaled to 144 px and persisted to disk so multi-state image switching stays reliable. Leave empty to use the default `imgs/states/{off,on}` images.
+
+The Property Inspector hides the command-path fields that don't apply to the selected trigger mode, so only the relevant inputs are visible.
 
 #### Example: gear handle
 
@@ -146,7 +271,7 @@ Property Inspector fields:
 | DataRef Path | `sim/cockpit2/controls/gear_handle_down` |
 | Value OFF | `0` |
 | Value ON | `1` |
-| Trigger Mode | `Write DataRef (toggle value)` |
+| Trigger Mode | `Write DataRef` |
 
 Press → toggles gear up/down; the button flips between OFF/ON image as the DataRef actually changes.
 
@@ -159,6 +284,19 @@ Press → toggles gear up/down; the button flips between OFF/ON image as the Dat
 | Command Path | `sim/flight_controls/landing_gear_toggle` |
 
 Useful for aircraft where the gear command runs an animation/sound but the simple DataRef write would skip it.
+
+#### Example: autopilot servos with separate On/Off commands
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/cockpit2/autopilot/servos_on` |
+| Value OFF | `0` |
+| Value ON | `1` |
+| Trigger Mode | `On/Off Command` |
+| Command Path ON | `sim/autopilot/servos_on` |
+| Command Path OFF | `sim/autopilot/servos_off` |
+
+Press while OFF → fires `servos_on`; press while ON → fires `servos_off`. The button image follows the live DataRef.
 
 ### DataRef Write
 
@@ -191,6 +329,12 @@ Property Inspector fields:
 | Format | `FLP %.0f%%` |
 | Unit Scale | `100` |
 
+### Background Tile
+
+Decorative filler tile with **no action** — pressing it does nothing. Useful as a visual separator between functional clusters on the deck (e.g. a black or colored stripe between autopilot and lights groups).
+
+There are no Property Inspector fields; set the image via Stream Deck's standard *Icon* field on the right-hand side. The bundled icon catalog produces solid-color tiles (`bg_black`, `bg_white`, `bg_yellow`, `bg_red`) via `make icons` — see [Button icons](#button-icons).
+
 ### Array DataRefs
 
 Some X-Plane DataRefs are arrays — one value per engine, per cylinder, per aerodynamic surface, etc. Examples:
@@ -199,7 +343,7 @@ Some X-Plane DataRefs are arrays — one value per engine, per cylinder, per aer
 - `sim/flightmodel/engine/ENGN_running` — `int[16]`, one per engine.
 - `sim/cockpit2/switches/landing_lights_on` — `int[10]`.
 
-Append `[N]` to the DataRef path in any of the three DataRef actions (Display, Toggle, Write) to address a single element. Without `[N]`, Display falls back to element `[0]` (legacy behaviour); Toggle and Write target the DataRef as a whole, which is fine for scalar DataRefs but unreliable for arrays — always use `[N]` when the DataRef is an array.
+Append `[N]` to the DataRef path in any action that takes a DataRef path (Display, Toggle, Write, Command + Display, Rotary, Multi DataRef Display) to address a single element. Without `[N]`, Display-style actions fall back to element `[0]` (legacy behaviour); Toggle and Write target the DataRef as a whole, which is fine for scalar DataRefs but unreliable for arrays — always use `[N]` when the DataRef is an array.
 
 #### Example: fuel pump for engine 1
 
