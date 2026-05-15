@@ -6,6 +6,8 @@ Stream Desk XL Profiles only function together with the xp_streamdesk Plugin.
 
 Filename: xp_stream_c172sp.streamDeckProfile
 
+Plugin Version Required: 1.1.0.0 or newer
+
 ### Features: ###
 
 * Default Cockpit Buttons
@@ -19,6 +21,8 @@ Filename: xp_stream_c172sp.streamDeckProfile
 
 Filename: xp_stream_da42.streamDeckProfile
 
+Plugin Version Required: 1.1.0.0 or newer
+
 ### Features: ###
 
 * Default Cockpit Buttons
@@ -31,6 +35,24 @@ Filename: xp_stream_da42.streamDeckProfile
 ## Diamond DA20 / DV20 - Aerobask ##
 
 Filename: xp_stream_dv20.streamDeckProfile
+
+Plugin Version Required: 1.1.0.0 or newer
+
+### Features: ###
+
+* Default Cockpit Buttons
+* DV20 Autopilot
+* Garmin 430 Support
+* Skyview Touch Support
+* Cockpit Views
+
+
+
+## UL Shark - Aerobask ##
+
+Filename: xp_stream_shark.streamDeckProfile
+
+Plugin Version Required: 1.1.1.0 or newer
 
 ### Features: ###
 
