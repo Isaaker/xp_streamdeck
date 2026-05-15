@@ -158,11 +158,11 @@ export const catalog: IconDef[] = [
 	{ kind: "toggle", name: "lt_strobe", label: "STROBE", group: "lights" },
 
 	// === Cockpit controls / system switches (toggles) ===
-    { kind: "toggle", name: "nolabel", label: "", group: "cockpit" },
+	{ kind: "toggle", name: "nolabel", label: "", group: "cockpit" },
 	{ kind: "toggle", name: "parkbrake", label: "PARK BRK", group: "cockpit" },
 	{ kind: "toggle", name: "master_bat", label: "MASTER BAT", group: "cockpit" },
 	{ kind: "toggle", name: "master_alt", label: "MASTER ALT", group: "cockpit" },
-    { kind: "toggle", name: "efis", label: "EFIS", group: "cockpit" },
+	{ kind: "toggle", name: "efis", label: "EFIS", group: "cockpit" },
 	{ kind: "toggle", name: "avionics", label: "AVIONICS", group: "cockpit" },
 	{ kind: "toggle", name: "pitot_heat", label: "PITOT HEAT", group: "cockpit" },
 	{ kind: "toggle", name: "fuelpump", label: "FUEL PUMP", group: "cockpit" },
@@ -172,14 +172,14 @@ export const catalog: IconDef[] = [
 	{ kind: "toggle", name: "alt_r", label: "ALT", sublabel: "R", group: "cockpit" },
 	{ kind: "toggle", name: "start_l", label: "START", sublabel: "L", group: "cockpit" },
 	{ kind: "toggle", name: "start_r", label: "START", sublabel: "R", group: "cockpit" },
-    // Shark
-    { kind: "toggle", name: "master", label: "MASTER", group: "cockpit" },
-    { kind: "toggle", name: "efis", label: "EFIS", group: "cockpit" },
-    { kind: "toggle", name: "apilot", label: "AUTO PILOT", group: "cockpit" },
-    { kind: "toggle", name: "flaps", label: "FLAPS", group: "cockpit" },
-    { kind: "toggle", name: "trim", label: "TRIM", group: "cockpit" },
-    { kind: "toggle", name: "landg", label: "LANDGEAR", group: "cockpit" },
-    { kind: "toggle", name: "prop", label: "PROP", group: "cockpit" },
+	// Shark
+	{ kind: "toggle", name: "master", label: "MASTER", group: "cockpit" },
+	{ kind: "toggle", name: "efis", label: "EFIS", group: "cockpit" },
+	{ kind: "toggle", name: "apilot", label: "AUTO PILOT", group: "cockpit" },
+	{ kind: "toggle", name: "flaps", label: "FLAPS", group: "cockpit" },
+	{ kind: "toggle", name: "trim", label: "TRIM", group: "cockpit" },
+	{ kind: "toggle", name: "landg", label: "LANDGEAR", group: "cockpit" },
+	{ kind: "toggle", name: "prop", label: "PROP", group: "cockpit" },
 	{ kind: "toggle", name: "mag1", label: "MAG 1", group: "cockpit" },
 	{ kind: "toggle", name: "mag2", label: "MAG 2", group: "cockpit" },
 
