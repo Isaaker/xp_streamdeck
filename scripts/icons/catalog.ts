@@ -116,12 +116,16 @@ export const catalog: IconDef[] = [
 	{ kind: "toggle", name: "vnav", label: "VNAV", group: "autopilot" },
 	{ kind: "toggle", name: "apr", label: "APR", group: "autopilot" },
 	{ kind: "toggle", name: "bc", label: "BC", group: "autopilot" },
+	{ kind: "toggle", name: "spd", label: "SPD", group: "autopilot" },
+	{ kind: "toggle", name: "csc", label: "CSC", group: "autopilot" },
+	{ kind: "toggle", name: "bank", label: "BANK", group: "autopilot" },
 
 	// === Autopilot — setpoint readouts (live values: AP HDG, AP ALT, …) ===
 	{ kind: "display", name: "ap_hdg", label: "AP HDG", group: "autopilot" },
 	{ kind: "display", name: "ap_alt", label: "AP ALT", group: "autopilot" },
 	{ kind: "display", name: "ap_vs", label: "AP V/S", group: "autopilot" },
 	{ kind: "display", name: "ap_src", label: "AP SRC", group: "autopilot" },
+	{ kind: "display", name: "ap_spd", label: "AP SPD", group: "autopilot" },
 
 	// === Autopilot — nudge buttons (single press → CommandRef) ===
 	{ kind: "nudge", name: "hdg_left", label: "HDG", direction: "left", group: "autopilot" },
@@ -149,6 +153,8 @@ export const catalog: IconDef[] = [
 	},
 	{ kind: "nudge", name: "vs_up", label: "VS", direction: "up", group: "autopilot" },
 	{ kind: "nudge", name: "vs_down", label: "VS", direction: "down", group: "autopilot" },
+	{ kind: "nudge", name: "spd_up", label: "SPD", direction: "up", group: "autopilot" },
+	{ kind: "nudge", name: "spd_down", label: "SPD", direction: "down", group: "autopilot" },
 
 	// === Lights (toggles) — `lt_` prefix avoids clashing with AP "nav" ===
 	{ kind: "toggle", name: "lt_bcn", label: "BCN", group: "lights" },
@@ -241,6 +247,34 @@ export const catalog: IconDef[] = [
 		label: "kHz",
 		direction: "down",
 		group: "g1000",
+	},
+	{
+		kind: "nudge-display",
+		name: "empty_left",
+		label: "",
+		direction: "left",
+		group: "cockpit",
+	},
+	{
+		kind: "nudge-display",
+		name: "empty_right",
+		label: "",
+		direction: "right",
+		group: "cockpit",
+	},
+	{
+		kind: "nudge-display",
+		name: "empty_up",
+		label: "",
+		direction: "up",
+		group: "cockpit",
+	},
+	{
+		kind: "nudge-display",
+		name: "empty_down",
+		label: "",
+		direction: "down",
+		group: "cockpit",
 	},
 
 	// === Plain-color background tiles (no label, no accent) ===
