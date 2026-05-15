@@ -84,16 +84,31 @@
 			</sdpi-checkbox>
 		</sdpi-item>
 		<sdpi-item label="Trigger Mode">
-			<sdpi-select setting="triggerMode" default="write">
-				<option value="write">Write DataRef (toggle value)</option>
+			<sdpi-select setting="triggerMode" default="write" id="triggerModeSelect">
+				<option value="write">Write DataRef</option>
 				<option value="command">Activate Command</option>
+				<option value="command-on-off">On/Off Command</option>
 			</sdpi-select>
 		</sdpi-item>
-		<sdpi-item label="Command Path">
+		<sdpi-item label="Command Path" id="commandItem">
 			<sdpi-textfield
 				setting="commandPath"
-				placeholder="sim/flight_controls/landing_gear_toggle (only used in command mode)"
+				placeholder="sim/flight_controls/landing_gear_toggle"
 				id="commandField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Command Path ON" id="commandOnItem">
+			<sdpi-textfield
+				setting="commandOnPath"
+				placeholder="sim/autopilot/servos_on"
+				id="commandOnField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Command Path OFF" id="commandOffItem">
+			<sdpi-textfield
+				setting="commandOffPath"
+				placeholder="sim/autopilot/servos_off"
+				id="commandOffField"
 			></sdpi-textfield>
 		</sdpi-item>
 		<sdpi-item label="Image OFF">
@@ -196,19 +211,55 @@
 					}
 				};
 
+				const commandItem = document.getElementById("commandItem");
+				const commandOnItem = document.getElementById("commandOnItem");
+				const commandOffItem = document.getElementById("commandOffItem");
+				const triggerModeSelect = document.getElementById("triggerModeSelect");
+
+				const applyModeVisibility = (mode) => {
+					const m = mode === "command" || mode === "command-on-off" ? mode : "write";
+					commandItem.style.display = m === "command" ? "" : "none";
+					commandOnItem.style.display = m === "command-on-off" ? "" : "none";
+					commandOffItem.style.display = m === "command-on-off" ? "" : "none";
+				};
+
+				// sdpi-components v4 does not consistently re-fire didReceiveSettings
+				// when the user mutates a control directly in the PI. Listen to the
+				// inner <select> change inside the component's shadow DOM as the
+				// authoritative source for live mode switches. We still subscribe
+				// to didReceiveSettings as a fallback for externally-driven changes.
+				const findInnerSelect = (el) =>
+					el?.shadowRoot?.querySelector("select") || el?.querySelector("select");
+				const wireTriggerModeChange = async () => {
+					for (let i = 0; i < 30; i++) {
+						const inner = findInnerSelect(triggerModeSelect);
+						if (inner) {
+							inner.addEventListener("change", () => applyModeVisibility(inner.value));
+							return;
+						}
+						await new Promise((r) => setTimeout(r, 50));
+					}
+					console.warn("dataref-toggle PI: could not wire triggerMode change listener");
+				};
+				wireTriggerModeChange();
+
 				const ready = (async () => {
 					await refreshFromSdk();
 					cacheReady = true;
 					const s = cached ?? {};
 					setThumb(thumbOff, s.imageOff ?? "");
 					setThumb(thumbOn, s.imageOn ?? "");
+					applyModeVisibility(s.triggerMode);
 				})();
 
 				const live = client.didReceiveSettings;
 				if (live && typeof live.subscribe === "function") {
 					live.subscribe((arg) => {
 						const s = arg?.payload?.settings ?? arg?.settings;
-						if (s && typeof s === "object") cached = s;
+						if (s && typeof s === "object") {
+							cached = s;
+							applyModeVisibility(s.triggerMode);
+						}
 					});
 				}
 
@@ -252,6 +303,8 @@
 
 				const datarefField = document.getElementById("datarefField");
 				const commandField = document.getElementById("commandField");
+				const commandOnFieldEl = document.getElementById("commandOnField");
+				const commandOffFieldEl = document.getElementById("commandOffField");
 				const datarefPreview = document.getElementById("datarefPreview");
 				if (window.XPlanePI && datarefField) {
 					window.XPlanePI.attachAutocomplete(datarefField, "dataref");
@@ -259,6 +312,12 @@
 				}
 				if (window.XPlanePI && commandField) {
 					window.XPlanePI.attachAutocomplete(commandField, "command");
+				}
+				if (window.XPlanePI && commandOnFieldEl) {
+					window.XPlanePI.attachAutocomplete(commandOnFieldEl, "command");
+				}
+				if (window.XPlanePI && commandOffFieldEl) {
+					window.XPlanePI.attachAutocomplete(commandOffFieldEl, "command");
 				}
 
 				document

@@ -14,7 +14,7 @@ import { clearTile, setNotFound, setOffline } from "../util/error-tile";
 import { persistImage } from "../util/image-cache";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
-type TriggerMode = "write" | "command";
+type TriggerMode = "write" | "command" | "command-on-off";
 
 type DataRefToggleSettings = JsonObject & {
 	datarefPath?: string;
@@ -22,6 +22,8 @@ type DataRefToggleSettings = JsonObject & {
 	valueOn?: string | number;
 	triggerMode?: TriggerMode;
 	commandPath?: string;
+	commandOnPath?: string;
+	commandOffPath?: string;
 	imageOff?: string;
 	imageOn?: string;
 	strictOnMatch?: boolean;
@@ -36,6 +38,8 @@ interface ParsedSettings {
 	valueOn: number;
 	triggerMode: TriggerMode;
 	commandPath: string;
+	commandOnPath: string;
+	commandOffPath: string;
 	imageOff?: string;
 	imageOn?: string;
 	strictOnMatch: boolean;
@@ -48,6 +52,8 @@ interface ActionState {
 	valueOn: number;
 	triggerMode: TriggerMode;
 	commandPath: string;
+	commandOnPath: string;
+	commandOffPath: string;
 	strictOnMatch: boolean;
 	// Resolved paths (or pass-through values) ready for setImage. Data URLs
 	// from settings are persisted to disk as files via persistImage so we
@@ -89,6 +95,8 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			valueOn: parsed.valueOn,
 			triggerMode: parsed.triggerMode,
 			commandPath: parsed.commandPath,
+			commandOnPath: parsed.commandOnPath,
+			commandOffPath: parsed.commandOffPath,
 			strictOnMatch: parsed.strictOnMatch,
 			currentState: UNINITIALIZED_STATE,
 		};
@@ -118,6 +126,8 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		state.valueOn = parsed.valueOn;
 		state.triggerMode = parsed.triggerMode;
 		state.commandPath = parsed.commandPath;
+		state.commandOnPath = parsed.commandOnPath;
+		state.commandOffPath = parsed.commandOffPath;
 		state.strictOnMatch = parsed.strictOnMatch;
 		await this.syncImages(ev.action.id, state, parsed);
 
@@ -184,6 +194,33 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 				await this.xplane.activateCommand(cmdId);
 				streamDeck.logger.info(
 					`dataref-toggle: command activate ${parsed.commandPath} (id=${cmdId})`,
+				);
+			} else if (parsed.triggerMode === "command-on-off") {
+				const { basePath, index } = parseDataRefPath(parsed.path);
+				const drId = await this.xplane.getDataRefId(basePath);
+				const current =
+					state?.lastValue !== undefined
+						? state.lastValue
+						: applyIndex(await this.xplane.readDataRef(drId), index);
+				const isOn =
+					mapValueToStateIndex(
+						current,
+						parsed.valueOff,
+						parsed.valueOn,
+						parsed.strictOnMatch,
+					) === STATE_ON;
+				const targetPath = isOn ? parsed.commandOffPath : parsed.commandOnPath;
+				if (!targetPath) {
+					streamDeck.logger.warn(
+						`dataref-toggle: ${isOn ? "commandOffPath" : "commandOnPath"} is empty in on-off command mode`,
+					);
+					await ev.action.showAlert();
+					return;
+				}
+				const cmdId = await this.xplane.getCommandId(targetPath);
+				await this.xplane.activateCommand(cmdId);
+				streamDeck.logger.info(
+					`dataref-toggle: on-off command activate ${targetPath} (id=${cmdId}, isOn=${isOn})`,
 				);
 			} else {
 				const { basePath, index } = parseDataRefPath(parsed.path);
@@ -333,8 +370,15 @@ function parseSettings(s: DataRefToggleSettings): ParsedSettings {
 	const path = s.datarefPath?.trim() ?? "";
 	const valueOff = toFiniteNumber(s.valueOff) ?? 0;
 	const valueOn = toFiniteNumber(s.valueOn) ?? 1;
-	const triggerMode: TriggerMode = s.triggerMode === "command" ? "command" : "write";
+	const triggerMode: TriggerMode =
+		s.triggerMode === "command"
+			? "command"
+			: s.triggerMode === "command-on-off"
+				? "command-on-off"
+				: "write";
 	const commandPath = s.commandPath?.trim() ?? "";
+	const commandOnPath = s.commandOnPath?.trim() ?? "";
+	const commandOffPath = s.commandOffPath?.trim() ?? "";
 	const imageOff =
 		typeof s.imageOff === "string" && s.imageOff.length > 0 ? s.imageOff : undefined;
 	const imageOn = typeof s.imageOn === "string" && s.imageOn.length > 0 ? s.imageOn : undefined;
@@ -345,6 +389,8 @@ function parseSettings(s: DataRefToggleSettings): ParsedSettings {
 		valueOn,
 		triggerMode,
 		commandPath,
+		commandOnPath,
+		commandOffPath,
 		imageOff,
 		imageOn,
 		strictOnMatch,
