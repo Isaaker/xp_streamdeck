@@ -286,6 +286,7 @@ export const catalog: IconDef[] = [
 	{ kind: "background", name: "bg_green", color: "#22c55e", group: "backgrounds" },
 	{ kind: "background", name: "bg_orange", color: "#f59e0b", group: "backgrounds" },
 	{ kind: "background", name: "bg_blue", color: "#3b82f6", group: "backgrounds" },
+	{ kind: "background", name: "bg_gray", color: "#999EA1", group: "backgrounds" },
 
 	// === G1000 — text command buttons (orange accent) ===
 	{ kind: "command", name: "g_menu", label: "MENU", group: "g1000" },
