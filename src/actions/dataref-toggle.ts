@@ -68,6 +68,13 @@ interface ActionState {
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 	currentState: number;
+	// Guards against a second keyDown firing while the previous toggle is
+	// still in flight — without it, a fast double-click reads the same stale
+	// subscription cache twice and sends the same command twice.
+	inflightKeyDown: boolean;
+	// Serializes overlapping renderState() calls so setState + setImage from
+	// an earlier update can't interleave with a newer one.
+	renderPromise?: Promise<void>;
 }
 
 const DEFAULT_IMAGE_OFF = "imgs/states/off";
@@ -99,6 +106,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			commandOffPath: parsed.commandOffPath,
 			strictOnMatch: parsed.strictOnMatch,
 			currentState: UNINITIALIZED_STATE,
+			inflightKeyDown: false,
 		};
 		this.states.set(ev.action.id, state);
 		await this.syncImages(ev.action.id, state, parsed);
@@ -183,6 +191,15 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			return;
 		}
 
+		if (state?.inflightKeyDown) {
+			streamDeck.logger.info(
+				`dataref-toggle: ignoring keyDown while previous toggle is in flight for ${parsed.path}`,
+			);
+			await ev.action.showAlert();
+			return;
+		}
+		if (state) state.inflightKeyDown = true;
+
 		try {
 			if (parsed.triggerMode === "command") {
 				if (!parsed.commandPath) {
@@ -195,6 +212,8 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 				streamDeck.logger.info(
 					`dataref-toggle: command activate ${parsed.commandPath} (id=${cmdId})`,
 				);
+				// No optimistic update — for a generic command we cannot predict
+				// the resulting DataRef value, so we wait for the WS update.
 			} else if (parsed.triggerMode === "command-on-off") {
 				const { basePath, index } = parseDataRefPath(parsed.path);
 				const drId = await this.xplane.getDataRefId(basePath);
@@ -222,6 +241,11 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 				streamDeck.logger.info(
 					`dataref-toggle: on-off command activate ${targetPath} (id=${cmdId}, isOn=${isOn})`,
 				);
+				if (state) {
+					const target = isOn ? parsed.valueOff : parsed.valueOn;
+					state.lastValue = target;
+					await this.renderState(state, target);
+				}
 			} else {
 				const { basePath, index } = parseDataRefPath(parsed.path);
 				const drId = await this.xplane.getDataRefId(basePath);
@@ -241,10 +265,16 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 				streamDeck.logger.info(
 					`dataref-toggle: write ${parsed.path} = ${target} (id=${drId})`,
 				);
+				if (state) {
+					state.lastValue = target;
+					await this.renderState(state, target);
+				}
 			}
 		} catch (err) {
 			streamDeck.logger.error("dataref-toggle keyDown failed", err);
 			await ev.action.showAlert();
+		} finally {
+			if (state) state.inflightKeyDown = false;
 		}
 	}
 
@@ -287,11 +317,16 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 
 			// Seed the visible state immediately via REST so the first frame is
 			// correct even before the subscription delivers its first update.
+			// Skip if the WS subscription has already delivered a value — that
+			// is the fresher source of truth and must not be clobbered by a
+			// stale REST read that started before the WS update arrived.
 			try {
 				const id = await this.xplane.getDataRefId(basePath);
 				const initial = applyIndex(await this.xplane.readDataRef(id), index);
-				state.lastValue = initial;
-				await this.renderState(state, initial);
+				if (state.lastValue === undefined) {
+					state.lastValue = initial;
+					await this.renderState(state, initial);
+				}
 			} catch (err) {
 				streamDeck.logger.warn(
 					`dataref-toggle: initial read failed for ${state.path}`,
@@ -312,30 +347,45 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		}
 	}
 
-	private async renderState(state: ActionState, value: DataRefValue): Promise<void> {
+	private renderState(state: ActionState, value: DataRefValue): Promise<void> {
 		const target = mapValueToStateIndex(
 			value,
 			state.valueOff,
 			state.valueOn,
 			state.strictOnMatch,
 		);
-		if (target === state.currentState) return;
-		streamDeck.logger.info(
-			`dataref-toggle: setState ${target} for ${state.path} (value=${describeValue(value)}, off=${state.valueOff}, on=${state.valueOn}, strict=${state.strictOnMatch})`,
-		);
-		state.currentState = target;
-		// Once we have valid data, drop any disconnected/not-found overlay.
-		await clearTile(state.action);
-		await state.action.setState(target);
+		// Chain off any in-flight render so setState + setImage from an earlier
+		// update can't interleave with this one. Use a swallowing catch so a
+		// prior failure doesn't block subsequent renders.
+		const previous = state.renderPromise ?? Promise.resolve();
+		const next = previous
+			.catch(() => {
+				/* prior render error already logged; don't propagate */
+			})
+			.then(async () => {
+				if (target === state.currentState) return;
+				streamDeck.logger.info(
+					`dataref-toggle: setState ${target} for ${state.path} (value=${describeValue(value)}, off=${state.valueOff}, on=${state.valueOn}, strict=${state.strictOnMatch})`,
+				);
+				// Once we have valid data, drop any disconnected/not-found overlay.
+				await clearTile(state.action);
+				await state.action.setState(target);
 
-		// Stream Deck does not always refresh the visible image after setState
-		// alone on multi-state keys, so we explicitly push the active image
-		// (custom data URL if uploaded, otherwise the manifest path). This
-		// targets the *currently displayed* state because we just switched to
-		// `target`, which is why we omit the { state } option here.
-		const customImage = target === STATE_ON ? state.imageOn : state.imageOff;
-		const image = customImage ?? (target === STATE_ON ? DEFAULT_IMAGE_ON : DEFAULT_IMAGE_OFF);
-		await state.action.setImage(image);
+				// Stream Deck does not always refresh the visible image after setState
+				// alone on multi-state keys, so we explicitly push the active image
+				// (custom data URL if uploaded, otherwise the manifest path). This
+				// targets the *currently displayed* state because we just switched to
+				// `target`, which is why we omit the { state } option here.
+				const customImage = target === STATE_ON ? state.imageOn : state.imageOff;
+				const image =
+					customImage ?? (target === STATE_ON ? DEFAULT_IMAGE_ON : DEFAULT_IMAGE_OFF);
+				await state.action.setImage(image);
+				// Only commit currentState after the hardware confirms — keeps the
+				// early-exit guard above honest if a follow-up render races.
+				state.currentState = target;
+			});
+		state.renderPromise = next;
+		return next;
 	}
 
 	private onXPlaneOffline(): void {
