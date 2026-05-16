@@ -1,6 +1,7 @@
 // @ts-expect-error
 // @ts-expect-error
 import {
+	type AlertIcon,
 	type BackgroundIcon,
 	type CommandIcon,
 	type DisplayIcon,
@@ -445,6 +446,32 @@ export function renderViewIcon(def: ViewIcon): string {
 export function renderBackgroundIcon(def: BackgroundIcon): string {
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
   <rect width="${SIZE}" height="${SIZE}" fill="${def.color}"/>
+</svg>`;
+}
+
+// === Alert (annunciator-style: flooded tile when ON) layout ===
+// OFF: dark BG with muted gray label — "lamp test off", barely readable.
+// ON: entire tile floods with severity color, bold black label centered —
+// designed to grab attention across the deck (real Master Caution / Master
+// Warning behavior). Color is derived from `severity` rather than the group
+// accent so the semantic (orange=caution, red=warning) stays locked in.
+const ALERT_CAUTION_COLOR = "#f59e0b";
+const ALERT_WARNING_COLOR = "#ef4444";
+const ALERT_OFF_LABEL_COLOR = "#3a3a3a";
+const ALERT_ON_LABEL_COLOR = "#000000";
+const ALERT_LABEL_FONT_SIZE = 26;
+const ALERT_LABEL_VISUAL_CENTER_Y = 72;
+
+export function renderAlertIcon(def: AlertIcon, state: IconState): string {
+	const onColor = def.severity === "warning" ? ALERT_WARNING_COLOR : ALERT_CAUTION_COLOR;
+	const bgFill = state === "on" ? onColor : BG;
+	const labelColor = state === "on" ? ALERT_ON_LABEL_COLOR : ALERT_OFF_LABEL_COLOR;
+	const baselineY = baselineFor(ALERT_LABEL_FONT_SIZE, ALERT_LABEL_VISUAL_CENTER_Y);
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${bgFill}"/>
+  <text x="${SIZE / 2}" y="${baselineY}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${ALERT_LABEL_FONT_SIZE}" font-weight="900"
+        fill="${labelColor}" letter-spacing="2">${escapeXml(def.label)}</text>
 </svg>`;
 }
 

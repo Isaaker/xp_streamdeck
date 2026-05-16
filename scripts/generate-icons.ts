@@ -6,6 +6,7 @@ import {
 	ACTION_ICON_NAMES,
 	type IconState,
 	renderActionGlyph,
+	renderAlertIcon,
 	renderBackgroundIcon,
 	renderCommandIcon,
 	renderDefaultKeyIcon,
@@ -67,6 +68,7 @@ async function main(): Promise<void> {
 	let gcuKeyCount = 0;
 	let backgroundCount = 0;
 	let viewCount = 0;
+	let alertCount = 0;
 
 	for (const def of catalog) {
 		const groupDir = await ensureGroupDir(def.group);
@@ -112,6 +114,13 @@ async function main(): Promise<void> {
 			const png = await renderPng(svg, 144);
 			await writeFile(resolve(groupDir, `${def.name}.png`), png);
 			viewCount += 1;
+		} else if (def.kind === "alert") {
+			for (const state of STATES) {
+				const svg = renderAlertIcon(def, state);
+				const png = await renderPng(svg, 144);
+				await writeFile(resolve(groupDir, `${def.name}_${state}.png`), png);
+				alertCount += 1;
+			}
 		} else {
 			const svg = renderBackgroundIcon(def);
 			const png = await renderPng(svg, 144);
@@ -129,12 +138,14 @@ async function main(): Promise<void> {
 		knobCount +
 		gcuKeyCount +
 		backgroundCount +
-		viewCount;
+		viewCount +
+		alertCount;
 	console.log(
 		`Wrote ${total} PNGs to ${OUT_DIR} ` +
 			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges + ` +
 			`${nudgeDisplayCount} nudge-displays + ${commandCount} commands + ${knobCount} knobs + ` +
-			`${gcuKeyCount} gcu_keys + ${backgroundCount} backgrounds + ${viewCount} views, ` +
+			`${gcuKeyCount} gcu_keys + ${backgroundCount} backgrounds + ${viewCount} views + ` +
+			`${alertCount} alert states, ` +
 			`grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
 	);
 

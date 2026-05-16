@@ -5,7 +5,8 @@ export type IconGroup =
 	| "readouts"
 	| "backgrounds"
 	| "g1000"
-	| "views";
+	| "views"
+	| "alerts";
 
 // One accent color per functional group — keeps the whole set visually calm.
 // The group name is also the output subdirectory (out/icons/<group>/).
@@ -21,6 +22,7 @@ export const GROUP_ACCENT: Record<IconGroup, string> = {
 	backgrounds: "#000000", // unused — background tiles carry their own color
 	g1000: "#f59e0b", // orange — Garmin-style amber for G1000 command/knob buttons
 	views: "#3b82f6", // blue — saved cockpit view recall buttons
+	alerts: "#000000", // unused — alert tiles derive their color from `severity`
 };
 
 type IconBase = {
@@ -90,6 +92,13 @@ export type ViewIcon = {
 	number: number;
 	group: IconGroup;
 };
+// Annunciator-style tile: OFF dark with muted gray label, ON flooded with the
+// severity color (orange=caution, red=warning) and bold black label. Pairs
+// with the existing dataref-toggle action via <name>_on.png / <name>_off.png.
+export type AlertIcon = IconBase & {
+	kind: "alert";
+	severity: "caution" | "warning";
+};
 export type IconDef =
 	| ToggleIcon
 	| DisplayIcon
@@ -99,7 +108,8 @@ export type IconDef =
 	| KnobIcon
 	| BackgroundIcon
 	| GcuKeyIcon
-	| ViewIcon;
+	| ViewIcon
+	| AlertIcon;
 
 export const catalog: IconDef[] = [
 	// === Autopilot — mode toggles ===
@@ -367,4 +377,8 @@ export const catalog: IconDef[] = [
 			group: "views",
 		}),
 	),
+
+	// === Alerts (annunciator-style: flooded tile when ON) ===
+	{ kind: "alert", name: "caution", label: "CAUTION", severity: "caution", group: "alerts" },
+	{ kind: "alert", name: "warning", label: "WARNING", severity: "warning", group: "alerts" },
 ];
