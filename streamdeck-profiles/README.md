@@ -90,3 +90,21 @@ Plugin Version Required: 1.1.1.0 or newer
 * GCU for G1000 (Alpha & Numeric)
 * Ground Procedures (Cold&Dark)
 * Cockpit Views
+
+## Pilatus PC12 - Thranda (G1000 Version) ##
+
+I use the PC12 from Thranda in G1000 Configuration on the Mac because better experience with the MAP and Flight Planning.
+
+Filename: xp_stream_pc12.streamDeckProfile
+
+Plugin Version Required: 1.1.1.0 or newer
+
+### Features: ###
+
+* PC12 Overhead and Cockpit Buttons
+* PC12 Autopilot
+* Shows some Engine indicators
+* X1000 (X-Plane G1000)
+* GCU for G1000 (Alpha & Numeric)
+* Ground Procedures (Cold&Dark)
+* Cockpit Views
