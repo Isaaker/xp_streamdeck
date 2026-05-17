@@ -43,7 +43,7 @@ interface ParsedSettings {
 	unitScale?: number;
 	precision?: number;
 	enumLut: Map<number, string>;
-	enumLength: number;
+	enumMaxIndex: number | undefined;
 	enumValid: boolean;
 	holdOnLastPosition: boolean;
 	holdCommand: string;
@@ -311,13 +311,14 @@ function shouldHoldOnLast(state: ActionState | undefined, parsed: ParsedSettings
 	if (parsed.formatMode !== "enum") return false;
 	if (!parsed.holdOnLastPosition) return false;
 	if (!parsed.holdCommand) return false;
-	if (parsed.enumLength < 2) return false;
+	if (parsed.enumLut.size < 2) return false;
+	if (parsed.enumMaxIndex === undefined) return false;
 	if (!state || state.lastValue === undefined) return false;
 	const idx = toIndexInteger(state.lastValue, parsed.unitScale);
 	if (idx === undefined) return false;
 	// Trigger on the second-to-last index: pressing now would advance to the
 	// last position (which is the "hold" position, e.g. starter on Cessna).
-	return idx === parsed.enumLength - 2;
+	return idx === parsed.enumMaxIndex - 1;
 }
 
 function parseSettings(s: RotarySettings): ParsedSettings {
@@ -330,7 +331,7 @@ function parseSettings(s: RotarySettings): ParsedSettings {
 	const unit = s.unit?.trim() ?? "";
 	const holdCommand = s.holdCommand?.trim() ?? "";
 	const holdOnLastPosition = s.holdOnLastPosition === true;
-	const { enumLut, enumLength, enumValid } = parseEnumMap(s.enumMap ?? "");
+	const { enumLut, enumMaxIndex, enumValid } = parseEnumMap(s.enumMap ?? "");
 	return {
 		commandPath,
 		datarefPath,
@@ -341,7 +342,7 @@ function parseSettings(s: RotarySettings): ParsedSettings {
 		unitScale: toFiniteNumber(s.unitScale),
 		precision: toFiniteNumber(s.precision),
 		enumLut,
-		enumLength,
+		enumMaxIndex,
 		enumValid,
 		holdOnLastPosition,
 		holdCommand,
@@ -350,18 +351,18 @@ function parseSettings(s: RotarySettings): ParsedSettings {
 
 function parseEnumMap(raw: string): {
 	enumLut: Map<number, string>;
-	enumLength: number;
+	enumMaxIndex: number | undefined;
 	enumValid: boolean;
 } {
 	const trimmed = raw.trim();
 	const lut = new Map<number, string>();
-	if (!trimmed) return { enumLut: lut, enumLength: 0, enumValid: true };
+	if (!trimmed) return { enumLut: lut, enumMaxIndex: undefined, enumValid: true };
 	const parts = trimmed
 		.split(",")
 		.map((p) => p.trim())
 		.filter((p) => p.length > 0);
 	let valid = true;
-	let maxIndex = -1;
+	let maxIndex: number | undefined;
 	for (const part of parts) {
 		const eq = part.indexOf("=");
 		if (eq <= 0 || eq === part.length - 1) {
@@ -371,17 +372,14 @@ function parseEnumMap(raw: string): {
 		const keyRaw = part.slice(0, eq).trim();
 		const valueRaw = part.slice(eq + 1).trim();
 		const key = Number(keyRaw);
-		if (!Number.isInteger(key) || key < 0 || !valueRaw) {
+		if (!Number.isInteger(key) || !valueRaw) {
 			valid = false;
 			continue;
 		}
-		if (key > maxIndex) maxIndex = key;
+		if (maxIndex === undefined || key > maxIndex) maxIndex = key;
 		lut.set(key, valueRaw);
 	}
-	// enumLength is max-key + 1 so non-contiguous maps still detect "last
-	// position" correctly. Empty/all-invalid input gives length 0.
-	const enumLength = maxIndex === -1 ? 0 : maxIndex + 1;
-	return { enumLut: lut, enumLength, enumValid: valid };
+	return { enumLut: lut, enumMaxIndex: maxIndex, enumValid: valid };
 }
 
 function toIndexInteger(v: DataRefValue, scale?: number): number | undefined {
