@@ -47,11 +47,11 @@
 			"DisableAutomaticStates": true,
 			"States": [
 				{
-					"Image": "imgs/states/off",
+					"Image": "imgs/guarded/locked",
 					"TitleAlignment": "middle"
 				},
 				{
-					"Image": "imgs/states/on",
+					"Image": "imgs/guarded/unlocked",
 					"TitleAlignment": "middle"
 				}
 			]

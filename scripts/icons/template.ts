@@ -7,6 +7,7 @@ import {
 	type DisplayIcon,
 	type GcuKeyIcon,
 	GROUP_ACCENT,
+	type GuardedIcon,
 	type KnobIcon,
 	type NudgeDisplayIcon,
 	type NudgeIcon,
@@ -475,6 +476,84 @@ export function renderAlertIcon(def: AlertIcon, state: IconState): string {
 </svg>`;
 }
 
+// === Guarded (two-stage button with hazard-stripe cover) layout ===
+// Top stripe = amber/black diagonal hatching that mimics real cockpit guard
+// covers. State "locked" = hatching at full opacity (cover closed); "unlocked"
+// = hatching dimmed (cover flipped up). Label + LED-bar follow toggle DNA so
+// the family reads as a coherent set.
+const GUARDED_HAZARD_HEIGHT = 18;
+const GUARDED_HAZARD_STRIPE_W = 8;
+const GUARDED_HAZARD_COLOR = "#fbbf24";
+const GUARDED_HAZARD_OPACITY_LOCKED = 1.0;
+const GUARDED_HAZARD_OPACITY_UNLOCKED = 0.35;
+// Push the label down to leave the top 18px free for the hazard band.
+const GUARDED_LABEL_VISUAL_CENTER_Y = 75;
+const GUARDED_TWO_LINE_MAIN_CENTER_Y = 52;
+const GUARDED_TWO_LINE_SUB_CENTER_Y = 96;
+
+export type GuardedState = "locked" | "unlocked";
+
+export function renderGuardedIcon(def: GuardedIcon, state: GuardedState): string {
+	const accent = GROUP_ACCENT[def.group];
+	const barFill = state === "unlocked" ? accent : BAR_OFF;
+	const barWidth = SIZE - TOGGLE_BAR_INSET_X * 2;
+	const barY = SIZE - TOGGLE_BAR_INSET_BOTTOM - TOGGLE_BAR_HEIGHT;
+	const hazardOpacity =
+		state === "locked" ? GUARDED_HAZARD_OPACITY_LOCKED : GUARDED_HAZARD_OPACITY_UNLOCKED;
+
+	const glow =
+		state === "unlocked"
+			? `<rect x="${TOGGLE_BAR_INSET_X}" y="${barY}" width="${barWidth}" height="${TOGGLE_BAR_HEIGHT}" rx="${TOGGLE_BAR_RADIUS}" fill="${accent}" filter="url(#glow)" opacity="0.55"/>`
+			: "";
+
+	const hasSublabel = typeof def.sublabel === "string" && def.sublabel.length > 0;
+	let labelEls: string;
+	if (hasSublabel) {
+		const mainSize = Math.min(toggleFontSize(def.label), TOGGLE_TWO_LINE_MAIN_MAX);
+		const mainY = baselineFor(mainSize, GUARDED_TWO_LINE_MAIN_CENTER_Y);
+		const subY = baselineFor(TOGGLE_TWO_LINE_SUB_FONT_SIZE, GUARDED_TWO_LINE_SUB_CENTER_Y);
+		labelEls =
+			`<text x="${SIZE / 2}" y="${mainY}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${mainSize}" font-weight="800"
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>` +
+			`<text x="${SIZE / 2}" y="${subY}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${TOGGLE_TWO_LINE_SUB_FONT_SIZE}" font-weight="800"
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.sublabel as string)}</text>`;
+	} else {
+		const fontSize = toggleFontSize(def.label);
+		const baselineY = baselineFor(fontSize, GUARDED_LABEL_VISUAL_CENTER_Y);
+		labelEls = `<text x="${SIZE / 2}" y="${baselineY}" text-anchor="middle"
+        font-family="${FONT_STACK}" font-size="${fontSize}" font-weight="800"
+        fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>`;
+	}
+
+	// Diagonal hazard hatching: a pattern of alternating amber + black stripes
+	// rotated -45°. The pattern tile is 2×stripe-width so amber and black each
+	// take one stripe slot.
+	const patternId = `guardHazard_${state}`;
+	const tile = GUARDED_HAZARD_STRIPE_W * 2;
+	const hazardDefs = `
+    <pattern id="${patternId}" patternUnits="userSpaceOnUse"
+             width="${tile}" height="${tile}"
+             patternTransform="rotate(-45)">
+      <rect width="${tile}" height="${tile}" fill="#000000"/>
+      <rect width="${GUARDED_HAZARD_STRIPE_W}" height="${tile}" fill="${GUARDED_HAZARD_COLOR}"/>
+    </pattern>`;
+
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <defs>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4"/>
+    </filter>${hazardDefs}
+  </defs>
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <rect x="0" y="0" width="${SIZE}" height="${GUARDED_HAZARD_HEIGHT}" fill="url(#${patternId})" opacity="${hazardOpacity}"/>
+  ${labelEls}
+  ${glow}
+  <rect x="${TOGGLE_BAR_INSET_X}" y="${barY}" width="${barWidth}" height="${TOGGLE_BAR_HEIGHT}" rx="${TOGGLE_BAR_RADIUS}" fill="${barFill}"/>
+</svg>`;
+}
+
 // === Action-Icons (Stream Deck library sidebar + button default-image) ===
 // One glyph per action UUID, rendered at multiple sizes by `make icons` into
 // com.robertw.xplane.sdPlugin/imgs/actions/<name>/{icon,key}{,@2x}.png. The
@@ -521,6 +600,12 @@ const ACTION_GLYPHS: Record<string, string> = {
       <line x1="0" y1="6" x2="0" y2="-3" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
       <polygon points="0,-7 3.2,-2.8 -3.2,-2.8" fill="#ffffff"/>
     </g>`,
+
+	// Padlock — "guarded button" (short press unlocks cover, long press fires).
+	"guarded-command": `<path d="M6,9 V6.5 a4,4 0 0 1 8,0 V9" fill="none" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round"/>
+    <rect x="4.5" y="9" width="11" height="8" rx="1.2" fill="none" stroke="#ffffff" stroke-width="1.4"/>
+    <circle cx="10" cy="12.5" r="1.2" fill="#ffffff"/>
+    <line x1="10" y1="13" x2="10" y2="15.5" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round"/>`,
 };
 
 export const ACTION_ICON_NAMES = Object.keys(ACTION_GLYPHS);

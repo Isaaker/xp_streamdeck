@@ -40,8 +40,8 @@ const UNINITIALIZED_STATE = -1;
 const LONG_PRESS_THRESHOLD_MS = 500;
 const REPEAT_INTERVAL_MS = 200;
 
-const DEFAULT_IMAGE_LOCKED = "imgs/states/off";
-const DEFAULT_IMAGE_UNLOCKED = "imgs/states/on";
+const DEFAULT_IMAGE_LOCKED = "imgs/guarded/locked";
+const DEFAULT_IMAGE_UNLOCKED = "imgs/guarded/unlocked";
 
 interface ParsedSettings {
 	shortPath: string;

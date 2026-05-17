@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import sharp from "sharp";
+import type { GuardedIcon } from "./icons/catalog.ts";
 import { catalog } from "./icons/catalog.ts";
 import {
 	ACTION_ICON_NAMES,
@@ -12,6 +13,7 @@ import {
 	renderDefaultKeyIcon,
 	renderDisplayIcon,
 	renderGcuKeyIcon,
+	renderGuardedIcon,
 	renderKnobIcon,
 	renderNudgeDisplayIcon,
 	renderNudgeIcon,
@@ -34,7 +36,10 @@ const NEUTRAL_DEFAULT_KEY_ACTIONS: ReadonlySet<string> = new Set([
 	"dataref-write",
 	"multi-dataref-display",
 	"wind-display",
+	"guarded-command",
 ]);
+
+const GUARDED_STATES = ["locked", "unlocked"] as const;
 
 const OUT_DIR = resolve(process.cwd(), "out/icons");
 // Bundle assets land directly inside the plugin bundle so the runtime can
@@ -69,6 +74,7 @@ async function main(): Promise<void> {
 	let backgroundCount = 0;
 	let viewCount = 0;
 	let alertCount = 0;
+	let guardedCount = 0;
 
 	for (const def of catalog) {
 		const groupDir = await ensureGroupDir(def.group);
@@ -121,6 +127,13 @@ async function main(): Promise<void> {
 				await writeFile(resolve(groupDir, `${def.name}_${state}.png`), png);
 				alertCount += 1;
 			}
+		} else if (def.kind === "guarded") {
+			for (const state of GUARDED_STATES) {
+				const svg = renderGuardedIcon(def, state);
+				const png = await renderPng(svg, 144);
+				await writeFile(resolve(groupDir, `${def.name}_${state}.png`), png);
+				guardedCount += 1;
+			}
 		} else {
 			const svg = renderBackgroundIcon(def);
 			const png = await renderPng(svg, 144);
@@ -139,13 +152,14 @@ async function main(): Promise<void> {
 		gcuKeyCount +
 		backgroundCount +
 		viewCount +
-		alertCount;
+		alertCount +
+		guardedCount;
 	console.log(
 		`Wrote ${total} PNGs to ${OUT_DIR} ` +
 			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges + ` +
 			`${nudgeDisplayCount} nudge-displays + ${commandCount} commands + ${knobCount} knobs + ` +
 			`${gcuKeyCount} gcu_keys + ${backgroundCount} backgrounds + ${viewCount} views + ` +
-			`${alertCount} alert states, ` +
+			`${alertCount} alert states + ${guardedCount} guarded states, ` +
 			`grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
 	);
 
@@ -154,6 +168,24 @@ async function main(): Promise<void> {
 	const offlinePath = resolve(BUNDLE_IMGS_DIR, "sim_offline.png");
 	await writeFile(offlinePath, offlinePng);
 	console.log(`Wrote bundle asset: ${offlinePath}`);
+
+	// Default guarded-command state images — manifest States[] and the action
+	// runtime use these when the user hasn't uploaded custom imageLocked /
+	// imageUnlocked. Empty label, cockpit-green LED to fit the typical use.
+	const GUARDED_DIR = resolve(BUNDLE_IMGS_DIR, "guarded");
+	await mkdir(GUARDED_DIR, { recursive: true });
+	const guardedDefault: GuardedIcon = {
+		kind: "guarded",
+		name: "_default",
+		label: "",
+		group: "cockpit",
+	};
+	for (const state of GUARDED_STATES) {
+		const svg = renderGuardedIcon(guardedDefault, state);
+		const png = await renderPng(svg, 144);
+		await writeFile(resolve(GUARDED_DIR, `${state}.png`), png);
+	}
+	console.log(`Wrote bundle assets: ${GUARDED_DIR}/{locked,unlocked}.png`);
 
 	// Action-icons: per-UUID glyphs, written into the plugin bundle so they
 	// show up in the Stream Deck library sidebar and as the default key image.

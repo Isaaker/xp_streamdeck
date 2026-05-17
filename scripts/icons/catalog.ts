@@ -99,6 +99,10 @@ export type AlertIcon = IconBase & {
 	kind: "alert";
 	severity: "caution" | "warning";
 };
+// Two-stage button: top hazard stripe signals "guarded" (cockpit cover);
+// label + LED-bar follow toggle DNA. Sublabel for twin-engine pairs.
+// Pairs with the guarded-command action via <name>_locked.png / <name>_unlocked.png.
+export type GuardedIcon = IconBase & { kind: "guarded"; sublabel?: string };
 export type IconDef =
 	| ToggleIcon
 	| DisplayIcon
@@ -109,7 +113,8 @@ export type IconDef =
 	| BackgroundIcon
 	| GcuKeyIcon
 	| ViewIcon
-	| AlertIcon;
+	| AlertIcon
+	| GuardedIcon;
 
 export const catalog: IconDef[] = [
 	// === Autopilot — mode toggles ===
@@ -198,6 +203,14 @@ export const catalog: IconDef[] = [
 	{ kind: "toggle", name: "prop", label: "PROP", group: "cockpit" },
 	{ kind: "toggle", name: "mag1", label: "MAG 1", group: "cockpit" },
 	{ kind: "toggle", name: "mag2", label: "MAG 2", group: "cockpit" },
+
+	// === Guarded switches (short press unlocks the cover; long press triggers
+	// the protected command, e.g. PA46 starter, fuel cutoff, emergency gear) ===
+	{ kind: "guarded", name: "starter", label: "STARTER", group: "cockpit" },
+	{ kind: "guarded", name: "starter_l", label: "START", sublabel: "L", group: "cockpit" },
+	{ kind: "guarded", name: "starter_r", label: "START", sublabel: "R", group: "cockpit" },
+	{ kind: "guarded", name: "fuel_cut", label: "FUEL CUT", group: "cockpit" },
+	{ kind: "guarded", name: "emer_gear", label: "EMER GEAR", group: "cockpit" },
 
 	// === Live readouts (display-only, no on/off) ===
 	// Layout reserves the lower 2/3 of the key for the Stream Deck title overlay.
