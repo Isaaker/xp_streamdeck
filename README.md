@@ -298,6 +298,39 @@ Useful for aircraft where the gear command runs an animation/sound but the simpl
 
 Press while OFF → fires `servos_on`; press while ON → fires `servos_off`. The button image follows the live DataRef.
 
+### Guarded Command
+
+Two-stage button modeled on cockpit covers that protect dangerous switches. **Short press** fires `shortPressCommand` (e.g. flip the cover open); **long press** (≥ 500 ms) fires the protected `longPressCommand` (e.g. engage the starter). Optionally subscribes to a `Guard DataRef` and renders one of two images — `locked` (cover closed) or `unlocked` (cover open) — so the button reflects the actual cockpit state.
+
+Designed primarily for the [Piper PA-46 M500 by X-Aerodynamics](https://www.x-aerodynamics.com/copy-of-about-x-aero) — the Property Inspector placeholders use M500 DataRefs (`sim/PA46/cover/starter_open`, `sim/PA46/cover/starter_toggle`) — but works with any aircraft that exposes a guard DataRef plus open/close commands.
+
+Property Inspector fields:
+
+- **Short press → Command Path** — CommandRef fired on quick release, e.g. the cover toggle.
+- **Hide green OK after short press** — opt-out of the `showOk()` flash on short press. Errors still always show the alert icon.
+- **Long press → Command Path** — CommandRef used when the key is held for at least 500 ms (e.g. engage starter).
+- **Long press → Mode** —
+  - `Hold (begin / end while held)` *(default)* — sends WebSocket `command_set_is_active` begin at the 500 ms threshold and end on release. Use for sustained actions like cranking a starter.
+  - `Auto-repeat 5 Hz while held` — fires `activate` every 200 ms while held. Use for things that need repeated discrete activations.
+  - `Activate once at threshold` — fires a single `activate` at 500 ms and ignores the rest of the hold.
+- **Guard DataRef** — optional DataRef that reports the cover/guard state; drives the visible locked/unlocked image. Leave blank to skip state display (the action still fires both commands).
+- **Value Locked** / **Value Unlocked** — numeric thresholds; default `0` / `1`. Closest-distance match selects the image (or `≥ 0.5` for the default 0/1 case).
+- **Strict Unlocked Match** — when checked, only `value === Value Unlocked` (with float tolerance) counts as unlocked; everything else is locked. Useful for multi-state guards where one specific index is "open".
+- **Image Locked** / **Image Unlocked** — optional custom 144×144 PNG/JPG/SVG per state; uploads are downscaled to 144 px and persisted. Leave empty to use the bundled `guarded` icons (see [Button icons](#button-icons)).
+
+#### Example: PA-46 M500 starter with cover
+
+| Field | Value |
+| --- | --- |
+| Short press → Command Path | `sim/PA46/cover/starter_toggle` |
+| Long press → Command Path | `sim/starters/engage_starter_1` |
+| Long press → Mode | `Hold (begin / end while held)` |
+| Guard DataRef | `sim/PA46/cover/starter_open` |
+| Value Locked | `0` |
+| Value Unlocked | `1` |
+
+Press once → cover flips open; the button image switches to unlocked. Press and hold → starter engages via begin/end and stays engaged until release. Press once again → cover flips closed.
+
 ### DataRef Write
 
 Single-press action that writes a fixed numeric value to a DataRef. Use it when you want a button that *sets* a specific value (e.g. flaps to detent 2, parking brake to 1) rather than toggling.
@@ -374,12 +407,13 @@ Button images shown on the Stream Deck are generated locally by a small TypeScri
 make icons
 ```
 
-Three kinds of icons are produced from a single catalog (`scripts/icons/catalog.ts`):
+Five kinds of icons are produced from a single catalog (`scripts/icons/catalog.ts`):
 
 - **`toggle`** — for action buttons that flip a state (AP HDG mode, FD on/off, …). Generates an `_on` + `_off` pair: bold uppercase label centered, colored LED bar at the bottom (lit in the accent color when ON, dark grey when OFF, with a soft glow).
 - **`display`** — for the **`dataref-display`** action (live X-Plane readouts: current altitude, wind, AP setpoints, …). Generates a single PNG: small caption + thin accent line in the top third, rest of the key left empty so Stream Deck's title overlay can render the live value cleanly underneath.
 - **`nudge`** — for single-press command buttons that increment/decrement an AP setpoint (heading bug, altitude target, V/S, source). Generates a single PNG: bold label at the top, big filled triangle in the accent color pointing in the action direction. Pair with the `command` action (with `Hold Mode` for continuous spin).
 - **`background`** — solid-color filler tile (no label, no accent). Generates a single PNG with the entire 144×144 painted in the entry's `color`. Useful as visual separators between functional clusters on the deck. Bundled set: black, white, yellow, red.
+- **`guarded`** — pairs with the **`guarded-command`** action. Generates a `_locked` + `_unlocked` pair: yellow-and-black hazard stripe at the top (signals "guarded"), bold label centered, LED bar at the bottom (lit in the group's accent color when unlocked, dark when locked). Bundled set lives in the `cockpit` group: `starter`, `starter_l` / `starter_r` (twin-engine), `fuel_cut`, `emer_gear`.
 
 ### Groups & color palette
 
@@ -427,7 +461,7 @@ Toggles produce `<name>_on.png` + `<name>_off.png`; displays and nudges produce 
    { kind: 'background', name: 'bg_orange', color: '#f59e0b', group: 'backgrounds' },
    ```
 
-   - `kind` — `'toggle'` for on/off buttons, `'display'` for live-readout headers, `'nudge'` for single-press arrow buttons, `'background'` for plain-color filler tiles.
+   - `kind` — `'toggle'` for on/off buttons, `'display'` for live-readout headers, `'nudge'` for single-press arrow buttons, `'background'` for plain-color filler tiles, `'guarded'` for two-stage cover-protected buttons.
    - `name` — file-name stem; must be unique within its group. Output: `apu_on.png` + `apu_off.png` (toggle) or `cur_oat.png` / `crs_left.png` (display, nudge), inside the group's subdirectory.
    - `label` — text shown on the icon. **Toggle:** ≤ 4 chars renders at 44px; longer labels auto-shrink in fixed steps (5→36, 6→30, 7→26, 8→22, 9→20, 10+→18). **Display:** ≤ 6 characters comfortably (`AP HDG`, `W SPD`). **Nudge:** ≤ 4 characters (`HDG`, `SRC`, `ALT`, `VS`); the arrow is the visual focus.
    - `group` — one of `'autopilot'` / `'lights'` / `'cockpit'` / `'readouts'`. Drives **both** the accent color (see the table above) and the output subdirectory. To add a new group, extend the `IconGroup` type and `GROUP_ACCENT` map at the top of `catalog.ts`.
@@ -449,6 +483,12 @@ All visual decisions live in `scripts/icons/template.ts` (a single SVG renderer)
 - The `<filter id="glow">` block — strength of the lit-bar glow.
 
 Change once → re-run `make icons` → every icon updates with identical proportions.
+
+## Aircraft profiles
+
+Ready-made Stream Deck XL profiles for several aircraft live in [`streamdeck-profiles/`](streamdeck-profiles/README.md). The bundled set covers the X-Plane default Cessna 172 SP and G1000, Aerobask Diamond DA42 / DA62 / DV20, UL Shark, Aerobask Phenom 300, Pilatus PC12 by Thranda (G1000 version), and the **Piper PA-46 M500 by [X-Aerodynamics](https://www.x-aerodynamics.com/copy-of-about-x-aero)**.
+
+Each profile expects this plugin installed and the matching aircraft loaded in X-Plane.
 
 ## Common Make targets
 
