@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane Guarded Command</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
+		<style>
+			.section-hdr {
+				margin: 12px 12px 4px 12px;
+				font-size: 11px;
+				text-transform: uppercase;
+				letter-spacing: 0.06em;
+				color: #888;
+			}
+			.image-upload {
+				display: flex;
+				align-items: center;
+				gap: 8px;
+				flex: 1;
+			}
+			.image-upload .thumb {
+				width: 36px;
+				height: 36px;
+				border-radius: 4px;
+				background: #2d2d2d center/contain no-repeat;
+				border: 1px solid #444;
+				flex: 0 0 auto;
+				display: inline-block;
+			}
+			.image-upload .actions {
+				display: flex;
+				gap: 6px;
+				flex: 1;
+			}
+			.image-upload button {
+				cursor: pointer;
+			}
+			.image-upload input[type="file"] {
+				display: none;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="section-hdr">Short press</div>
+		<sdpi-item label="Command Path">
+			<sdpi-textfield
+				setting="shortPressCommand"
+				placeholder="sim/PA46/cover/starter_toggle"
+				id="shortField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Feedback">
+			<sdpi-checkbox
+				setting="hideShortConfirmation"
+				label="Hide green OK after short press"
+			></sdpi-checkbox>
+		</sdpi-item>
+
+		<div class="section-hdr">Long press (≥ 500 ms)</div>
+		<sdpi-item label="Command Path">
+			<sdpi-textfield
+				setting="longPressCommand"
+				placeholder="sim/starters/engage_starter_1"
+				id="longField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Mode">
+			<sdpi-select setting="longPressMode" default="hold">
+				<option value="hold">Hold (begin / end while held)</option>
+				<option value="autoRepeat">Auto-repeat 5 Hz while held</option>
+				<option value="activate">Activate once at threshold</option>
+			</sdpi-select>
+		</sdpi-item>
+
+		<div class="section-hdr">State indicator (optional)</div>
+		<sdpi-item label="Guard DataRef">
+			<sdpi-textfield
+				setting="guardDataRef"
+				placeholder="sim/PA46/cover/starter_open"
+				id="guardField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Value Locked">
+			<sdpi-textfield
+				setting="valueLocked"
+				placeholder="0"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Value Unlocked">
+			<sdpi-textfield
+				setting="valueUnlocked"
+				placeholder="1"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Strict Unlocked Match">
+			<sdpi-checkbox setting="strictOnMatch">
+				Treat only <code>value === Value Unlocked</code> as unlocked
+			</sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item label="Image Locked">
+			<div class="image-upload">
+				<div class="thumb" id="thumbLocked"></div>
+				<div class="actions">
+					<button type="button" id="pickLocked">Choose…</button>
+					<button type="button" id="clearLocked">Reset</button>
+				</div>
+				<input
+					type="file"
+					id="fileLocked"
+					accept="image/png,image/jpeg,image/svg+xml"
+				/>
+			</div>
+		</sdpi-item>
+		<sdpi-item label="Image Unlocked">
+			<div class="image-upload">
+				<div class="thumb" id="thumbUnlocked"></div>
+				<div class="actions">
+					<button type="button" id="pickUnlocked">Choose…</button>
+					<button type="button" id="clearUnlocked">Reset</button>
+				</div>
+				<input
+					type="file"
+					id="fileUnlocked"
+					accept="image/png,image/jpeg,image/svg+xml"
+				/>
+			</div>
+		</sdpi-item>
+
+		<script>
+			(() => {
+				const client = window.SDPIComponents?.streamDeckClient;
+				if (!client) {
+					console.error("SDPIComponents.streamDeckClient not available");
+					return;
+				}
+
+				const thumbLocked = document.getElementById("thumbLocked");
+				const thumbUnlocked = document.getElementById("thumbUnlocked");
+				const fileLocked = document.getElementById("fileLocked");
+				const fileUnlocked = document.getElementById("fileUnlocked");
+
+				const setThumb = (el, dataUrl) => {
+					el.style.backgroundImage = dataUrl ? `url("${dataUrl}")` : "";
+				};
+
+				const readAsDataURL = (file) =>
+					new Promise((resolve, reject) => {
+						const r = new FileReader();
+						r.onload = () => resolve(String(r.result));
+						r.onerror = () => reject(r.error);
+						r.readAsDataURL(file);
+					});
+
+				const TARGET_PX = 144;
+				const resizeToPng = (dataUrl) =>
+					new Promise((resolve, reject) => {
+						const img = new Image();
+						img.onload = () => {
+							const canvas = document.createElement("canvas");
+							canvas.width = TARGET_PX;
+							canvas.height = TARGET_PX;
+							const ctx = canvas.getContext("2d");
+							if (!ctx) {
+								reject(new Error("Canvas 2D context unavailable"));
+								return;
+							}
+							const scale = Math.min(
+								TARGET_PX / img.width,
+								TARGET_PX / img.height,
+							);
+							const w = img.width * scale;
+							const h = img.height * scale;
+							const x = (TARGET_PX - w) / 2;
+							const y = (TARGET_PX - h) / 2;
+							ctx.clearRect(0, 0, TARGET_PX, TARGET_PX);
+							ctx.drawImage(img, x, y, w, h);
+							resolve(canvas.toDataURL("image/png"));
+						};
+						img.onerror = () => reject(new Error("Image decode failed"));
+						img.src = dataUrl;
+					});
+
+				let cached = null;
+				let cacheReady = false;
+
+				const refreshFromSdk = async () => {
+					try {
+						const s = await client.getSettings();
+						if (s && typeof s === "object") cached = s;
+					} catch (err) {
+						console.error("getSettings failed", err);
+					}
+				};
+
+				const ready = (async () => {
+					await refreshFromSdk();
+					cacheReady = true;
+					const s = cached ?? {};
+					setThumb(thumbLocked, s.imageLocked ?? "");
+					setThumb(thumbUnlocked, s.imageUnlocked ?? "");
+				})();
+
+				const live = client.didReceiveSettings;
+				if (live && typeof live.subscribe === "function") {
+					live.subscribe((arg) => {
+						const s = arg?.payload?.settings ?? arg?.settings;
+						if (s && typeof s === "object") cached = s;
+					});
+				}
+
+				const updateSetting = async (key, value) => {
+					if (!cacheReady) await ready;
+					await refreshFromSdk();
+					if (!cached || typeof cached !== "object") {
+						console.warn(
+							`guarded-command PI: refusing to write ${key} — no baseline settings available`,
+						);
+						return;
+					}
+					const next = { ...cached };
+					if (value === undefined) delete next[key];
+					else next[key] = value;
+					cached = next;
+					await client.setSettings(next);
+				};
+
+				const wire = (input, key, thumb) => {
+					input.addEventListener("change", async () => {
+						const file = input.files?.[0];
+						if (!file) return;
+						try {
+							const raw = await readAsDataURL(file);
+							const dataUrl = await resizeToPng(raw);
+							setThumb(thumb, dataUrl);
+							await updateSetting(key, dataUrl);
+						} catch (err) {
+							console.error(`Failed to read image for ${key}`, err);
+						} finally {
+							input.value = "";
+						}
+					});
+				};
+
+				wire(fileLocked, "imageLocked", thumbLocked);
+				wire(fileUnlocked, "imageUnlocked", thumbUnlocked);
+
+				const shortField = document.getElementById("shortField");
+				const longField = document.getElementById("longField");
+				const guardField = document.getElementById("guardField");
+				if (window.XPlanePI) {
+					if (shortField)
+						window.XPlanePI.attachAutocomplete(shortField, "command");
+					if (longField) window.XPlanePI.attachAutocomplete(longField, "command");
+					if (guardField)
+						window.XPlanePI.attachAutocomplete(guardField, "dataref");
+				}
+
+				document
+					.getElementById("pickLocked")
+					.addEventListener("click", () => fileLocked.click());
+				document
+					.getElementById("pickUnlocked")
+					.addEventListener("click", () => fileUnlocked.click());
+				document
+					.getElementById("clearLocked")
+					.addEventListener("click", async () => {
+						setThumb(thumbLocked, "");
+						await updateSetting("imageLocked", undefined);
+					});
+				document
+					.getElementById("clearUnlocked")
+					.addEventListener("click", async () => {
+						setThumb(thumbUnlocked, "");
+						await updateSetting("imageUnlocked", undefined);
+					});
+			})();
+		</script>
+	</body>
+</html>

@@ -36,6 +36,27 @@
 			]
 		},
 		{
+			"Name": "Guarded Command",
+			"UUID": "com.robertw.xplane.guarded-command",
+			"Icon": "imgs/actions/guarded-command/icon",
+			"Tooltip": "Two-stage button: short press fires command A (e.g. open cover), long press (≥500 ms) fires command B with hold / auto-repeat (e.g. engage starter).",
+			"PropertyInspectorPath": "ui/guarded-command.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"DisableAutomaticStates": true,
+			"States": [
+				{
+					"Image": "imgs/states/off",
+					"TitleAlignment": "middle"
+				},
+				{
+					"Image": "imgs/states/on",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
 			"Name": "Rotary",
 			"UUID": "com.robertw.xplane.rotary",
 			"Icon": "imgs/actions/rotary/icon",
