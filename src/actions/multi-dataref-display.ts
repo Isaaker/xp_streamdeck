@@ -7,6 +7,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearOffline, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
@@ -258,10 +259,4 @@ function parseSlot(
 		unitScale: toFiniteNumber(unitScale),
 		precision: toFiniteNumber(precision),
 	};
-}
-
-function toFiniteNumber(v: unknown): number | undefined {
-	if (v === undefined || v === null || v === "") return undefined;
-	const n = typeof v === "number" ? v : Number(v);
-	return Number.isFinite(n) ? n : undefined;
 }

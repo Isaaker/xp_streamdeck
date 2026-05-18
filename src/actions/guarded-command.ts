@@ -10,6 +10,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
 import { persistImage } from "../util/image-cache";
@@ -480,23 +481,6 @@ function parseSettings(s: GuardedCommandSettings): ParsedSettings {
 		strictOnMatch,
 		hideShortConfirmation,
 	};
-}
-
-function toFiniteNumber(v: unknown): number | undefined {
-	if (v === undefined || v === null || v === "") return undefined;
-	const n = typeof v === "number" ? v : Number(v);
-	return Number.isFinite(n) ? n : undefined;
-}
-
-function coerceNumber(v: DataRefValue): number | undefined {
-	if (typeof v === "number") return v;
-	if (typeof v === "boolean") return v ? 1 : 0;
-	if (typeof v === "string") {
-		const n = Number(v);
-		return Number.isFinite(n) ? n : undefined;
-	}
-	if (Array.isArray(v) && v.length > 0 && typeof v[0] === "number") return v[0];
-	return undefined;
 }
 
 function mapValueToStateIndex(

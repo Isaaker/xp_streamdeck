@@ -9,6 +9,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearOffline, combineTitle, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
@@ -383,28 +384,8 @@ function parseEnumMap(raw: string): {
 }
 
 function toIndexInteger(v: DataRefValue, scale?: number): number | undefined {
-	const raw = toFiniteValue(v);
+	const raw = coerceNumber(v);
 	if (raw === undefined) return undefined;
 	const scaled = scale !== undefined && Number.isFinite(scale) ? raw * scale : raw;
 	return Math.round(scaled);
-}
-
-function toFiniteValue(v: DataRefValue): number | undefined {
-	if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
-	if (typeof v === "boolean") return v ? 1 : 0;
-	if (typeof v === "string") {
-		const n = Number(v);
-		return Number.isFinite(n) ? n : undefined;
-	}
-	if (Array.isArray(v)) {
-		const first = v[0];
-		if (typeof first === "number" && Number.isFinite(first)) return first;
-	}
-	return undefined;
-}
-
-function toFiniteNumber(v: unknown): number | undefined {
-	if (v === undefined || v === null || v === "") return undefined;
-	const n = typeof v === "number" ? v : Number(v);
-	return Number.isFinite(n) ? n : undefined;
 }
