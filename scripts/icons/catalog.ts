@@ -6,7 +6,8 @@ export type IconGroup =
 	| "backgrounds"
 	| "g1000"
 	| "views"
-	| "alerts";
+	| "alerts"
+	| "emergency";
 
 // One accent color per functional group — keeps the whole set visually calm.
 // The group name is also the output subdirectory (out/icons/<group>/).
@@ -18,11 +19,12 @@ export const GROUP_ACCENT: Record<IconGroup, string> = {
 	autopilot: "#ffeb00", // yellow
 	lights: "#22c55e", // green
 	cockpit: "#22c55e", // green
-	readouts: "#ffffff", // white
+	readouts: "#9933CC", // WebSafe purple — all live-value tiles read as one set
 	backgrounds: "#000000", // unused — background tiles carry their own color
 	g1000: "#f59e0b", // orange — Garmin-style amber for G1000 command/knob buttons
 	views: "#3b82f6", // blue — saved cockpit view recall buttons
 	alerts: "#000000", // unused — alert tiles derive their color from `severity`
+	emergency: "#ef4444", // red — EMER / FIRE / FUEL CUT-style buttons (red != always warning in cockpit context)
 };
 
 type IconBase = {
@@ -61,6 +63,9 @@ export type NudgeDisplayIcon = {
 	label: string;
 	group: IconGroup;
 	direction: "up" | "down" | "left" | "right";
+	// When true, the short 64-px accent stripe is omitted — leaves the entire
+	// canvas (minus the edge arrow) free for a Stream Deck `setTitle()` overlay.
+	noAccentLine?: boolean;
 };
 // G1000-style dual-concentric rotary knob indicator. `outer` is the big
 // outer ring (coarse adjustment), `inner` is the small inner knob (fine
@@ -212,6 +217,11 @@ export const catalog: IconDef[] = [
 	{ kind: "guarded", name: "fuel_cut", label: "FUEL CUT", group: "cockpit" },
 	{ kind: "guarded", name: "emer_gear", label: "EMER GEAR", group: "cockpit" },
 
+	// === Labelless push buttons (label set dynamically via setTitle, or unused) ===
+	// `nolabel` (cockpit/green) already covers the green toggle variant.
+	{ kind: "toggle", name: "nolabel_red", label: "", group: "emergency" },
+	{ kind: "command", name: "nolabel_cmd", label: "", group: "cockpit" },
+
 	// === Live readouts (display-only, no on/off) ===
 	// Layout reserves the lower 2/3 of the key for the Stream Deck title overlay.
 	{ kind: "display", name: "cur_hdg", label: "HDG", group: "readouts" },
@@ -223,6 +233,19 @@ export const catalog: IconDef[] = [
 	{ kind: "display", name: "wind_dir", label: "W-DIR", group: "readouts" },
 	{ kind: "display", name: "wind_spd", label: "W-SPD", group: "readouts" },
 	{ kind: "display", name: "wind_temp", label: "W-TEMP", group: "readouts" },
+
+	// === Engine readouts (PT6 turboprop: NG/ITT/TRQ/NP + house keeping) ===
+	{ kind: "display", name: "eng_ng", label: "NG", group: "readouts" },
+	{ kind: "display", name: "eng_itt", label: "ITT", group: "readouts" },
+	{ kind: "display", name: "eng_trq", label: "TRQ", group: "readouts" },
+	{ kind: "display", name: "eng_np", label: "NP", group: "readouts" },
+	{ kind: "display", name: "eng_ff", label: "FF", group: "readouts" },
+	{ kind: "display", name: "eng_oil_p", label: "OIL P", group: "readouts" },
+	{ kind: "display", name: "eng_oil_t", label: "OIL T", group: "readouts" },
+	{ kind: "display", name: "eng_volt", label: "VOLT", group: "readouts" },
+	{ kind: "display", name: "eng_amp", label: "AMP", group: "readouts" },
+	// Label-less display: just the accent line; setTitle() drops the live value below.
+	{ kind: "display", name: "eng_blank", label: "", group: "readouts" },
 
 	// === Rotary (small directional arrow + label, lower ⅔ reserved for setTitle) ===
 	// Pair these to drive multi-position rotary switches (e.g. magneto OFF/R/L/BOTH/START)
@@ -298,6 +321,79 @@ export const catalog: IconDef[] = [
 		label: "",
 		direction: "down",
 		group: "cockpit",
+	},
+
+	// === Bare directional arrows (no accent line, no label baked in) ===
+	// Edge-mounted triangle only — the whole canvas minus the arrow is free
+	// for a Stream Deck setTitle() overlay. Pairs naturally with the rotary
+	// action when a dynamic value should sit centered on the key.
+	// Semantically these are cockpit controls (rotaries, selectors), but they
+	// live in `readouts` so the purple accent matches the live-value overlay.
+	{
+		kind: "nudge-display",
+		name: "bare_left",
+		label: "",
+		direction: "left",
+		group: "readouts",
+		noAccentLine: true,
+	},
+	{
+		kind: "nudge-display",
+		name: "bare_right",
+		label: "",
+		direction: "right",
+		group: "readouts",
+		noAccentLine: true,
+	},
+	{
+		kind: "nudge-display",
+		name: "bare_up",
+		label: "",
+		direction: "up",
+		group: "readouts",
+		noAccentLine: true,
+	},
+	{
+		kind: "nudge-display",
+		name: "bare_down",
+		label: "",
+		direction: "down",
+		group: "readouts",
+		noAccentLine: true,
+	},
+	// Same bare arrows in cockpit green — for selector/rotary controls that
+	// belong visually to the cockpit cluster rather than a readout group.
+	{
+		kind: "nudge-display",
+		name: "bare_left_green",
+		label: "",
+		direction: "left",
+		group: "cockpit",
+		noAccentLine: true,
+	},
+	{
+		kind: "nudge-display",
+		name: "bare_right_green",
+		label: "",
+		direction: "right",
+		group: "cockpit",
+		noAccentLine: true,
+	},
+	{
+		kind: "nudge-display",
+		name: "bare_up_green",
+		label: "",
+		direction: "up",
+		group: "cockpit",
+		noAccentLine: true,
+	},
+	{
+		kind: "nudge-display",
+		name: "bare_down_green",
+		label: "",
+		direction: "down",
+		group: "cockpit",
+		noAccentLine: true,
 	},
 
 	// === Plain-color background tiles (no label, no accent) ===

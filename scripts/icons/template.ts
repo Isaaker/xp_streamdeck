@@ -36,10 +36,10 @@ function escapeXml(s: string): string {
 // Longer labels (lights, controls) shrink in a fixed staircase so they stay
 // inside the canvas without per-icon hand-tuning. Labels of the same length
 // always render at the same size → groups look uniform within themselves.
-const TOGGLE_BAR_HEIGHT = 14;
+const TOGGLE_BAR_HEIGHT = 20;
 const TOGGLE_BAR_INSET_X = 14;
 const TOGGLE_BAR_INSET_BOTTOM = 14;
-const TOGGLE_BAR_RADIUS = 3;
+const TOGGLE_BAR_RADIUS = 4;
 
 const TOGGLE_LABEL_VISUAL_CENTER_Y = 64;
 // Two-line layout (used when ToggleIcon has a `sublabel`): main label sits
@@ -243,12 +243,16 @@ export function renderNudgeDisplayIcon(def: NudgeDisplayIcon): string {
 	const accentLineY = isUp ? NUDGE_DISPLAY_ACCENT_LINE_Y_BOTTOM : NUDGE_DISPLAY_ACCENT_LINE_Y_TOP;
 	const lineX = (SIZE - NUDGE_DISPLAY_ACCENT_LINE_WIDTH) / 2;
 
+	const accentLineRect = def.noAccentLine
+		? ""
+		: `<rect x="${lineX}" y="${accentLineY}" width="${NUDGE_DISPLAY_ACCENT_LINE_WIDTH}" height="${NUDGE_DISPLAY_ACCENT_LINE_HEIGHT}" fill="${accent}"/>`;
+
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
   <text x="${SIZE / 2}" y="${labelBaselineY}" text-anchor="middle"
         font-family="${FONT_STACK}" font-size="${NUDGE_DISPLAY_LABEL_FONT_SIZE}" font-weight="700"
         fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(def.label)}</text>
-  <rect x="${lineX}" y="${accentLineY}" width="${NUDGE_DISPLAY_ACCENT_LINE_WIDTH}" height="${NUDGE_DISPLAY_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
+  ${accentLineRect}
   <path d="${arrowPath}" fill="${accent}"/>
 </svg>`;
 }
