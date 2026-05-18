@@ -10,9 +10,12 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { TIMINGS, TOLERANCE_FLOAT } from "../const";
+import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
 import { persistImage } from "../util/image-cache";
+import { trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
 type LongPressMode = "activate" | "hold" | "autoRepeat";
@@ -35,10 +38,7 @@ type GuardedCommandSettings = JsonObject & {
 const STATE_LOCKED = 0;
 const STATE_UNLOCKED = 1;
 
-const UNINITIALIZED_STATE = -1;
-
-const LONG_PRESS_THRESHOLD_MS = 500;
-const REPEAT_INTERVAL_MS = 200;
+const STATE_DIRTY = -1;
 
 const DEFAULT_IMAGE_LOCKED = "imgs/guarded/locked";
 const DEFAULT_IMAGE_UNLOCKED = "imgs/guarded/unlocked";
@@ -98,7 +98,7 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 			valueLocked: parsed.valueLocked,
 			valueUnlocked: parsed.valueUnlocked,
 			strictOnMatch: parsed.strictOnMatch,
-			currentState: UNINITIALIZED_STATE,
+			currentState: STATE_DIRTY,
 		};
 		this.states.set(ev.action.id, state);
 		await this.syncImages(ev.action.id, state, parsed);
@@ -138,7 +138,7 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 			this.dropSubscription(state);
 			state.guardPath = parsed.guardPath;
 			state.lastValue = undefined;
-			state.currentState = UNINITIALIZED_STATE;
+			state.currentState = STATE_DIRTY;
 			if (state.guardPath) {
 				await this.applySubscription(state);
 			} else {
@@ -152,7 +152,7 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 		}
 
 		// Force a re-render so changed thresholds and image overrides take effect.
-		state.currentState = UNINITIALIZED_STATE;
+		state.currentState = STATE_DIRTY;
 		if (state.lastValue !== undefined) {
 			await this.renderState(state, state.lastValue);
 		}
@@ -181,7 +181,7 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 			this.fireLongPress(state, parsed).catch((err) =>
 				streamDeck.logger.error("guarded-command: long press failed", err),
 			);
-		}, LONG_PRESS_THRESHOLD_MS);
+		}, TIMINGS.LONG_PRESS_THRESHOLD_MS);
 
 		return Promise.resolve();
 	}
@@ -254,7 +254,7 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 								err,
 							),
 						);
-				}, REPEAT_INTERVAL_MS);
+				}, TIMINGS.REPEAT_INTERVAL_MS);
 			} else {
 				await this.xplane.activateCommand(id);
 				streamDeck.logger.info(
@@ -421,12 +421,15 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 	}
 
 	private onXPlaneOffline(): void {
+		// Show offline regardless of guardPath: every keyDown reaches X-Plane via
+		// getCommandId(), so without a connection this tile is non-functional even
+		// when no guard DataRef is configured.
 		for (const state of this.states.values()) {
 			this.cancelLongPressTimer(state);
 			this.stopRepeater(state);
 			if (state.guardPath) {
 				this.dropSubscription(state);
-				state.currentState = UNINITIALIZED_STATE;
+				state.currentState = STATE_DIRTY;
 			}
 			setOffline(state.action).catch((err) =>
 				streamDeck.logger.warn("guarded-command: setOffline failed", err),
@@ -449,54 +452,30 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 }
 
 function parseSettings(s: GuardedCommandSettings): ParsedSettings {
-	const shortPath = s.shortPressCommand?.trim() ?? "";
-	const longPath = s.longPressCommand?.trim() ?? "";
 	const longMode: LongPressMode =
 		s.longPressMode === "activate"
 			? "activate"
 			: s.longPressMode === "autoRepeat"
 				? "autoRepeat"
 				: "hold";
-	const guardPath = s.guardDataRef?.trim() ?? "";
-	const valueLocked = toFiniteNumber(s.valueLocked) ?? 0;
-	const valueUnlocked = toFiniteNumber(s.valueUnlocked) ?? 1;
 	const imageLocked =
 		typeof s.imageLocked === "string" && s.imageLocked.length > 0 ? s.imageLocked : undefined;
 	const imageUnlocked =
 		typeof s.imageUnlocked === "string" && s.imageUnlocked.length > 0
 			? s.imageUnlocked
 			: undefined;
-	const strictOnMatch = s.strictOnMatch === true;
-	const hideShortConfirmation = s.hideShortConfirmation === true;
 	return {
-		shortPath,
-		longPath,
+		shortPath: trimString(s.shortPressCommand),
+		longPath: trimString(s.longPressCommand),
 		longMode,
-		guardPath,
-		valueLocked,
-		valueUnlocked,
+		guardPath: trimString(s.guardDataRef),
+		valueLocked: toFiniteNumber(s.valueLocked) ?? 0,
+		valueUnlocked: toFiniteNumber(s.valueUnlocked) ?? 1,
 		imageLocked,
 		imageUnlocked,
-		strictOnMatch,
-		hideShortConfirmation,
+		strictOnMatch: s.strictOnMatch === true,
+		hideShortConfirmation: s.hideShortConfirmation === true,
 	};
-}
-
-function toFiniteNumber(v: unknown): number | undefined {
-	if (v === undefined || v === null || v === "") return undefined;
-	const n = typeof v === "number" ? v : Number(v);
-	return Number.isFinite(n) ? n : undefined;
-}
-
-function coerceNumber(v: DataRefValue): number | undefined {
-	if (typeof v === "number") return v;
-	if (typeof v === "boolean") return v ? 1 : 0;
-	if (typeof v === "string") {
-		const n = Number(v);
-		return Number.isFinite(n) ? n : undefined;
-	}
-	if (Array.isArray(v) && v.length > 0 && typeof v[0] === "number") return v[0];
-	return undefined;
 }
 
 function mapValueToStateIndex(
@@ -508,7 +487,7 @@ function mapValueToStateIndex(
 	const num = coerceNumber(value);
 	if (num === undefined) return STATE_LOCKED;
 	if (strictOnMatch) {
-		return Math.abs(num - valueUnlocked) < 1e-6 ? STATE_UNLOCKED : STATE_LOCKED;
+		return Math.abs(num - valueUnlocked) < TOLERANCE_FLOAT ? STATE_UNLOCKED : STATE_LOCKED;
 	}
 	if (valueLocked === 0 && valueUnlocked === 1) {
 		return num >= 0.5 ? STATE_UNLOCKED : STATE_LOCKED;

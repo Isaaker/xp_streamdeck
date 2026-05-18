@@ -7,10 +7,12 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { coerceNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearOffline, setOffline } from "../util/error-tile";
+import { trimString, trimStringOr } from "../util/settings";
 import { renderWindDataUrl } from "../util/wind-svg";
-import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
+import type { SubscriptionHandle, XPlaneClient } from "../xplane";
 
 type ArrowConvention = "from" | "to";
 
@@ -110,7 +112,7 @@ export class XPlaneWindDisplay extends SingletonAction<WindDisplaySettings> {
 			slot.handle = await this.xplane.subscribe(basePath, (raw) => {
 				try {
 					const val = applyIndex(raw, index);
-					slot.lastValue = toFiniteNumber(val);
+					slot.lastValue = coerceNumber(val);
 					this.render(state);
 				} catch (err) {
 					streamDeck.logger.warn(
@@ -193,27 +195,12 @@ interface ParsedSettings {
 }
 
 function parseSettings(s: WindDisplaySettings): ParsedSettings {
-	const label = s.label?.trim();
-	const speedUnit = s.speedUnit?.trim();
 	return {
-		label: label && label.length > 0 ? label : "WIND",
-		directionPath: s.directionDataRef?.trim() ?? "",
-		speedPath: s.speedDataRef?.trim() ?? "",
-		oatPath: s.oatDataRef?.trim() ?? "",
-		speedUnit: speedUnit && speedUnit.length > 0 ? speedUnit : "kt",
+		label: trimStringOr(s.label, "WIND"),
+		directionPath: trimString(s.directionDataRef),
+		speedPath: trimString(s.speedDataRef),
+		oatPath: trimString(s.oatDataRef),
+		speedUnit: trimStringOr(s.speedUnit, "kt"),
 		convention: s.arrowConvention === "from" ? "from" : "to",
 	};
-}
-
-function toFiniteNumber(v: DataRefValue): number | undefined {
-	if (typeof v === "number" && Number.isFinite(v)) return v;
-	if (typeof v === "string") {
-		const n = Number(v);
-		return Number.isFinite(n) ? n : undefined;
-	}
-	if (Array.isArray(v)) {
-		const first = v[0];
-		if (typeof first === "number" && Number.isFinite(first)) return first;
-	}
-	return undefined;
 }

@@ -74,6 +74,22 @@ Patterns every new action under `src/actions/` should follow:
 - **No floating promises.** Biome's `noFloatingPromises` will fail the build. Wrap fire-and-forget async with `.catch((err) => streamDeck.logger.error(...))` or `await` it.
 - **Read settings via `ev.payload.settings`** in `onKeyDown`/`onKeyUp`/`onWillAppear`. Trim string inputs.
 
+## Shared Helpers (use these — don't reinvent)
+
+Cross-cutting utilities live under `src/util/` and `src/const.ts`. New actions should import from these instead of redefining locally:
+
+- **`src/util/coerce.ts`** — value coercion. `toFiniteNumber(v: unknown)` for settings inputs (string/number from PI), `coerceNumber(v: DataRefValue)` for live X-Plane values (handles `number | string | boolean | number[]`, filters NaN), `describeValue(v)` for log lines.
+- **`src/util/settings.ts`** — string normalization. `trimString(v)` returns `""` for missing/empty (paths, optional labels); `trimStringOr(v, fallback)` for labels with defaults; `normalizeFormat(v)` for printf format strings (defaults to `"%s"`).
+- **`src/util/error-tile.ts`** — action-specific (NOT a pure util — depends on the Stream Deck SDK). `setOffline`/`clearOffline`/`setNotFound`/`combineTitle`/`NOT_FOUND_SUFFIX`/`OFFLINE_IMAGE`.
+- **`src/util/dataref-path.ts`** — `parseDataRefPath` for `name[index]` syntax + `applyIndex` to slice an array value.
+- **`src/util/format.ts`** — `formatDataRefValue` for printf-style display.
+- **`src/const.ts`** — `TIMINGS.LONG_PRESS_THRESHOLD_MS / REPEAT_INTERVAL_MS / REPEAT_INITIAL_DELAY_MS`; `TOLERANCE_FLOAT = 1e-6` for value-equality checks.
+
+### Naming conventions for state machines
+
+- **`STATE_DIRTY = -1`** in actions that gate `setState()` on value changes (`dataref-toggle`, `guarded-command`). Setting `state.currentState = STATE_DIRTY` forces the next render to push `setState()` + `setImage()` even if the value didn't change — used in `onDidReceiveSettings`, after offline recovery, and on path re-subscription.
+- **`STATE_OFF / STATE_ON`** in toggles, **`STATE_LOCKED / STATE_UNLOCKED`** in guarded — these stay action-local, not centralized (different semantics).
+
 ## Button Icon Pipeline
 
 To keep buttons visually consistent (one of M01's pain points was inconsistent purchased icon packs), button images are generated locally instead of curated by hand.

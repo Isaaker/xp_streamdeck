@@ -9,9 +9,11 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearOffline, combineTitle, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
+import { normalizeFormat, trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
 type RotaryDirection = "left" | "right" | "up" | "down";
@@ -322,30 +324,22 @@ function shouldHoldOnLast(state: ActionState | undefined, parsed: ParsedSettings
 }
 
 function parseSettings(s: RotarySettings): ParsedSettings {
-	const commandPath = s.commandPath?.trim() ?? "";
-	const datarefPath = s.datarefPath?.trim() ?? "";
-	const label = s.label?.trim() ?? "";
 	const formatMode: RotaryFormatMode = s.formatMode === "enum" ? "enum" : "numeric";
-	const formatRaw = s.format?.trim();
-	const format = formatRaw && formatRaw.length > 0 ? formatRaw : "%s";
-	const unit = s.unit?.trim() ?? "";
-	const holdCommand = s.holdCommand?.trim() ?? "";
-	const holdOnLastPosition = s.holdOnLastPosition === true;
 	const { enumLut, enumMaxIndex, enumValid } = parseEnumMap(s.enumMap ?? "");
 	return {
-		commandPath,
-		datarefPath,
-		label,
+		commandPath: trimString(s.commandPath),
+		datarefPath: trimString(s.datarefPath),
+		label: trimString(s.label),
 		formatMode,
-		format,
-		unit,
+		format: normalizeFormat(s.format),
+		unit: trimString(s.unit),
 		unitScale: toFiniteNumber(s.unitScale),
 		precision: toFiniteNumber(s.precision),
 		enumLut,
 		enumMaxIndex,
 		enumValid,
-		holdOnLastPosition,
-		holdCommand,
+		holdOnLastPosition: s.holdOnLastPosition === true,
+		holdCommand: trimString(s.holdCommand),
 	};
 }
 
@@ -383,28 +377,8 @@ function parseEnumMap(raw: string): {
 }
 
 function toIndexInteger(v: DataRefValue, scale?: number): number | undefined {
-	const raw = toFiniteValue(v);
+	const raw = coerceNumber(v);
 	if (raw === undefined) return undefined;
 	const scaled = scale !== undefined && Number.isFinite(scale) ? raw * scale : raw;
 	return Math.round(scaled);
-}
-
-function toFiniteValue(v: DataRefValue): number | undefined {
-	if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
-	if (typeof v === "boolean") return v ? 1 : 0;
-	if (typeof v === "string") {
-		const n = Number(v);
-		return Number.isFinite(n) ? n : undefined;
-	}
-	if (Array.isArray(v)) {
-		const first = v[0];
-		if (typeof first === "number" && Number.isFinite(first)) return first;
-	}
-	return undefined;
-}
-
-function toFiniteNumber(v: unknown): number | undefined {
-	if (v === undefined || v === null || v === "") return undefined;
-	const n = typeof v === "number" ? v : Number(v);
-	return Number.isFinite(n) ? n : undefined;
 }

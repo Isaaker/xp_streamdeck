@@ -7,9 +7,11 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearOffline, combineTitle, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
+import { normalizeFormat, trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
 type DataRefDisplaySettings = JsonObject & {
@@ -183,21 +185,11 @@ function parseSettings(s: DataRefDisplaySettings): {
 	unitScale?: number;
 	precision?: number;
 } {
-	const path = s.datarefPath?.trim() ?? "";
-	const label = s.label?.trim() ?? "";
-	const formatRaw = s.format?.trim();
-	const format = formatRaw && formatRaw.length > 0 ? formatRaw : "%s";
 	return {
-		path,
-		label,
-		format,
+		path: trimString(s.datarefPath),
+		label: trimString(s.label),
+		format: normalizeFormat(s.format),
 		unitScale: toFiniteNumber(s.unitScale),
 		precision: toFiniteNumber(s.precision),
 	};
-}
-
-function toFiniteNumber(v: unknown): number | undefined {
-	if (v === undefined || v === null || v === "") return undefined;
-	const n = typeof v === "number" ? v : Number(v);
-	return Number.isFinite(n) ? n : undefined;
 }

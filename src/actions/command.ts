@@ -9,7 +9,9 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { TIMINGS } from "../const";
 import { clearOffline, setOffline } from "../util/error-tile";
+import { trimString } from "../util/settings";
 import type { XPlaneClient } from "../xplane";
 
 type CommandSettings = JsonObject & {
@@ -26,9 +28,6 @@ type Repeater = {
 
 @action({ UUID: "com.robertw.xplane.command" })
 export class XPlaneCommand extends SingletonAction<CommandSettings> {
-	private static readonly REPEAT_INITIAL_DELAY_MS = 500;
-	private static readonly REPEAT_INTERVAL_MS = 200;
-
 	private readonly visible = new Map<string, KeyAction<CommandSettings>>();
 	private readonly repeaters = new Map<string, Repeater>();
 
@@ -53,7 +52,7 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	}
 
 	override async onKeyDown(ev: KeyDownEvent<CommandSettings>): Promise<void> {
-		const path = ev.payload.settings?.commandPath?.trim();
+		const path = trimString(ev.payload.settings?.commandPath);
 		const holdMode = ev.payload.settings?.holdMode === true;
 		const hideConfirmation = ev.payload.settings?.hideConfirmation === true;
 
@@ -87,7 +86,7 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	override async onKeyUp(ev: KeyUpEvent<CommandSettings>): Promise<void> {
 		this.stopRepeater(ev.action.id);
 
-		const path = ev.payload.settings?.commandPath?.trim();
+		const path = trimString(ev.payload.settings?.commandPath);
 		const holdMode = ev.payload.settings?.holdMode === true;
 
 		if (!holdMode || !path) return;
@@ -119,8 +118,8 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 				this.xplane
 					.activateCommand(commandId)
 					.catch((err) => streamDeck.logger.error(`command repeat failed: ${path}`, err));
-			}, XPlaneCommand.REPEAT_INTERVAL_MS);
-		}, XPlaneCommand.REPEAT_INITIAL_DELAY_MS);
+			}, TIMINGS.REPEAT_INTERVAL_MS);
+		}, TIMINGS.REPEAT_INITIAL_DELAY_MS);
 		this.repeaters.set(actionId, entry);
 	}
 

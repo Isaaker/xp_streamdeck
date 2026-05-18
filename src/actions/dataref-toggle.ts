@@ -9,9 +9,12 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { TOLERANCE_FLOAT } from "../const";
+import { coerceNumber, describeValue, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
 import { persistImage } from "../util/image-cache";
+import { trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
 type TriggerMode = "write" | "command" | "command-on-off";
@@ -80,7 +83,7 @@ interface ActionState {
 const DEFAULT_IMAGE_OFF = "imgs/states/off";
 const DEFAULT_IMAGE_ON = "imgs/states/on";
 
-const UNINITIALIZED_STATE = -1;
+const STATE_DIRTY = -1;
 
 @action({ UUID: "com.robertw.xplane.dataref-toggle" })
 export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> {
@@ -105,7 +108,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			commandOnPath: parsed.commandOnPath,
 			commandOffPath: parsed.commandOffPath,
 			strictOnMatch: parsed.strictOnMatch,
-			currentState: UNINITIALIZED_STATE,
+			currentState: STATE_DIRTY,
 			inflightKeyDown: false,
 		};
 		this.states.set(ev.action.id, state);
@@ -143,14 +146,14 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			this.dropSubscription(state);
 			state.path = parsed.path;
 			state.lastValue = undefined;
-			state.currentState = UNINITIALIZED_STATE;
+			state.currentState = STATE_DIRTY;
 			await this.applySubscription(state);
 			return;
 		}
 
 		// Force a re-render so changed off/on thresholds and image overrides
 		// take effect immediately.
-		state.currentState = UNINITIALIZED_STATE;
+		state.currentState = STATE_DIRTY;
 		if (state.lastValue !== undefined) {
 			await this.renderState(state, state.lastValue);
 		}
@@ -395,7 +398,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			// re-subscribes, and force renderState to re-push state+image on
 			// the next live update so the offline placeholder gets replaced.
 			this.dropSubscription(state);
-			state.currentState = UNINITIALIZED_STATE;
+			state.currentState = STATE_DIRTY;
 			setOffline(state.action).catch((err) =>
 				streamDeck.logger.warn("dataref-toggle: setOffline failed", err),
 			);
@@ -417,56 +420,27 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 }
 
 function parseSettings(s: DataRefToggleSettings): ParsedSettings {
-	const path = s.datarefPath?.trim() ?? "";
-	const valueOff = toFiniteNumber(s.valueOff) ?? 0;
-	const valueOn = toFiniteNumber(s.valueOn) ?? 1;
 	const triggerMode: TriggerMode =
 		s.triggerMode === "command"
 			? "command"
 			: s.triggerMode === "command-on-off"
 				? "command-on-off"
 				: "write";
-	const commandPath = s.commandPath?.trim() ?? "";
-	const commandOnPath = s.commandOnPath?.trim() ?? "";
-	const commandOffPath = s.commandOffPath?.trim() ?? "";
 	const imageOff =
 		typeof s.imageOff === "string" && s.imageOff.length > 0 ? s.imageOff : undefined;
 	const imageOn = typeof s.imageOn === "string" && s.imageOn.length > 0 ? s.imageOn : undefined;
-	const strictOnMatch = s.strictOnMatch === true;
 	return {
-		path,
-		valueOff,
-		valueOn,
+		path: trimString(s.datarefPath),
+		valueOff: toFiniteNumber(s.valueOff) ?? 0,
+		valueOn: toFiniteNumber(s.valueOn) ?? 1,
 		triggerMode,
-		commandPath,
-		commandOnPath,
-		commandOffPath,
+		commandPath: trimString(s.commandPath),
+		commandOnPath: trimString(s.commandOnPath),
+		commandOffPath: trimString(s.commandOffPath),
 		imageOff,
 		imageOn,
-		strictOnMatch,
+		strictOnMatch: s.strictOnMatch === true,
 	};
-}
-
-function toFiniteNumber(v: unknown): number | undefined {
-	if (v === undefined || v === null || v === "") return undefined;
-	const n = typeof v === "number" ? v : Number(v);
-	return Number.isFinite(n) ? n : undefined;
-}
-
-function coerceNumber(v: DataRefValue): number | undefined {
-	if (typeof v === "number") return v;
-	if (typeof v === "boolean") return v ? 1 : 0;
-	if (typeof v === "string") {
-		const n = Number(v);
-		return Number.isFinite(n) ? n : undefined;
-	}
-	if (Array.isArray(v) && v.length > 0 && typeof v[0] === "number") return v[0];
-	return undefined;
-}
-
-function describeValue(v: DataRefValue): string {
-	if (Array.isArray(v)) return `[${v.slice(0, 4).join(",")}${v.length > 4 ? ",…" : ""}]`;
-	return `${v} (${typeof v})`;
 }
 
 function sameValue(a: DataRefValue | undefined, b: DataRefValue): boolean {
@@ -492,7 +466,7 @@ function mapValueToStateIndex(
 	if (strictOnMatch) {
 		// Tolerance to absorb X-Plane occasionally returning integer modes as
 		// floats (e.g. 3.0). Harmless for clean integers.
-		return Math.abs(num - valueOn) < 1e-6 ? STATE_ON : STATE_OFF;
+		return Math.abs(num - valueOn) < TOLERANCE_FLOAT ? STATE_ON : STATE_OFF;
 	}
 	if (valueOff === 0 && valueOn === 1) {
 		return num >= 0.5 ? STATE_ON : STATE_OFF;
