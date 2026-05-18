@@ -10,6 +10,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { TIMINGS, TOLERANCE_FLOAT } from "../const";
 import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
@@ -38,9 +39,6 @@ const STATE_LOCKED = 0;
 const STATE_UNLOCKED = 1;
 
 const UNINITIALIZED_STATE = -1;
-
-const LONG_PRESS_THRESHOLD_MS = 500;
-const REPEAT_INTERVAL_MS = 200;
 
 const DEFAULT_IMAGE_LOCKED = "imgs/guarded/locked";
 const DEFAULT_IMAGE_UNLOCKED = "imgs/guarded/unlocked";
@@ -183,7 +181,7 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 			this.fireLongPress(state, parsed).catch((err) =>
 				streamDeck.logger.error("guarded-command: long press failed", err),
 			);
-		}, LONG_PRESS_THRESHOLD_MS);
+		}, TIMINGS.LONG_PRESS_THRESHOLD_MS);
 
 		return Promise.resolve();
 	}
@@ -256,7 +254,7 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 								err,
 							),
 						);
-				}, REPEAT_INTERVAL_MS);
+				}, TIMINGS.REPEAT_INTERVAL_MS);
 			} else {
 				await this.xplane.activateCommand(id);
 				streamDeck.logger.info(
@@ -486,7 +484,7 @@ function mapValueToStateIndex(
 	const num = coerceNumber(value);
 	if (num === undefined) return STATE_LOCKED;
 	if (strictOnMatch) {
-		return Math.abs(num - valueUnlocked) < 1e-6 ? STATE_UNLOCKED : STATE_LOCKED;
+		return Math.abs(num - valueUnlocked) < TOLERANCE_FLOAT ? STATE_UNLOCKED : STATE_LOCKED;
 	}
 	if (valueLocked === 0 && valueUnlocked === 1) {
 		return num >= 0.5 ? STATE_UNLOCKED : STATE_LOCKED;

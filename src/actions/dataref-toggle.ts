@@ -9,6 +9,7 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { TOLERANCE_FLOAT } from "../const";
 import { coerceNumber, describeValue, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
@@ -465,7 +466,7 @@ function mapValueToStateIndex(
 	if (strictOnMatch) {
 		// Tolerance to absorb X-Plane occasionally returning integer modes as
 		// floats (e.g. 3.0). Harmless for clean integers.
-		return Math.abs(num - valueOn) < 1e-6 ? STATE_ON : STATE_OFF;
+		return Math.abs(num - valueOn) < TOLERANCE_FLOAT ? STATE_ON : STATE_OFF;
 	}
 	if (valueOff === 0 && valueOn === 1) {
 		return num >= 0.5 ? STATE_ON : STATE_OFF;
