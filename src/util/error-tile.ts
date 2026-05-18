@@ -1,3 +1,5 @@
+// Action-specific helpers — depends on Stream Deck SDK action types and is
+// only meant to be consumed from src/actions/.
 import streamDeck, { type DialAction, type KeyAction } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 

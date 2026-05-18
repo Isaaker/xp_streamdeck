@@ -83,7 +83,7 @@ interface ActionState {
 const DEFAULT_IMAGE_OFF = "imgs/states/off";
 const DEFAULT_IMAGE_ON = "imgs/states/on";
 
-const UNINITIALIZED_STATE = -1;
+const STATE_DIRTY = -1;
 
 @action({ UUID: "com.robertw.xplane.dataref-toggle" })
 export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> {
@@ -108,7 +108,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			commandOnPath: parsed.commandOnPath,
 			commandOffPath: parsed.commandOffPath,
 			strictOnMatch: parsed.strictOnMatch,
-			currentState: UNINITIALIZED_STATE,
+			currentState: STATE_DIRTY,
 			inflightKeyDown: false,
 		};
 		this.states.set(ev.action.id, state);
@@ -146,14 +146,14 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			this.dropSubscription(state);
 			state.path = parsed.path;
 			state.lastValue = undefined;
-			state.currentState = UNINITIALIZED_STATE;
+			state.currentState = STATE_DIRTY;
 			await this.applySubscription(state);
 			return;
 		}
 
 		// Force a re-render so changed off/on thresholds and image overrides
 		// take effect immediately.
-		state.currentState = UNINITIALIZED_STATE;
+		state.currentState = STATE_DIRTY;
 		if (state.lastValue !== undefined) {
 			await this.renderState(state, state.lastValue);
 		}
@@ -398,7 +398,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			// re-subscribes, and force renderState to re-push state+image on
 			// the next live update so the offline placeholder gets replaced.
 			this.dropSubscription(state);
-			state.currentState = UNINITIALIZED_STATE;
+			state.currentState = STATE_DIRTY;
 			setOffline(state.action).catch((err) =>
 				streamDeck.logger.warn("dataref-toggle: setOffline failed", err),
 			);

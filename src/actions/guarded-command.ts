@@ -38,7 +38,7 @@ type GuardedCommandSettings = JsonObject & {
 const STATE_LOCKED = 0;
 const STATE_UNLOCKED = 1;
 
-const UNINITIALIZED_STATE = -1;
+const STATE_DIRTY = -1;
 
 const DEFAULT_IMAGE_LOCKED = "imgs/guarded/locked";
 const DEFAULT_IMAGE_UNLOCKED = "imgs/guarded/unlocked";
@@ -98,7 +98,7 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 			valueLocked: parsed.valueLocked,
 			valueUnlocked: parsed.valueUnlocked,
 			strictOnMatch: parsed.strictOnMatch,
-			currentState: UNINITIALIZED_STATE,
+			currentState: STATE_DIRTY,
 		};
 		this.states.set(ev.action.id, state);
 		await this.syncImages(ev.action.id, state, parsed);
@@ -138,7 +138,7 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 			this.dropSubscription(state);
 			state.guardPath = parsed.guardPath;
 			state.lastValue = undefined;
-			state.currentState = UNINITIALIZED_STATE;
+			state.currentState = STATE_DIRTY;
 			if (state.guardPath) {
 				await this.applySubscription(state);
 			} else {
@@ -152,7 +152,7 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 		}
 
 		// Force a re-render so changed thresholds and image overrides take effect.
-		state.currentState = UNINITIALIZED_STATE;
+		state.currentState = STATE_DIRTY;
 		if (state.lastValue !== undefined) {
 			await this.renderState(state, state.lastValue);
 		}
@@ -421,12 +421,15 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 	}
 
 	private onXPlaneOffline(): void {
+		// Show offline regardless of guardPath: every keyDown reaches X-Plane via
+		// getCommandId(), so without a connection this tile is non-functional even
+		// when no guard DataRef is configured.
 		for (const state of this.states.values()) {
 			this.cancelLongPressTimer(state);
 			this.stopRepeater(state);
 			if (state.guardPath) {
 				this.dropSubscription(state);
-				state.currentState = UNINITIALIZED_STATE;
+				state.currentState = STATE_DIRTY;
 			}
 			setOffline(state.action).catch((err) =>
 				streamDeck.logger.warn("guarded-command: setOffline failed", err),
