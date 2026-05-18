@@ -11,6 +11,7 @@ import { toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearOffline, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
+import { normalizeFormat, trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
 const SLOT_COUNT = 3;
@@ -215,7 +216,7 @@ interface ParsedSettings {
 
 function parseSettings(s: MultiDataRefDisplaySettings): ParsedSettings {
 	return {
-		title: s.title?.trim() ?? "",
+		title: trimString(s.title),
 		slots: [
 			parseSlot(
 				s.slot1Label,
@@ -249,13 +250,10 @@ function parseSlot(
 	unitScale: string | number | undefined,
 	precision: string | number | undefined,
 ): ParsedSlot {
-	const trimmedPath = path?.trim() ?? "";
-	const trimmedLabel = label?.trim() ?? "";
-	const formatRaw = format?.trim();
 	return {
-		path: trimmedPath,
-		label: trimmedLabel,
-		format: formatRaw && formatRaw.length > 0 ? formatRaw : "%s",
+		path: trimString(path),
+		label: trimString(label),
+		format: normalizeFormat(format),
 		unitScale: toFiniteNumber(unitScale),
 		precision: toFiniteNumber(precision),
 	};

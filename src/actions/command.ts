@@ -10,6 +10,7 @@ import streamDeck, {
 import type { JsonObject } from "@elgato/utils";
 
 import { clearOffline, setOffline } from "../util/error-tile";
+import { trimString } from "../util/settings";
 import type { XPlaneClient } from "../xplane";
 
 type CommandSettings = JsonObject & {
@@ -53,7 +54,7 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	}
 
 	override async onKeyDown(ev: KeyDownEvent<CommandSettings>): Promise<void> {
-		const path = ev.payload.settings?.commandPath?.trim();
+		const path = trimString(ev.payload.settings?.commandPath);
 		const holdMode = ev.payload.settings?.holdMode === true;
 		const hideConfirmation = ev.payload.settings?.hideConfirmation === true;
 
@@ -87,7 +88,7 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	override async onKeyUp(ev: KeyUpEvent<CommandSettings>): Promise<void> {
 		this.stopRepeater(ev.action.id);
 
-		const path = ev.payload.settings?.commandPath?.trim();
+		const path = trimString(ev.payload.settings?.commandPath);
 		const holdMode = ev.payload.settings?.holdMode === true;
 
 		if (!holdMode || !path) return;

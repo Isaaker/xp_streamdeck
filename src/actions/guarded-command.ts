@@ -14,6 +14,7 @@ import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
 import { persistImage } from "../util/image-cache";
+import { trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
 type LongPressMode = "activate" | "hold" | "autoRepeat";
@@ -450,36 +451,29 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 }
 
 function parseSettings(s: GuardedCommandSettings): ParsedSettings {
-	const shortPath = s.shortPressCommand?.trim() ?? "";
-	const longPath = s.longPressCommand?.trim() ?? "";
 	const longMode: LongPressMode =
 		s.longPressMode === "activate"
 			? "activate"
 			: s.longPressMode === "autoRepeat"
 				? "autoRepeat"
 				: "hold";
-	const guardPath = s.guardDataRef?.trim() ?? "";
-	const valueLocked = toFiniteNumber(s.valueLocked) ?? 0;
-	const valueUnlocked = toFiniteNumber(s.valueUnlocked) ?? 1;
 	const imageLocked =
 		typeof s.imageLocked === "string" && s.imageLocked.length > 0 ? s.imageLocked : undefined;
 	const imageUnlocked =
 		typeof s.imageUnlocked === "string" && s.imageUnlocked.length > 0
 			? s.imageUnlocked
 			: undefined;
-	const strictOnMatch = s.strictOnMatch === true;
-	const hideShortConfirmation = s.hideShortConfirmation === true;
 	return {
-		shortPath,
-		longPath,
+		shortPath: trimString(s.shortPressCommand),
+		longPath: trimString(s.longPressCommand),
 		longMode,
-		guardPath,
-		valueLocked,
-		valueUnlocked,
+		guardPath: trimString(s.guardDataRef),
+		valueLocked: toFiniteNumber(s.valueLocked) ?? 0,
+		valueUnlocked: toFiniteNumber(s.valueUnlocked) ?? 1,
 		imageLocked,
 		imageUnlocked,
-		strictOnMatch,
-		hideShortConfirmation,
+		strictOnMatch: s.strictOnMatch === true,
+		hideShortConfirmation: s.hideShortConfirmation === true,
 	};
 }
 

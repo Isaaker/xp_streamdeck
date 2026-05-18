@@ -13,6 +13,7 @@ import { coerceNumber, describeValue, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
 import { persistImage } from "../util/image-cache";
+import { trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
 type TriggerMode = "write" | "command" | "command-on-off";
@@ -418,33 +419,26 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 }
 
 function parseSettings(s: DataRefToggleSettings): ParsedSettings {
-	const path = s.datarefPath?.trim() ?? "";
-	const valueOff = toFiniteNumber(s.valueOff) ?? 0;
-	const valueOn = toFiniteNumber(s.valueOn) ?? 1;
 	const triggerMode: TriggerMode =
 		s.triggerMode === "command"
 			? "command"
 			: s.triggerMode === "command-on-off"
 				? "command-on-off"
 				: "write";
-	const commandPath = s.commandPath?.trim() ?? "";
-	const commandOnPath = s.commandOnPath?.trim() ?? "";
-	const commandOffPath = s.commandOffPath?.trim() ?? "";
 	const imageOff =
 		typeof s.imageOff === "string" && s.imageOff.length > 0 ? s.imageOff : undefined;
 	const imageOn = typeof s.imageOn === "string" && s.imageOn.length > 0 ? s.imageOn : undefined;
-	const strictOnMatch = s.strictOnMatch === true;
 	return {
-		path,
-		valueOff,
-		valueOn,
+		path: trimString(s.datarefPath),
+		valueOff: toFiniteNumber(s.valueOff) ?? 0,
+		valueOn: toFiniteNumber(s.valueOn) ?? 1,
 		triggerMode,
-		commandPath,
-		commandOnPath,
-		commandOffPath,
+		commandPath: trimString(s.commandPath),
+		commandOnPath: trimString(s.commandOnPath),
+		commandOffPath: trimString(s.commandOffPath),
 		imageOff,
 		imageOn,
-		strictOnMatch,
+		strictOnMatch: s.strictOnMatch === true,
 	};
 }
 

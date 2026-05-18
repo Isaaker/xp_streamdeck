@@ -10,6 +10,7 @@ import type { JsonObject } from "@elgato/utils";
 import { coerceNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearOffline, setOffline } from "../util/error-tile";
+import { trimString, trimStringOr } from "../util/settings";
 import { renderWindDataUrl } from "../util/wind-svg";
 import type { SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -194,14 +195,12 @@ interface ParsedSettings {
 }
 
 function parseSettings(s: WindDisplaySettings): ParsedSettings {
-	const label = s.label?.trim();
-	const speedUnit = s.speedUnit?.trim();
 	return {
-		label: label && label.length > 0 ? label : "WIND",
-		directionPath: s.directionDataRef?.trim() ?? "",
-		speedPath: s.speedDataRef?.trim() ?? "",
-		oatPath: s.oatDataRef?.trim() ?? "",
-		speedUnit: speedUnit && speedUnit.length > 0 ? speedUnit : "kt",
+		label: trimStringOr(s.label, "WIND"),
+		directionPath: trimString(s.directionDataRef),
+		speedPath: trimString(s.speedDataRef),
+		oatPath: trimString(s.oatDataRef),
+		speedUnit: trimStringOr(s.speedUnit, "kt"),
 		convention: s.arrowConvention === "from" ? "from" : "to",
 	};
 }
