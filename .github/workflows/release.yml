@@ -62,10 +62,34 @@ jobs:
           cd release-stage
           zip -r "../xp_streamdeck-${{ steps.ver.outputs.tag }}.zip" "xp_streamdeck-${{ steps.ver.outputs.tag }}"
 
-      - name: Publish GitHub Release
+      - name: Build release body from previous release + fresh compare link
+        id: prev
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NEW_TAG: ${{ steps.ver.outputs.tag }}
+        run: |
+          PREV_TAG=$(gh release view --json tagName --jq .tagName 2>/dev/null || echo "")
+          PREV_BODY=$(gh release view --json body --jq .body 2>/dev/null || echo "")
+          # Drop the previous "Full Changelog" line so it doesn't accumulate across releases.
+          CLEAN_BODY=$(printf '%s\n' "$PREV_BODY" | sed -E '/^\*\*Full Changelog\*\*:/d')
+          if [ -n "$PREV_TAG" ]; then
+            FINAL=$(printf '**Full Changelog**: https://github.com/%s/compare/%s...%s\n\n%s' \
+              "$REPO" "$PREV_TAG" "$NEW_TAG" "$CLEAN_BODY")
+          else
+            FINAL="$CLEAN_BODY"
+          fi
+          {
+            echo "body<<RELEASE_EOF"
+            printf '%s\n' "$FINAL"
+            echo "RELEASE_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release (draft)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
           name: ${{ steps.ver.outputs.tag }}
-          generate_release_notes: true
+          draft: true
+          body: ${{ steps.prev.outputs.body }}
           files: xp_streamdeck-${{ steps.ver.outputs.tag }}.zip

@@ -33,6 +33,12 @@ Expected: `HTTP/1.1 200 OK` plus a JSON body. `403` means *Disable Incoming Traf
 2. The Stream Deck app opens and prompts to install the plugin — confirm.
 3. The **X-Plane** category appears in the actions list on the right.
 
+> **First-time Gatekeeper warning?** The plugin is not Apple-notarized (private/free distribution). If macOS refuses to open the file on first launch, right-click `com.robertw.xplane.streamDeckPlugin` in Finder → **Open** → confirm in the dialog. As a fallback, remove the quarantine attribute from a terminal:
+>
+> ```bash
+> xattr -d com.apple.quarantine com.robertw.xplane.streamDeckPlugin
+> ```
+
 ## Step 2 — Import a Profile (optional but recommended)
 
 For each `.streamDeckProfile` inside `profiles/`:
@@ -45,6 +51,12 @@ Available profiles in this release:
 
 - `xp_stream_c172sp.streamDeckProfile` — Cessna 172 Skyhawk
 - `xp_stream_da42.streamDeckProfile` — Diamond DA42
+- `xp_stream_dv20.streamDeckProfile` — Diamond DV20
+- `xp_stream_g1000.streamDeckProfile` — G1000 Avionics (generic)
+- `xp_stream_pa46.streamDeckProfile` — Piper PA46
+- `xp_stream_pc12.streamDeckProfile` — Pilatus PC-12
+- `xp_stream_ph300.streamDeckProfile` — Embraer Phenom 300
+- `xp_stream_shark.streamDeckProfile` — Shark Aero Shark
 
 ## Step 3 — Verify
 
