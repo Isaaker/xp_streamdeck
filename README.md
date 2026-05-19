@@ -490,47 +490,6 @@ Ready-made Stream Deck XL profiles for several aircraft live in [`streamdeck-pro
 
 Each profile expects this plugin installed and the matching aircraft loaded in X-Plane.
 
-### Updating profile icons after a style change
-
-A `.streamDeckProfile` is a ZIP containing one PNG per button state plus a JSON manifest. Tweaking icon style (accent color, label size, LED bar geometry, …) would normally mean dragging ~1600 PNGs across 8 profiles by hand in the Stream Deck app. `make profile-icons` automates that: it regenerates icons via `make icons`, then patches every `.streamDeckProfile` in place, overwriting only the PNG bytes referenced by each button slot.
-
-Two layers drive the slot → slug mapping:
-
-1. [`scripts/profiles/auto-mapper.ts`](scripts/profiles/auto-mapper.ts) — primary source. Pattern rules (regex on `commandPath` / `datarefPath`) cover serial families like `sim/view/quick_look_<N>`, `sim/GPS/gcu478/<A-Z>`, `sim/autopilot/heading_<up|down>`. A flat DIRECT table covers the rest (aircraft-specific datarefs, AP mode toggles disambiguated by `commandPath`). One last-resort fallback maps unconfigured placeholder slots to a blank tile. Together these cover ~100% of the current 8 profiles' 1462 xp-plugin slots without user input.
-2. [`scripts/profiles/bindings.ts`](scripts/profiles/bindings.ts) — escape hatch. An explicit `BINDINGS` array; consulted *after* `auto-mapper`. Use it to override an auto-mapped slot per-profile or to disambiguate hash collisions (e.g. `autopilot/nav_off.png` is byte-identical to `lights/lt_nav_off.png` — same OFF-state render, no group-color difference).
-
-Lookup order at runtime: `auto-mapper PATTERNS → auto-mapper DIRECT → bindings.ts BINDINGS → unbound (warning)`.
-
-#### Routine workflow — two commands
-
-```bash
-# 1. edit scripts/icons/catalog.ts or scripts/icons/template.ts to tweak style
-make profile-icons
-# 2. on the sim Mac: re-import each *.streamDeckProfile in the Stream Deck app
-```
-
-`make profile-icons` regenerates icons first, then patches all 8 profiles. It exits non-zero if any slot is unbound (no rule found anywhere) or any referenced slug has no PNG on disk — so drift between catalog and mappings stays visible. Slots whose manifest has no `Image` path at all (placeholder states the user never dropped a PNG onto in the SD App) are reported as `missing state imgs` warnings, not errors.
-
-#### Adding a new aircraft profile
-
-When you build a new profile in the Stream Deck app and drop it under `streamdeck-profiles/`, run:
-
-```bash
-make profile-icons
-```
-
-If every command/dataref in the new profile is something the auto-mapper already knows (standard X-Plane sim/* paths or already-seen aircraft datarefs), you're done. If the new profile introduces unknown paths (e.g. an aircraft-specific namespace like `embraer/…`), they surface as `unbound` in the report. Run:
-
-```bash
-make profile-suggest > /tmp/suggest.ts
-```
-
-That dumps TS-ready DIRECT entries for the unbound slots, each with a heuristic slug guess derived from the last path segment. Review them, paste accepted ones into `auto-mapper.ts` DIRECT (or `bindings.ts` BINDINGS if you want a per-profile override), re-run `make profile-icons`. From then on the new aircraft is in steady state — no more setup needed when you change icon style.
-
-#### What gets touched
-
-Only the PNG bytes inside each `.streamDeckProfile` are overwritten. The `manifest.json` files (action UUIDs, `Settings`, slot positions, page structure, titles, font sizes) are read-only as far as this script is concerned. ZIP container metadata (timestamps, file order) is rewritten on rezip, so the `.streamDeckProfile` file hash will change even when no PNG differs — but the logical content is identical.
-
 ## Common Make targets
 
 Run `make help` for the full list. Most-used: `make build`, `make icons`, `make clean`, `make distclean`, `make setup`, `make package`.

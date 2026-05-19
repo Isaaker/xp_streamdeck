@@ -122,10 +122,6 @@ To keep buttons visually consistent (one of M01's pain points was inconsistent p
   - **Nudge:** fixed 36px label (≤4 chars expected — the arrow is the visual focus, not the label).
 - **Renderer is reproducible only as far as system fonts go.** The SVG references `-apple-system, …, Helvetica Neue, Arial`. Rasterization on macOS picks one of those; on a Linux CI box without those fonts, output will differ. If cross-machine reproducibility becomes a requirement (OSS release etc.), embed an OFL/Apache font as base64 in the SVG.
 
-### Pushing icon changes into existing `.streamDeckProfile` files
-
-`make profile-icons` (regenerates icons first, then patches all profiles under `streamdeck-profiles/`). Two-layer mapping: `scripts/profiles/auto-mapper.ts` (PATTERNS + DIRECT, derives ~100% of slot → slug from settings — no manual table) and `scripts/profiles/bindings.ts` (per-slot override escape hatch, empty by default). Lookup order: auto-mapper PATTERNS → auto-mapper DIRECT → bindings → fallback (`cockpit/nolabel*` for unconfigured slots). `make profile-inspect` dumps fingerprints; `make profile-suggest` dumps TS-ready entries with heuristic slug guesses for any unbound slots — copy the accepted ones into `auto-mapper.ts` DIRECT. The `background` action has no profile image (rendered by the plugin at runtime) and is skipped. Re-import the patched `.streamDeckProfile` in the Stream Deck app on the sim Mac to pick up the new visuals.
-
 ## Test Environment Reality
 
 - The **dev laptop has no Stream Deck connected.** Stream Deck app + plugin sideloading reach ~90% of testing surface; final hardware verification happens on the flight-sim Mac.

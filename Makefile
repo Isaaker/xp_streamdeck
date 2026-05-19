@@ -6,7 +6,7 @@ SDPLUGIN_DIR := $(PLUGIN_UUID).sdPlugin
 MAIN_BRANCH  := main
 STREAMDECK   := npx --no-install streamdeck
 
-.PHONY: help setup build deploy clean distclean test lint lint-fix format format-check check smoke icons profile-inspect profile-suggest profile-icons package release cleanup_tags cleanup_branches cleanup_actions
+.PHONY: help setup build deploy clean distclean test lint lint-fix format format-check check smoke icons package release cleanup_tags cleanup_branches cleanup_actions
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} \
@@ -51,15 +51,6 @@ smoke: ## Run the X-Plane client smoke script (X-Plane must be running)
 
 icons: ## Generate Stream Deck button icons from scripts/icons/catalog.ts into out/icons/
 	npm run --silent icons
-
-profile-inspect: ## Dump unique action+settings fingerprints from all .streamDeckProfile files
-	npm run --silent profile:inspect
-
-profile-suggest: ## Dump TS entries (with slug guesses) for slots not yet covered by auto-mapper / bindings
-	npm run --silent profile:suggest
-
-profile-icons: icons ## Replace icons in all .streamDeckProfile files using current out/icons/ (driven by scripts/profiles/auto-mapper.ts + bindings.ts overrides)
-	npm run --silent profile:icons
 
 package: build ## Build a distributable .streamDeckPlugin (uses streamdeck pack — see M08)
 	$(STREAMDECK) pack -f $(SDPLUGIN_DIR)
