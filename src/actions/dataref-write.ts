@@ -2,18 +2,17 @@ import streamDeck, {
 	action,
 	type DidReceiveSettingsEvent,
 	type KeyDownEvent,
-	SingletonAction,
 	type WillAppearEvent,
-	type WillDisappearEvent,
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
 import { toFiniteNumber } from "../util/coerce";
-import { applyIndex, parseDataRefPath } from "../util/dataref-path";
-import { clearOffline, combineTitle, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
+import { parseDataRefPath } from "../util/dataref-path";
+import { combineTitle } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
 import { normalizeFormat, trimString } from "../util/settings";
-import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
+import type { XPlaneClient } from "../xplane";
+import { SubscribableAction, type SubscribableState } from "./base/subscribable-action";
 
 type DataRefWriteSettings = JsonObject & {
 	datarefPath?: string;
@@ -26,83 +25,54 @@ type DataRefWriteSettings = JsonObject & {
 	precision?: string | number;
 };
 
-interface ActionState {
-	action: WillAppearEvent<DataRefWriteSettings>["action"];
-	path: string;
-	label: string;
-	showCurrentValue: boolean;
+interface ActionState extends SubscribableState<DataRefWriteSettings> {
 	format: string;
 	unitScale?: number;
 	precision?: number;
-	handle?: SubscriptionHandle;
-	lastValue?: DataRefValue;
 }
 
 @action({ UUID: "com.robertw.xplane.dataref-write" })
-export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
-	private readonly states = new Map<string, ActionState>();
-
-	constructor(private readonly xplane: XPlaneClient) {
-		super();
-		this.xplane.on("offline", () => this.onXPlaneOffline());
-		this.xplane.on("online", () => this.onXPlaneOnline());
+export class XPlaneDataRefWrite extends SubscribableAction<DataRefWriteSettings, ActionState> {
+	constructor(xplane: XPlaneClient) {
+		super(xplane, "dataref-write");
 	}
 
-	override async onWillAppear(ev: WillAppearEvent<DataRefWriteSettings>): Promise<void> {
+	protected override createState(ev: WillAppearEvent<DataRefWriteSettings>): ActionState {
 		const parsed = parseSettings(ev.payload.settings ?? {});
-		const state: ActionState = {
+		return {
 			action: ev.action,
 			path: parsed.path,
 			label: parsed.label,
-			showCurrentValue: parsed.showCurrentValue,
 			format: parsed.format,
 			unitScale: parsed.unitScale,
 			precision: parsed.precision,
 		};
-		this.states.set(ev.action.id, state);
-		if (state.path && this.xplane.isOffline()) {
-			await setOffline(ev.action);
-			return;
-		}
-		await this.applySubscription(state);
 	}
 
-	override onWillDisappear(ev: WillDisappearEvent<DataRefWriteSettings>): Promise<void> {
-		const state = this.states.get(ev.action.id);
-		if (!state) return Promise.resolve();
-		this.dropSubscription(state);
-		this.states.delete(ev.action.id);
-		return Promise.resolve();
-	}
-
-	override async onDidReceiveSettings(
+	protected override updateStateFromSettings(
+		state: ActionState,
 		ev: DidReceiveSettingsEvent<DataRefWriteSettings>,
-	): Promise<void> {
-		const state = this.states.get(ev.action.id);
-		if (!state) return;
-
+	): { pathChanged: boolean } {
 		const parsed = parseSettings(ev.payload.settings ?? {});
 		const pathChanged = parsed.path !== state.path;
-		const displayChanged = parsed.showCurrentValue !== state.showCurrentValue;
-
+		state.path = parsed.path;
 		state.label = parsed.label;
 		state.format = parsed.format;
 		state.unitScale = parsed.unitScale;
 		state.precision = parsed.precision;
+		return { pathChanged };
+	}
 
-		if (pathChanged || displayChanged) {
-			this.dropSubscription(state);
-			state.path = parsed.path;
-			state.showCurrentValue = parsed.showCurrentValue;
-			state.lastValue = undefined;
-			if (!state.showCurrentValue) {
-				await state.action.setTitle(state.label);
-			}
-			await this.applySubscription(state);
-			return;
-		}
-
-		this.render(state);
+	protected override render(state: ActionState): void {
+		if (state.lastValue === undefined) return;
+		const valueText = formatDataRefValue(state.lastValue, {
+			format: state.format,
+			unitScale: state.unitScale,
+			precision: state.precision,
+		});
+		state.action
+			.setTitle(combineTitle(state.label, valueText))
+			.catch((err) => streamDeck.logger.warn("dataref-write: setTitle failed", err));
 	}
 
 	override async onKeyDown(ev: KeyDownEvent<DataRefWriteSettings>): Promise<void> {
@@ -135,100 +105,23 @@ export class XPlaneDataRefWrite extends SingletonAction<DataRefWriteSettings> {
 			await ev.action.showAlert();
 		}
 	}
-
-	private async applySubscription(state: ActionState): Promise<void> {
-		if (!state.showCurrentValue || !state.path) return;
-
-		if (this.xplane.isOffline()) {
-			await setOffline(state.action);
-			return;
-		}
-
-		const { basePath, index } = parseDataRefPath(state.path);
-
-		try {
-			state.handle = await this.xplane.subscribe(basePath, (raw) => {
-				try {
-					state.lastValue = applyIndex(raw, index);
-					this.render(state);
-				} catch (err) {
-					streamDeck.logger.warn(
-						`dataref-write: index apply failed for ${state.path}`,
-						err,
-					);
-					state.action
-						.setTitle(combineTitle(state.label, NOT_FOUND_SUFFIX))
-						.catch((e) => streamDeck.logger.warn("dataref-write: setTitle failed", e));
-				}
-			});
-		} catch (err) {
-			streamDeck.logger.warn(`dataref-write: subscribe failed for ${state.path}`, err);
-			await state.action.setTitle(combineTitle(state.label, NOT_FOUND_SUFFIX));
-			await state.action.showAlert();
-		}
-	}
-
-	private dropSubscription(state: ActionState): void {
-		if (state.handle) {
-			this.xplane.unsubscribe(state.handle);
-			state.handle = undefined;
-		}
-	}
-
-	private render(state: ActionState): void {
-		if (!state.showCurrentValue) return;
-		if (state.lastValue === undefined) return;
-		const valueText = formatDataRefValue(state.lastValue, {
-			format: state.format,
-			unitScale: state.unitScale,
-			precision: state.precision,
-		});
-		state.action
-			.setTitle(combineTitle(state.label, valueText))
-			.catch((err) => streamDeck.logger.warn("dataref-write: setTitle failed", err));
-	}
-
-	private onXPlaneOffline(): void {
-		for (const state of this.states.values()) {
-			if (!state.path) continue;
-			if (state.handle) {
-				this.xplane.unsubscribe(state.handle);
-				state.handle = undefined;
-			}
-			state.lastValue = undefined;
-			setOffline(state.action).catch((err) =>
-				streamDeck.logger.warn("dataref-write: setOffline failed", err),
-			);
-		}
-	}
-
-	private onXPlaneOnline(): void {
-		for (const state of this.states.values()) {
-			if (!state.path) continue;
-			clearOffline(state.action)
-				.then(() => this.applySubscription(state))
-				.catch((err) =>
-					streamDeck.logger.warn(
-						`dataref-write: re-subscribe failed for ${state.path}`,
-						err,
-					),
-				);
-		}
-	}
 }
 
+// `path` is the *subscription* path: empty when showCurrentValue=false so the
+// SubscribableAction base treats this action as "no subscription, just show
+// the label". The real datarefPath is still read directly in onKeyDown for
+// the write operation.
 function parseSettings(s: DataRefWriteSettings): {
 	path: string;
 	label: string;
-	showCurrentValue: boolean;
 	format: string;
 	unitScale?: number;
 	precision?: number;
 } {
+	const showCurrentValue = s.showCurrentValue === true;
 	return {
-		path: trimString(s.datarefPath),
+		path: showCurrentValue ? trimString(s.datarefPath) : "",
 		label: trimString(s.label),
-		showCurrentValue: s.showCurrentValue === true,
 		format: normalizeFormat(s.format),
 		unitScale: toFiniteNumber(s.unitScale),
 		precision: toFiniteNumber(s.precision),
