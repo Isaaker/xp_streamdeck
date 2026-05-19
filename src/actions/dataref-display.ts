@@ -1,18 +1,16 @@
 import streamDeck, {
 	action,
 	type DidReceiveSettingsEvent,
-	SingletonAction,
 	type WillAppearEvent,
-	type WillDisappearEvent,
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
 import { toFiniteNumber } from "../util/coerce";
-import { applyIndex, parseDataRefPath } from "../util/dataref-path";
-import { clearOffline, combineTitle, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
+import { combineTitle } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
 import { normalizeFormat, trimString } from "../util/settings";
-import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
+import type { XPlaneClient } from "../xplane";
+import { SubscribableAction, type SubscribableState } from "./base/subscribable-action";
 
 type DataRefDisplaySettings = JsonObject & {
 	datarefPath?: string;
@@ -22,30 +20,21 @@ type DataRefDisplaySettings = JsonObject & {
 	precision?: string | number;
 };
 
-interface ActionState {
-	action: WillAppearEvent<DataRefDisplaySettings>["action"];
-	path: string;
-	label: string;
+interface ActionState extends SubscribableState<DataRefDisplaySettings> {
 	format: string;
 	unitScale?: number;
 	precision?: number;
-	handle?: SubscriptionHandle;
-	lastValue?: DataRefValue;
 }
 
 @action({ UUID: "com.robertw.xplane.dataref-display" })
-export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings> {
-	private readonly states = new Map<string, ActionState>();
-
-	constructor(private readonly xplane: XPlaneClient) {
-		super();
-		this.xplane.on("offline", () => this.onXPlaneOffline());
-		this.xplane.on("online", () => this.onXPlaneOnline());
+export class XPlaneDataRefDisplay extends SubscribableAction<DataRefDisplaySettings, ActionState> {
+	constructor(xplane: XPlaneClient) {
+		super(xplane, "dataref-display");
 	}
 
-	override async onWillAppear(ev: WillAppearEvent<DataRefDisplaySettings>): Promise<void> {
+	protected override createState(ev: WillAppearEvent<DataRefDisplaySettings>): ActionState {
 		const parsed = parseSettings(ev.payload.settings ?? {});
-		const state: ActionState = {
+		return {
 			action: ev.action,
 			path: parsed.path,
 			label: parsed.label,
@@ -53,87 +42,23 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 			unitScale: parsed.unitScale,
 			precision: parsed.precision,
 		};
-		this.states.set(ev.action.id, state);
-		await this.applySubscription(state);
 	}
 
-	override onWillDisappear(ev: WillDisappearEvent<DataRefDisplaySettings>): Promise<void> {
-		const state = this.states.get(ev.action.id);
-		if (!state) return Promise.resolve();
-		if (state.handle) {
-			this.xplane.unsubscribe(state.handle);
-			state.handle = undefined;
-		}
-		this.states.delete(ev.action.id);
-		return Promise.resolve();
-	}
-
-	override async onDidReceiveSettings(
+	protected override updateStateFromSettings(
+		state: ActionState,
 		ev: DidReceiveSettingsEvent<DataRefDisplaySettings>,
-	): Promise<void> {
-		const state = this.states.get(ev.action.id);
-		if (!state) return;
-
+	): { pathChanged: boolean } {
 		const parsed = parseSettings(ev.payload.settings ?? {});
 		const pathChanged = parsed.path !== state.path;
-
+		state.path = parsed.path;
 		state.label = parsed.label;
 		state.format = parsed.format;
 		state.unitScale = parsed.unitScale;
 		state.precision = parsed.precision;
-
-		if (pathChanged) {
-			if (state.handle) {
-				this.xplane.unsubscribe(state.handle);
-				state.handle = undefined;
-			}
-			state.path = parsed.path;
-			state.lastValue = undefined;
-			await this.applySubscription(state);
-			return;
-		}
-
-		this.render(state);
+		return { pathChanged };
 	}
 
-	private async applySubscription(state: ActionState): Promise<void> {
-		if (!state.path) {
-			await state.action.setTitle(state.label);
-			return;
-		}
-
-		if (this.xplane.isOffline()) {
-			await setOffline(state.action);
-			return;
-		}
-
-		const { basePath, index } = parseDataRefPath(state.path);
-
-		try {
-			state.handle = await this.xplane.subscribe(basePath, (raw) => {
-				try {
-					state.lastValue = applyIndex(raw, index);
-					this.render(state);
-				} catch (err) {
-					streamDeck.logger.warn(
-						`dataref-display: index apply failed for ${state.path}`,
-						err,
-					);
-					state.action
-						.setTitle(combineTitle(state.label, NOT_FOUND_SUFFIX))
-						.catch((e) =>
-							streamDeck.logger.warn("dataref-display: setTitle failed", e),
-						);
-				}
-			});
-		} catch (err) {
-			streamDeck.logger.warn(`dataref-display: subscribe failed for ${state.path}`, err);
-			await state.action.setTitle(combineTitle(state.label, NOT_FOUND_SUFFIX));
-			await state.action.showAlert();
-		}
-	}
-
-	private render(state: ActionState): void {
+	protected override render(state: ActionState): void {
 		if (state.lastValue === undefined) return;
 		const valueText = formatDataRefValue(state.lastValue, {
 			format: state.format,
@@ -143,38 +68,6 @@ export class XPlaneDataRefDisplay extends SingletonAction<DataRefDisplaySettings
 		state.action
 			.setTitle(combineTitle(state.label, valueText))
 			.catch((err) => streamDeck.logger.warn("dataref-display: setTitle failed", err));
-	}
-
-	private onXPlaneOffline(): void {
-		for (const state of this.states.values()) {
-			if (!state.path) continue;
-			// The subscription is already broken at this point — drop our handle
-			// so the next "online" cleanly re-subscribes.
-			if (state.handle) {
-				this.xplane.unsubscribe(state.handle);
-				state.handle = undefined;
-			}
-			state.lastValue = undefined;
-			setOffline(state.action).catch((err) =>
-				streamDeck.logger.warn("dataref-display: setOffline failed", err),
-			);
-		}
-	}
-
-	private onXPlaneOnline(): void {
-		for (const state of this.states.values()) {
-			if (!state.path) continue;
-			// Restore the user's image; the title will repopulate on first
-			// subscription update via render().
-			clearOffline(state.action)
-				.then(() => this.applySubscription(state))
-				.catch((err) =>
-					streamDeck.logger.warn(
-						`dataref-display: re-subscribe failed for ${state.path}`,
-						err,
-					),
-				);
-		}
 	}
 }
 
