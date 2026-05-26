@@ -63,6 +63,10 @@ npx streamdeck restart com.robertw.xplane
 
 After this, the **X-Plane → Pause** action appears in the Stream Deck app's action list. Drop it onto a key, press it, and X-Plane toggles pause (`sim/operation/pause_toggle`).
 
+## Support me on Patreon
+For anyone who's asked about supporting the development: I recently set up a Patreon. Everything I publish stays free and open source – it's just a way to say thanks if the plugin has been useful to you.
+👉 https://www.patreon.com/posts/two-hobbies-one-159265135
+
 ## Actions
 
 ### Command
