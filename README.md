@@ -486,7 +486,7 @@ Change once → re-run `make icons` → every icon updates with identical propor
 
 ## Aircraft profiles
 
-Ready-made Stream Deck XL profiles for several aircraft live in [`streamdeck-profiles/`](streamdeck-profiles/README.md). The bundled set covers the X-Plane default Cessna 172 SP and G1000, Aerobask Diamond DA42 / DA62 / DV20, UL Shark, Aerobask Phenom 300, Pilatus PC12 by Thranda (G1000 version), and the **Piper PA-46 M500 by [X-Aerodynamics](https://www.x-aerodynamics.com/copy-of-about-x-aero)**.
+Ready-made Stream Deck profiles for several aircraft live in [`streamdeck-profiles/`](streamdeck-profiles/README.md). The bundled set covers the X-Plane default Cessna 172 SP and G1000, Aerobask Diamond DA42 / DA62 / DV20, UL Shark, Aerobask Phenom 300, Pilatus PC12 by Thranda (G1000 version), Toliss A320 Family, X-Plane and Aerogenesis A330 and the **Piper PA-46 M500 by [X-Aerodynamics](https://www.x-aerodynamics.com/copy-of-about-x-aero)**.
 
 Each profile expects this plugin installed and the matching aircraft loaded in X-Plane.
 
