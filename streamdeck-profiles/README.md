@@ -123,3 +123,18 @@ Plugin Version Required: 1.1.1.0 or newer
 * GCU for G1000 (Alpha & Numeric)
 * Ground Procedures (Cold&Dark)
 * Cockpit Views
+
+## EuroCopter EC130 (Garmin 430 Edition) ##
+
+Filename: xp_stream_ec130.streamDeckProfile
+
+Plugin Version Required: 1.2.0.0 or newer
+
+### Features: ###
+
+* EC130 Cockpit Buttons
+* EC130 and Hover Assistent Autopilot Support
+* Shows some Engine indicators
+* Garmin 430 Support
+* Ground Procedures (Cold&Dark)
+* Cockpit Views

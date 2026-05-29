@@ -252,6 +252,14 @@ export const catalog: IconDef[] = [
 	{ kind: "display", name: "eng_oil_t", label: "OIL T", group: "readouts" },
 	{ kind: "display", name: "eng_volt", label: "VOLT", group: "readouts" },
 	{ kind: "display", name: "eng_amp", label: "AMP", group: "readouts" },
+	{ kind: "display", name: "fuel", label: "FUEL", group: "readouts" },
+	{ kind: "display", name: "fuel_l", label: "FUEL L", group: "readouts" },
+	{ kind: "display", name: "fuel_r", label: "FUEL R", group: "readouts" },
+	{ kind: "display", name: "nr", label: "NR", group: "readouts" },
+	{ kind: "display", name: "t4", label: "T4", group: "readouts" },
+	{ kind: "display", name: "fli", label: "FLI", group: "readouts" },
+	{ kind: "display", name: "oat", label: "OAT", group: "readouts" },
+	{ kind: "display", name: "rad_alt", label: "RAD ALT", group: "readouts" },
 	// Label-less display: just the accent line; setTitle() drops the live value below.
 	{ kind: "display", name: "eng_blank", label: "", group: "readouts" },
 
