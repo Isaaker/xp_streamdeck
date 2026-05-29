@@ -78,12 +78,19 @@
 				inputmode="decimal"
 			></sdpi-textfield>
 		</sdpi-item>
-		<sdpi-item label="Strict ON Match">
+		<sdpi-item label="Hold Mode">
+			<sdpi-checkbox setting="holdMode" id="holdModeCheckbox">
+				Momentary: write <code>Value ON</code> on press, <code>Value OFF</code> on
+				release (e.g. test/reset button). Trigger Mode / Strict / Command paths
+				are ignored.
+			</sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item label="Strict ON Match" id="strictOnMatchItem">
 			<sdpi-checkbox setting="strictOnMatch">
 				Treat only <code>value === Value ON</code> as ON (everything else is OFF)
 			</sdpi-checkbox>
 		</sdpi-item>
-		<sdpi-item label="Trigger Mode">
+		<sdpi-item label="Trigger Mode" id="triggerModeItem">
 			<sdpi-select setting="triggerMode" default="write" id="triggerModeSelect">
 				<option value="write">Write DataRef</option>
 				<option value="command">Activate Command</option>
@@ -143,39 +150,60 @@
 				const commandItem = document.getElementById("commandItem");
 				const commandOnItem = document.getElementById("commandOnItem");
 				const commandOffItem = document.getElementById("commandOffItem");
+				const triggerModeItem = document.getElementById("triggerModeItem");
+				const strictOnMatchItem = document.getElementById("strictOnMatchItem");
 				const triggerModeSelect = document.getElementById("triggerModeSelect");
+				const holdModeCheckbox = document.getElementById("holdModeCheckbox");
 
-				const applyModeVisibility = (mode) => {
-					const m = mode === "command" || mode === "command-on-off" ? mode : "write";
-					commandItem.style.display = m === "command" ? "" : "none";
-					commandOnItem.style.display = m === "command-on-off" ? "" : "none";
-					commandOffItem.style.display = m === "command-on-off" ? "" : "none";
+				let currentMode = "write";
+				let currentHold = false;
+
+				const applyVisibility = () => {
+					const m =
+						currentMode === "command" || currentMode === "command-on-off"
+							? currentMode
+							: "write";
+					const hold = currentHold === true;
+					triggerModeItem.style.display = hold ? "none" : "";
+					strictOnMatchItem.style.display = hold ? "none" : "";
+					commandItem.style.display = !hold && m === "command" ? "" : "none";
+					commandOnItem.style.display = !hold && m === "command-on-off" ? "" : "none";
+					commandOffItem.style.display = !hold && m === "command-on-off" ? "" : "none";
 				};
 
 				// sdpi-components v4 does not consistently re-fire didReceiveSettings
 				// when the user mutates a control directly in the PI. Listen to the
-				// inner <select> change inside the component's shadow DOM as the
-				// authoritative source for live mode switches. We still subscribe
+				// inner <select>/<input> change inside the component's shadow DOM as
+				// the authoritative source for live mode switches. We still subscribe
 				// to didReceiveSettings as a fallback for externally-driven changes.
-				const findInnerSelect = (el) =>
-					el?.shadowRoot?.querySelector("select") || el?.querySelector("select");
-				const wireTriggerModeChange = async () => {
+				const findInner = (el, tag) =>
+					el?.shadowRoot?.querySelector(tag) || el?.querySelector(tag);
+				const wireInnerChange = async (host, tag, onChange) => {
 					for (let i = 0; i < 30; i++) {
-						const inner = findInnerSelect(triggerModeSelect);
+						const inner = findInner(host, tag);
 						if (inner) {
-							inner.addEventListener("change", () => applyModeVisibility(inner.value));
+							inner.addEventListener("change", () => onChange(inner));
 							return;
 						}
 						await new Promise((r) => setTimeout(r, 50));
 					}
-					console.warn("dataref-toggle PI: could not wire triggerMode change listener");
+					console.warn(`dataref-toggle PI: could not wire ${tag} change listener`);
 				};
-				wireTriggerModeChange();
+				wireInnerChange(triggerModeSelect, "select", (inner) => {
+					currentMode = inner.value;
+					applyVisibility();
+				});
+				wireInnerChange(holdModeCheckbox, "input", (inner) => {
+					currentHold = inner.checked === true;
+					applyVisibility();
+				});
 
 				(async () => {
 					try {
 						const s = (await client.getSettings()) ?? {};
-						applyModeVisibility(s.triggerMode);
+						currentMode = s.triggerMode || "write";
+						currentHold = s.holdMode === true;
+						applyVisibility();
 					} catch (err) {
 						console.error("dataref-toggle PI: initial getSettings failed", err);
 					}
@@ -185,7 +213,11 @@
 				if (live && typeof live.subscribe === "function") {
 					live.subscribe((arg) => {
 						const s = arg?.payload?.settings ?? arg?.settings;
-						if (s && typeof s === "object") applyModeVisibility(s.triggerMode);
+						if (s && typeof s === "object") {
+							currentMode = s.triggerMode || "write";
+							currentHold = s.holdMode === true;
+							applyVisibility();
+						}
 					});
 				}
 

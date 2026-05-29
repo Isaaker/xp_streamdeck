@@ -7,7 +7,9 @@ export type IconGroup =
 	| "g1000"
 	| "views"
 	| "alerts"
-	| "emergency";
+	| "emergency"
+	| "caution"
+	| "advisory";
 
 // One accent color per functional group — keeps the whole set visually calm.
 // The group name is also the output subdirectory (out/icons/<group>/).
@@ -25,6 +27,8 @@ export const GROUP_ACCENT: Record<IconGroup, string> = {
 	views: "#3b82f6", // blue — saved cockpit view recall buttons
 	alerts: "#000000", // unused — alert tiles derive their color from `severity`
 	emergency: "#ef4444", // red — EMER / FIRE / FUEL CUT-style buttons (red != always warning in cockpit context)
+	caution: "#f59e0b", // orange — caution-level switches (one step below emergency red)
+	advisory: "#ffeb00", // yellow — advisory-level switches (master-caution style)
 };
 
 type IconBase = {
@@ -220,7 +224,11 @@ export const catalog: IconDef[] = [
 	// === Labelless push buttons (label set dynamically via setTitle, or unused) ===
 	// `nolabel` (cockpit/green) already covers the green toggle variant.
 	{ kind: "toggle", name: "nolabel_red", label: "", group: "emergency" },
+	{ kind: "toggle", name: "nolabel_orange", label: "", group: "caution" },
+	{ kind: "toggle", name: "nolabel_yellow", label: "", group: "advisory" },
 	{ kind: "command", name: "nolabel_cmd", label: "", group: "cockpit" },
+	{ kind: "command", name: "slave", label: "SLAVE", group: "cockpit" },
+	{ kind: "command", name: "free", label: "FREE", group: "cockpit" },
 
 	// === Live readouts (display-only, no on/off) ===
 	// Layout reserves the lower 2/3 of the key for the Stream Deck title overlay.
@@ -407,7 +415,7 @@ export const catalog: IconDef[] = [
 	{ kind: "background", name: "bg_blue", color: "#3b82f6", group: "backgrounds" },
 	{ kind: "background", name: "bg_gray", color: "#999EA1", group: "backgrounds" },
 	{ kind: "background", name: "bg_lila", color: "#822c9e", group: "backgrounds" },
-    { kind: "background", name: "bg_bown", color: "#915c2d", group: "backgrounds" },
+	{ kind: "background", name: "bg_bown", color: "#915c2d", group: "backgrounds" },
 
 	// === G1000 — text command buttons (orange accent) ===
 	{ kind: "command", name: "g_menu", label: "MENU", group: "g1000" },

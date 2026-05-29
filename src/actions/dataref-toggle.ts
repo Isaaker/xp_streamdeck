@@ -3,6 +3,7 @@ import streamDeck, {
 	type DidReceiveSettingsEvent,
 	type KeyAction,
 	type KeyDownEvent,
+	type KeyUpEvent,
 	SingletonAction,
 	type WillAppearEvent,
 	type WillDisappearEvent,
@@ -30,6 +31,7 @@ type DataRefToggleSettings = JsonObject & {
 	imageOff?: string;
 	imageOn?: string;
 	strictOnMatch?: boolean;
+	holdMode?: boolean;
 };
 
 const STATE_OFF = 0;
@@ -46,6 +48,7 @@ interface ParsedSettings {
 	imageOff?: string;
 	imageOn?: string;
 	strictOnMatch: boolean;
+	holdMode: boolean;
 }
 
 interface ActionState {
@@ -194,6 +197,28 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			return;
 		}
 
+		// Hold mode bypasses toggle/command machinery: write valueOn on press;
+		// the matching valueOff happens in onKeyUp. triggerMode and
+		// strictOnMatch are ignored here.
+		if (parsed.holdMode) {
+			try {
+				const { basePath, index } = parseDataRefPath(parsed.path);
+				const drId = await this.xplane.getDataRefId(basePath);
+				await this.xplane.writeDataRef(drId, parsed.valueOn, index);
+				streamDeck.logger.info(
+					`dataref-toggle: hold press ${parsed.path} = ${parsed.valueOn} (id=${drId})`,
+				);
+				if (state) {
+					state.lastValue = parsed.valueOn;
+					await this.renderState(state, parsed.valueOn);
+				}
+			} catch (err) {
+				streamDeck.logger.error("dataref-toggle hold press failed", err);
+				await ev.action.showAlert();
+			}
+			return;
+		}
+
 		if (state?.inflightKeyDown) {
 			streamDeck.logger.info(
 				`dataref-toggle: ignoring keyDown while previous toggle is in flight for ${parsed.path}`,
@@ -278,6 +303,28 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			await ev.action.showAlert();
 		} finally {
 			if (state) state.inflightKeyDown = false;
+		}
+	}
+
+	override async onKeyUp(ev: KeyUpEvent<DataRefToggleSettings>): Promise<void> {
+		const parsed = parseSettings(ev.payload.settings ?? {});
+		if (!parsed.holdMode || !parsed.path) return;
+
+		const state = this.states.get(ev.action.id);
+		try {
+			const { basePath, index } = parseDataRefPath(parsed.path);
+			const drId = await this.xplane.getDataRefId(basePath);
+			await this.xplane.writeDataRef(drId, parsed.valueOff, index);
+			streamDeck.logger.info(
+				`dataref-toggle: hold release ${parsed.path} = ${parsed.valueOff} (id=${drId})`,
+			);
+			if (state) {
+				state.lastValue = parsed.valueOff;
+				await this.renderState(state, parsed.valueOff);
+			}
+		} catch (err) {
+			streamDeck.logger.error("dataref-toggle hold release failed", err);
+			await ev.action.showAlert();
 		}
 	}
 
@@ -440,6 +487,7 @@ function parseSettings(s: DataRefToggleSettings): ParsedSettings {
 		imageOff,
 		imageOn,
 		strictOnMatch: s.strictOnMatch === true,
+		holdMode: s.holdMode === true,
 	};
 }
 

@@ -2,6 +2,7 @@ import streamDeck, {
 	action,
 	type DidReceiveSettingsEvent,
 	type KeyDownEvent,
+	type KeyUpEvent,
 	type WillAppearEvent,
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
@@ -23,6 +24,8 @@ type DataRefWriteSettings = JsonObject & {
 	format?: string;
 	unitScale?: string | number;
 	precision?: string | number;
+	holdMode?: boolean;
+	releaseValue?: string | number;
 };
 
 interface ActionState extends SubscribableState<DataRefWriteSettings> {
@@ -79,6 +82,7 @@ export class XPlaneDataRefWrite extends SubscribableAction<DataRefWriteSettings,
 		const settings = ev.payload.settings ?? {};
 		const path = trimString(settings.datarefPath);
 		const value = toFiniteNumber(settings.value);
+		const holdMode = settings.holdMode === true;
 		const hideConfirmation = settings.hideConfirmation === true;
 
 		if (!path) {
@@ -96,12 +100,35 @@ export class XPlaneDataRefWrite extends SubscribableAction<DataRefWriteSettings,
 			const { basePath, index } = parseDataRefPath(path);
 			const id = await this.xplane.getDataRefId(basePath);
 			await this.xplane.writeDataRef(id, value, index);
-			streamDeck.logger.info(`dataref-write: ${path} = ${value} (id=${id})`);
-			if (!hideConfirmation) {
+			streamDeck.logger.info(
+				`dataref-write: ${path} = ${value} (id=${id}${holdMode ? ", hold" : ""})`,
+			);
+			// In hold mode the matching release-write provides the feedback; a
+			// green checkmark would blink under the user's thumb.
+			if (!hideConfirmation && !holdMode) {
 				await ev.action.showOk();
 			}
 		} catch (err) {
 			streamDeck.logger.error(`dataref-write failed: ${path} = ${value}`, err);
+			await ev.action.showAlert();
+		}
+	}
+
+	override async onKeyUp(ev: KeyUpEvent<DataRefWriteSettings>): Promise<void> {
+		const settings = ev.payload.settings ?? {};
+		if (settings.holdMode !== true) return;
+
+		const path = trimString(settings.datarefPath);
+		if (!path) return;
+		const releaseValue = toFiniteNumber(settings.releaseValue) ?? 0;
+
+		try {
+			const { basePath, index } = parseDataRefPath(path);
+			const id = await this.xplane.getDataRefId(basePath);
+			await this.xplane.writeDataRef(id, releaseValue, index);
+			streamDeck.logger.info(`dataref-write: ${path} = ${releaseValue} (id=${id}, release)`);
+		} catch (err) {
+			streamDeck.logger.error(`dataref-write release failed: ${path} = ${releaseValue}`, err);
 			await ev.action.showAlert();
 		}
 	}

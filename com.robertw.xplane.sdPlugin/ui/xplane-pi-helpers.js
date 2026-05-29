@@ -119,9 +119,32 @@
 		el.style.backgroundImage = dataUrl ? `url("${dataUrl}")` : "";
 	};
 
+	// Tracks the most recently interacted image-upload widget so the global
+	// document-level paste listener knows where to deposit a clipboard image.
+	// Stored as a bound applyFile() so multiple widgets in one PI stay routed.
+	let lastTouchedImageHandler = null;
+
+	document.addEventListener("paste", async (e) => {
+		const handler = lastTouchedImageHandler;
+		if (!handler) return;
+		const items = e.clipboardData?.items;
+		if (!items) return;
+		for (const item of items) {
+			if (item.kind === "file" && item.type.startsWith("image/")) {
+				e.preventDefault();
+				await handler(item.getAsFile());
+				return;
+			}
+		}
+	});
+
 	// Wires a file input + thumbnail + reset button into the shared settings
 	// cache. The settings key is removed when the user clears the image, so
 	// missing == "no custom image" without a sentinel value.
+	//
+	// Additional UX: clicking the thumbnail opens the picker; files can be
+	// dropped onto the thumbnail; and Cmd/Ctrl+V pastes a clipboard image into
+	// the most recently interacted widget.
 	const wireImageUpload = ({ input, thumb, clearButton, settingKey, pickButton }) => {
 		if (!input || !thumb || !settingKey) {
 			console.warn("xplane-pi-helpers: wireImageUpload missing input/thumb/settingKey");
@@ -135,9 +158,8 @@
 			if (typeof initial === "string" && initial) setThumbBackground(thumb, initial);
 		});
 
-		input.addEventListener("change", async () => {
-			const file = input.files?.[0];
-			if (!file) return;
+		const applyFile = async (file) => {
+			if (!file || !file.type?.startsWith("image/")) return;
 			try {
 				const raw = await readAsDataURL(file);
 				const dataUrl = await resizeToPng(raw);
@@ -145,16 +167,53 @@
 				await updateSetting(settingKey, dataUrl);
 			} catch (err) {
 				console.error(`xplane-pi-helpers: failed to read image for ${settingKey}`, err);
+			}
+		};
+
+		const markActive = () => {
+			lastTouchedImageHandler = applyFile;
+		};
+
+		input.addEventListener("change", async () => {
+			try {
+				await applyFile(input.files?.[0]);
 			} finally {
 				input.value = "";
 			}
 		});
 
 		if (pickButton) {
+			pickButton.addEventListener("mousedown", markActive);
 			pickButton.addEventListener("click", () => input.click());
 		}
 
+		// Clicking the thumbnail opens the picker; mousedown also marks this
+		// widget as the paste target so a subsequent Cmd+V routes here even if
+		// the picker was cancelled.
+		thumb.style.cursor = "pointer";
+		thumb.title = "Click to pick, drop a file, or Cmd/Ctrl+V to paste";
+		thumb.addEventListener("mousedown", markActive);
+		thumb.addEventListener("click", () => input.click());
+
+		// Drag & drop directly onto the thumbnail.
+		thumb.addEventListener("dragover", (e) => {
+			e.preventDefault();
+			if (e.dataTransfer) e.dataTransfer.dropEffect = "copy";
+			thumb.style.outline = "2px dashed #6cf";
+		});
+		const clearDragHint = () => {
+			thumb.style.outline = "";
+		};
+		thumb.addEventListener("dragleave", clearDragHint);
+		thumb.addEventListener("drop", async (e) => {
+			e.preventDefault();
+			clearDragHint();
+			markActive();
+			await applyFile(e.dataTransfer?.files?.[0]);
+		});
+
 		if (clearButton) {
+			clearButton.addEventListener("mousedown", markActive);
 			clearButton.addEventListener("click", async () => {
 				setThumbBackground(thumb, "");
 				await updateSetting(settingKey, undefined);
