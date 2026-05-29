@@ -246,7 +246,7 @@ X-Plane's `wind_heading_deg_mag` reports the direction the wind **comes from**; 
 
 ### DataRef Toggle
 
-Two-state action that flips a DataRef value (or activates a CommandRef) on key press, and reflects the live state on the button by switching between two images. Use it for binary or near-binary controls (gear, flaps detents, lights, fuel pumps, …).
+Two-state action that flips a DataRef value (or activates a CommandRef) on key press, and reflects the live state on the button by switching between two images. Use it for binary or near-binary controls (gear, flaps detents, lights, fuel pumps, …). Optional **Hold Mode** turns it into a momentary press/release write (test/reset-style buttons with visible state).
 
 Property Inspector fields:
 
@@ -260,7 +260,8 @@ Property Inspector fields:
   - `On/Off Command` fires one of **two** CommandRefs depending on the current DataRef state: at OFF the ON command fires, at ON the OFF command fires. For aircraft that expose separate `…_on` / `…_off` commands instead of a single toggle.
 - **Command Path** — only used when *Trigger Mode* is `Activate Command`.
 - **Command Path ON** / **Command Path OFF** — only used when *Trigger Mode* is `On/Off Command`.
-- **Image OFF** / **Image ON** — optional custom 144×144 PNG/JPG/SVG per state; uploads are downscaled to 144 px and persisted to disk so multi-state image switching stays reliable. Leave empty to use the default `imgs/states/{off,on}` images.
+- **Hold Mode** — when checked, the action becomes momentary: `keyDown` writes `Value ON`, `keyUp` writes `Value OFF`. Trigger Mode, Strict ON Match, and the Command Path fields are ignored and hidden. Use this for press-and-hold controls (e.g. EC130 hydraulic test, master-caution test) where you also want the OFF/ON image to flip with the live DataRef.
+- **Image OFF** / **Image ON** — optional custom 144×144 PNG/JPG/SVG per state. Uploads accept **drag & drop** onto the thumbnail, **paste from clipboard** (Cmd/Ctrl+V), or **click** to open the file picker. Files are downscaled to 144 px and persisted to disk so multi-state image switching stays reliable. Leave empty to use the default `imgs/states/{off,on}` images.
 
 The Property Inspector hides the command-path fields that don't apply to the selected trigger mode, so only the relevant inputs are visible.
 
@@ -298,6 +299,17 @@ Useful for aircraft where the gear command runs an animation/sound but the simpl
 
 Press while OFF → fires `servos_on`; press while ON → fires `servos_off`. The button image follows the live DataRef.
 
+#### Example: EC130 hydraulic test (momentary)
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `HSF/ec130/CollectiveHydSwitch` |
+| Value OFF | `0` |
+| Value ON | `1` |
+| Hold Mode | *(checked)* |
+
+Press and hold → writes `1`, button switches to ON image; release → writes `0`, button returns to OFF. Trigger Mode and command fields stay hidden while Hold Mode is on.
+
 ### Guarded Command
 
 Two-stage button modeled on cockpit covers that protect dangerous switches. **Short press** fires `shortPressCommand` (e.g. flip the cover open); **long press** (≥ 500 ms) fires the protected `longPressCommand` (e.g. engage the starter). Optionally subscribes to a `Guard DataRef` and renders one of two images — `locked` (cover closed) or `unlocked` (cover open) — so the button reflects the actual cockpit state.
@@ -316,7 +328,7 @@ Property Inspector fields:
 - **Guard DataRef** — optional DataRef that reports the cover/guard state; drives the visible locked/unlocked image. Leave blank to skip state display (the action still fires both commands).
 - **Value Locked** / **Value Unlocked** — numeric thresholds; default `0` / `1`. Closest-distance match selects the image (or `≥ 0.5` for the default 0/1 case).
 - **Strict Unlocked Match** — when checked, only `value === Value Unlocked` (with float tolerance) counts as unlocked; everything else is locked. Useful for multi-state guards where one specific index is "open".
-- **Image Locked** / **Image Unlocked** — optional custom 144×144 PNG/JPG/SVG per state; uploads are downscaled to 144 px and persisted. Leave empty to use the bundled `guarded` icons (see [Button icons](#button-icons)).
+- **Image Locked** / **Image Unlocked** — optional custom 144×144 PNG/JPG/SVG per state. Upload UX matches [DataRef Toggle](#dataref-toggle) — drag, paste, or click. Leave empty to use the bundled `guarded` icons (see [Button icons](#button-icons)).
 
 #### Example: PA-46 M500 starter with cover
 
@@ -331,15 +343,47 @@ Property Inspector fields:
 
 Press once → cover flips open; the button image switches to unlocked. Press and hold → starter engages via begin/end and stays engaged until release. Press once again → cover flips closed.
 
+### Guarded DataRef
+
+Same two-stage cover pattern as [Guarded Command](#guarded-command), but **both short press and long press toggle DataRefs** (read the current value, write the opposite) instead of activating CommandRefs. Use it when the aircraft exposes only DataRefs for the protected control — e.g. the EC130 helicopter's `HSF/ec130/...` DataRefs, which have no matching CommandRefs.
+
+Property Inspector fields:
+
+- **Short press → DataRef Path** — toggled on quick release, e.g. the cover state.
+- **Short press → Value Off** / **Value On** — defaults to `0` / `1`. Closest-distance match decides which is "current"; the opposite is written.
+- **Hide green OK after short press** — opt-out of the `showOk()` flash. Errors still always show the alert icon.
+- **Long press → DataRef Path** — toggled when the key is held for at least 500 ms (e.g. the switch behind the cover).
+- **Long press → Value Off** / **Value On** — defaults to `0` / `1`, same toggle logic.
+- **Guard DataRef** — optional DataRef that drives the locked/unlocked image. **Leave empty to use the short DataRef** — the most common setup (cover state = image state).
+- **Value Locked** / **Value Unlocked** — numeric thresholds for the image mapping. **Default to the short Value Off / Value On** when empty, so a single-DataRef setup needs no extra wiring.
+- **Strict Unlocked Match** — when checked, only `value === Value Unlocked` (with float tolerance) counts as unlocked.
+- **Image Locked** / **Image Unlocked** — optional custom 144×144 PNG/JPG/SVG per state. Upload UX matches [DataRef Toggle](#dataref-toggle) — drag, paste, or click. Leave empty to use the bundled `guarded` icons.
+
+#### Example: EC130 collective hydraulic cover + switch
+
+| Field | Value |
+| --- | --- |
+| Short press → DataRef Path | `HSF/ec130/CollectiveHydCover` |
+| Short Value Off | `0` |
+| Short Value On | `1` |
+| Long press → DataRef Path | `HSF/ec130/CollectiveHydSwitch` |
+| Long Value Off | `0` |
+| Long Value On | `1` |
+| Guard DataRef | *(empty — falls back to the short DataRef)* |
+
+Press once → cover DataRef toggles (image follows). Press and hold (≥ 500 ms) → switch DataRef toggles. Releasing the long press does not write anything else.
+
 ### DataRef Write
 
-Single-press action that writes a fixed numeric value to a DataRef. Use it when you want a button that *sets* a specific value (e.g. flaps to detent 2, parking brake to 1) rather than toggling.
+Single-press action that writes a fixed numeric value to a DataRef. Use it when you want a button that *sets* a specific value (e.g. flaps to detent 2, parking brake to 1) rather than toggling. Optional **Hold Mode** turns it into a momentary write — `keyUp` writes a separate **Release Value** (test/reset-style buttons without a visible state change; for visible press feedback use [DataRef Toggle](#dataref-toggle) with Hold Mode instead).
 
 Property Inspector fields:
 
 - **DataRef Path** — the X-Plane DataRef to write. Supports array indexing (see [Array DataRefs](#array-datarefs)).
 - **Live Value** — read-only preview of the current value while editing the path.
 - **Value** — the numeric value written on press.
+- **Hold Mode** — when checked, the action becomes momentary: `keyDown` writes *Value*, `keyUp` writes *Release Value*. The success checkmark is suppressed in hold mode so it doesn't blink under your thumb.
+- **Release Value** — written on `keyUp` when *Hold Mode* is on. Defaults to `0` if empty.
 - **Label** — optional caption rendered above the live value (only used when *Show current value* is checked).
 - **Show current value** — when checked, subscribes to the DataRef and renders its live value on the button title (same formatting pipeline as DataRef Display).
 - **Format** / **Unit Scale** / **Precision** — printf formatting, only used when *Show current value* is checked. See [DataRef Display](#dataref-display) for details.
@@ -361,6 +405,17 @@ Property Inspector fields:
 | Show current value | *(checked)* |
 | Format | `FLP %.0f%%` |
 | Unit Scale | `100` |
+
+#### Example: EC130 collective hydraulic test (momentary, no state image)
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `HSF/ec130/CollectiveHydSwitch` |
+| Value | `1` |
+| Hold Mode | *(checked)* |
+| Release Value | `0` |
+
+Press and hold → writes `1`; release → writes `0`. The icon stays single-state — for a visible press indication, use [DataRef Toggle](#dataref-toggle) with Hold Mode and Image OFF/ON.
 
 ### Background Tile
 
@@ -419,12 +474,16 @@ Five kinds of icons are produced from a single catalog (`scripts/icons/catalog.t
 
 Each catalog entry belongs to exactly one group. The group decides **both** the accent color **and** the output subdirectory — one color per group keeps the whole set visually calm and makes related buttons easy to find on disk.
 
+Non-cockpit-green switches get their own groups so they stay visually distinct on the deck — `emergency` (red), `caution` (orange), and `advisory` (yellow) for the standard cockpit severity tiers.
+
 | Group       | Accent  | Hex       | Contents                                                              |
 | ----------- | ------- | --------- | --------------------------------------------------------------------- |
 | `autopilot` | yellow  | `#eab308` | AP/FD/YD mode toggles, AP setpoint readouts, HDG/ALT/VS/SRC nudges    |
 | `lights`    | green   | `#22c55e` | BCN, LAND, TAXI, NAV, STROBE                                          |
 | `cockpit`   | green   | `#22c55e` | PARK BRK, FUEL PUMP, MASTER BAT, AVIONICS, PITOT HEAT                 |
 | `readouts`  | white   | `#ffffff` | Live values: HDG, ALT, IAS, V/S, BARO, WIND, W SPD                    |
+| `caution`   | orange  | `#f59e0b` | Caution-level switches (one step below emergency red) — e.g. `nolabel_orange` |
+| `advisory`  | yellow  | `#ffeb00` | Advisory-level switches (master-caution style) — e.g. `nolabel_yellow` |
 | `backgrounds` | n/a   | per entry | Solid-color filler tiles (`bg_black`, `bg_white`, `bg_yellow`, `bg_red`) |
 
 The mapping lives in `GROUP_ACCENT` at the top of `scripts/icons/catalog.ts` — change a hex there and every icon in that group updates after the next `make icons`.
