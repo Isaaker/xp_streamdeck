@@ -138,3 +138,20 @@ Plugin Version Required: 1.2.0.0 or newer
 * Garmin 430 Support
 * Ground Procedures (Cold&Dark)
 * Cockpit Views
+
+## AW-109 SP 2.0
+
+Please Note: This Profile is still in development and not finish and complete tested.
+
+Filename: xp_stream_aw109.streamDeckProfile
+
+Plugin Version Required: 1.3.0.0 or newer
+
+### Features: ###
+
+* AW109 Cockpit Buttons
+* AW109 Autopilot
+* Overhead and Ground
+* Shows some Engine indicators
+* Ground Procedures (Cold&Dark)
+* Cockpit Views
