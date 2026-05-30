@@ -16,40 +16,6 @@
 			.live-preview[data-state="error"] {
 				color: #d97;
 			}
-			.image-upload {
-				display: flex;
-				align-items: center;
-				gap: 8px;
-				flex: 1;
-			}
-			.image-upload .thumb {
-				width: 36px;
-				height: 36px;
-				border-radius: 4px;
-				background: #2d2d2d center/contain no-repeat;
-				border: 1px solid #444;
-				flex: 0 0 auto;
-				display: inline-block;
-			}
-			.image-upload .actions {
-				display: flex;
-				gap: 6px;
-				flex: 1;
-			}
-			.image-upload button {
-				cursor: pointer;
-			}
-			.image-upload input[type="file"] {
-				display: none;
-			}
-			.image-upload .filename {
-				color: #888;
-				font-size: 11px;
-				flex: 1;
-				overflow: hidden;
-				text-overflow: ellipsis;
-				white-space: nowrap;
-			}
 		</style>
 	</head>
 	<body>
@@ -61,8 +27,18 @@
 				required
 			></sdpi-textfield>
 		</sdpi-item>
+		<sdpi-item label="State DataRef">
+			<sdpi-textfield
+				setting="stateDataRefPath"
+				placeholder="(empty = same as DataRef Path)"
+				id="stateDatarefField"
+			></sdpi-textfield>
+		</sdpi-item>
 		<sdpi-item label="Live Value">
 			<span class="live-preview" id="datarefPreview"></span>
+		</sdpi-item>
+		<sdpi-item label="State Live Value">
+			<span class="live-preview" id="stateDatarefPreview"></span>
 		</sdpi-item>
 		<sdpi-item label="Value OFF">
 			<sdpi-textfield
@@ -118,25 +94,11 @@
 				id="commandOffField"
 			></sdpi-textfield>
 		</sdpi-item>
-		<sdpi-item label="Image OFF">
-			<div class="image-upload">
-				<div class="thumb" id="thumbOff"></div>
-				<div class="actions">
-					<button type="button" id="pickOff">Choose…</button>
-					<button type="button" id="clearOff">Reset</button>
-				</div>
-				<input type="file" id="fileOff" accept="image/png,image/jpeg,image/svg+xml" />
-			</div>
-		</sdpi-item>
-		<sdpi-item label="Image ON">
-			<div class="image-upload">
-				<div class="thumb" id="thumbOn"></div>
-				<div class="actions">
-					<button type="button" id="pickOn">Choose…</button>
-					<button type="button" id="clearOn">Reset</button>
-				</div>
-				<input type="file" id="fileOn" accept="image/png,image/jpeg,image/svg+xml" />
-			</div>
+		<sdpi-item>
+			<small style="color: #888; font-size: 11px">
+				Assign per-state images (OFF / ON) via the State pickers above —
+				they're handled by Stream Deck directly.
+			</small>
 		</sdpi-item>
 
 		<script>
@@ -221,29 +183,20 @@
 					});
 				}
 
-				window.XPlanePI.wireImageUpload({
-					input: document.getElementById("fileOff"),
-					thumb: document.getElementById("thumbOff"),
-					pickButton: document.getElementById("pickOff"),
-					clearButton: document.getElementById("clearOff"),
-					settingKey: "imageOff",
-				});
-				window.XPlanePI.wireImageUpload({
-					input: document.getElementById("fileOn"),
-					thumb: document.getElementById("thumbOn"),
-					pickButton: document.getElementById("pickOn"),
-					clearButton: document.getElementById("clearOn"),
-					settingKey: "imageOn",
-				});
-
 				const datarefField = document.getElementById("datarefField");
+				const stateDatarefField = document.getElementById("stateDatarefField");
 				const commandField = document.getElementById("commandField");
 				const commandOnFieldEl = document.getElementById("commandOnField");
 				const commandOffFieldEl = document.getElementById("commandOffField");
 				const datarefPreview = document.getElementById("datarefPreview");
+				const stateDatarefPreview = document.getElementById("stateDatarefPreview");
 				if (datarefField) {
 					window.XPlanePI.attachAutocomplete(datarefField, "dataref");
 					window.XPlanePI.attachLivePreview(datarefField, datarefPreview);
+				}
+				if (stateDatarefField) {
+					window.XPlanePI.attachAutocomplete(stateDatarefField, "dataref");
+					window.XPlanePI.attachLivePreview(stateDatarefField, stateDatarefPreview);
 				}
 				if (commandField) window.XPlanePI.attachAutocomplete(commandField, "command");
 				if (commandOnFieldEl)

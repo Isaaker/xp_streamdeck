@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane Rotary DataRef</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
+		<style>
+			.live-preview {
+				font-family: monospace;
+				color: #aaa;
+				font-size: 11px;
+				word-break: break-all;
+			}
+			.live-preview[data-state="not-found"],
+			.live-preview[data-state="error"] {
+				color: #d97;
+			}
+			.hint {
+				color: #888;
+				font-size: 11px;
+				padding: 4px 0;
+			}
+		</style>
+	</head>
+	<body>
+		<sdpi-item label="DataRef Path">
+			<sdpi-textfield
+				setting="datarefPath"
+				placeholder="sim/cockpit2/autopilot/heading_dial_deg_mag_pilot"
+				id="datarefField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Live Value">
+			<span class="live-preview" id="datarefPreview"></span>
+		</sdpi-item>
+		<sdpi-item label="Delta">
+			<sdpi-textfield
+				setting="delta"
+				placeholder="e.g. 1, 10, 0.01 (positive)"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Direction">
+			<sdpi-select setting="direction" default="right">
+				<option value="right">Right (+ delta)</option>
+				<option value="up">Up (+ delta)</option>
+				<option value="left">Left (− delta)</option>
+				<option value="down">Down (− delta)</option>
+			</sdpi-select>
+		</sdpi-item>
+		<div class="hint">
+			LEFT and DOWN subtract <code>delta</code>; RIGHT and UP add <code>delta</code>.
+			Pair two or four buttons on the Stream Deck to drive one setpoint.
+		</div>
+		<sdpi-item label="Min Value">
+			<sdpi-textfield
+				setting="minValue"
+				placeholder="optional, e.g. 0"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Max Value">
+			<sdpi-textfield
+				setting="maxValue"
+				placeholder="optional, e.g. 360"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<div class="hint">
+			Leave Min/Max empty for unbounded setpoints. With both set, the value
+			clamps at the endstops and the button flashes the alert icon when
+			already at the limit (unless suppressed below).
+		</div>
+		<sdpi-item label="Feedback">
+			<sdpi-checkbox
+				setting="hideConfirmation"
+				label="Hide green confirmation icon on success"
+			></sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item label="Endstop">
+			<sdpi-checkbox
+				setting="hideEndstopAlert"
+				label="Hide alert icon when already at Min/Max"
+			></sdpi-checkbox>
+		</sdpi-item>
+		<details>
+			<summary>Long-press (coarse step)</summary>
+			<sdpi-item label="Coarse Delta">
+				<sdpi-textfield
+					setting="coarseDelta"
+					placeholder="optional, e.g. 10 — fires on hold ≥500 ms"
+					inputmode="decimal"
+				></sdpi-textfield>
+			</sdpi-item>
+			<div class="hint">
+				If set, a long press (≥500 ms) uses this larger step instead of
+				<code>delta</code>. Useful to drive a setpoint coarse with the same
+				button (e.g. HDG bug ±1 short / ±10 long).
+			</div>
+		</details>
+		<details>
+			<summary>Title display</summary>
+			<sdpi-item label="Label">
+				<sdpi-textfield
+					setting="label"
+					placeholder="optional, stacked above the live value"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Format Mode">
+				<sdpi-select setting="formatMode" default="numeric">
+					<option value="numeric">Numeric</option>
+					<option value="enum">Enum (labelled detents)</option>
+				</sdpi-select>
+			</sdpi-item>
+			<sdpi-item label="Unit Scale">
+				<sdpi-textfield
+					setting="unitScale"
+					placeholder="e.g. 1.94384 (m/s → kt)"
+					inputmode="decimal"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Format">
+				<sdpi-textfield
+					setting="format"
+					placeholder="%.3f (default: %s)"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Unit">
+				<sdpi-textfield
+					setting="unit"
+					placeholder="MHz, ft, kt …"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Precision">
+				<sdpi-textfield
+					setting="precision"
+					placeholder="decimals — overridden by explicit %.Nf"
+					inputmode="numeric"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Enum Map">
+				<sdpi-textfield
+					setting="enumMap"
+					placeholder="0=OFF,1=R,2=L,3=BOTH"
+				></sdpi-textfield>
+			</sdpi-item>
+		</details>
+		<script>
+			(async () => {
+				const datarefField = document.getElementById("datarefField");
+				const preview = document.getElementById("datarefPreview");
+				if (window.XPlanePI && datarefField) {
+					await window.XPlanePI.attachAutocomplete(datarefField, "dataref");
+					await window.XPlanePI.attachLivePreview(datarefField, preview);
+				}
+			})();
+		</script>
+	</body>
+</html>

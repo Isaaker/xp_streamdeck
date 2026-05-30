@@ -112,6 +112,15 @@ export type AlertIcon = IconBase & {
 // label + LED-bar follow toggle DNA. Sublabel for twin-engine pairs.
 // Pairs with the guarded-command action via <name>_locked.png / <name>_unlocked.png.
 export type GuardedIcon = IconBase & { kind: "guarded"; sublabel?: string };
+// 3-position toggle/slider switch — labelless, just a slot + offset knob.
+// Pairs with the dataref-switch action via <name>_min.png / _mid.png / _max.png.
+// Vertical: min=top, max=bottom. Horizontal: min=left, max=right.
+export type SwitchIcon = {
+	kind: "switch";
+	name: string;
+	axis: "vertical" | "horizontal";
+	group: IconGroup;
+};
 export type IconDef =
 	| ToggleIcon
 	| DisplayIcon
@@ -123,7 +132,8 @@ export type IconDef =
 	| GcuKeyIcon
 	| ViewIcon
 	| AlertIcon
-	| GuardedIcon;
+	| GuardedIcon
+	| SwitchIcon;
 
 export const catalog: IconDef[] = [
 	// === Autopilot — mode toggles ===
@@ -220,6 +230,12 @@ export const catalog: IconDef[] = [
 	{ kind: "guarded", name: "starter_r", label: "START", sublabel: "R", group: "cockpit" },
 	{ kind: "guarded", name: "fuel_cut", label: "FUEL CUT", group: "cockpit" },
 	{ kind: "guarded", name: "emer_gear", label: "EMER GEAR", group: "cockpit" },
+
+	// === 3-position switches (labelless slot + offset knob) ===
+	// Pair with the `dataref-switch` action (imageMin/Mid/Max). Vertical:
+	// min = top, max = bottom. Horizontal: min = left, max = right.
+	{ kind: "switch", name: "switch_v", axis: "vertical", group: "cockpit" },
+	{ kind: "switch", name: "switch_h", axis: "horizontal", group: "cockpit" },
 
 	// === Labelless push buttons (label set dynamically via setTitle, or unused) ===
 	// `nolabel` (cockpit/green) already covers the green toggle variant.

@@ -13,32 +13,6 @@
 				letter-spacing: 0.06em;
 				color: #888;
 			}
-			.image-upload {
-				display: flex;
-				align-items: center;
-				gap: 8px;
-				flex: 1;
-			}
-			.image-upload .thumb {
-				width: 36px;
-				height: 36px;
-				border-radius: 4px;
-				background: #2d2d2d center/contain no-repeat;
-				border: 1px solid #444;
-				flex: 0 0 auto;
-				display: inline-block;
-			}
-			.image-upload .actions {
-				display: flex;
-				gap: 6px;
-				flex: 1;
-			}
-			.image-upload button {
-				cursor: pointer;
-			}
-			.image-upload input[type="file"] {
-				display: none;
-			}
 		</style>
 	</head>
 	<body>
@@ -100,52 +74,15 @@
 				Treat only <code>value === Value Unlocked</code> as unlocked
 			</sdpi-checkbox>
 		</sdpi-item>
-		<sdpi-item label="Image Locked">
-			<div class="image-upload">
-				<div class="thumb" id="thumbLocked"></div>
-				<div class="actions">
-					<button type="button" id="pickLocked">Choose…</button>
-					<button type="button" id="clearLocked">Reset</button>
-				</div>
-				<input
-					type="file"
-					id="fileLocked"
-					accept="image/png,image/jpeg,image/svg+xml"
-				/>
-			</div>
-		</sdpi-item>
-		<sdpi-item label="Image Unlocked">
-			<div class="image-upload">
-				<div class="thumb" id="thumbUnlocked"></div>
-				<div class="actions">
-					<button type="button" id="pickUnlocked">Choose…</button>
-					<button type="button" id="clearUnlocked">Reset</button>
-				</div>
-				<input
-					type="file"
-					id="fileUnlocked"
-					accept="image/png,image/jpeg,image/svg+xml"
-				/>
-			</div>
+		<sdpi-item>
+			<small style="color: #888; font-size: 11px">
+				Assign per-state images (Locked / Unlocked) via the State pickers
+				above — they're handled by Stream Deck directly.
+			</small>
 		</sdpi-item>
 
 		<script>
 			(() => {
-				window.XPlanePI.wireImageUpload({
-					input: document.getElementById("fileLocked"),
-					thumb: document.getElementById("thumbLocked"),
-					pickButton: document.getElementById("pickLocked"),
-					clearButton: document.getElementById("clearLocked"),
-					settingKey: "imageLocked",
-				});
-				window.XPlanePI.wireImageUpload({
-					input: document.getElementById("fileUnlocked"),
-					thumb: document.getElementById("thumbUnlocked"),
-					pickButton: document.getElementById("pickUnlocked"),
-					clearButton: document.getElementById("clearUnlocked"),
-					settingKey: "imageUnlocked",
-				});
-
 				const shortField = document.getElementById("shortField");
 				const longField = document.getElementById("longField");
 				const guardField = document.getElementById("guardField");

@@ -11,6 +11,7 @@ import {
 	type KnobIcon,
 	type NudgeDisplayIcon,
 	type NudgeIcon,
+	type SwitchIcon,
 	type ToggleIcon,
 	type ViewIcon,
 } from "./catalog.ts";
@@ -495,18 +496,21 @@ const GUARDED_LABEL_VISUAL_CENTER_Y = 75;
 const GUARDED_TWO_LINE_MAIN_CENTER_Y = 52;
 const GUARDED_TWO_LINE_SUB_CENTER_Y = 96;
 
-export type GuardedState = "locked" | "unlocked";
+// "locked"       — hazard at full opacity, LED bar off (guard closed).
+// "unlocked_off" — hazard dimmed, LED bar off (guard open, function still off).
+// "unlocked_on"  — hazard dimmed, LED bar on + glow (guard open, function on).
+export type GuardedState = "locked" | "unlocked_off" | "unlocked_on";
 
 export function renderGuardedIcon(def: GuardedIcon, state: GuardedState): string {
 	const accent = GROUP_ACCENT[def.group];
-	const barFill = state === "unlocked" ? accent : BAR_OFF;
+	const barFill = state === "unlocked_on" ? accent : BAR_OFF;
 	const barWidth = SIZE - TOGGLE_BAR_INSET_X * 2;
 	const barY = SIZE - TOGGLE_BAR_INSET_BOTTOM - TOGGLE_BAR_HEIGHT;
 	const hazardOpacity =
 		state === "locked" ? GUARDED_HAZARD_OPACITY_LOCKED : GUARDED_HAZARD_OPACITY_UNLOCKED;
 
 	const glow =
-		state === "unlocked"
+		state === "unlocked_on"
 			? `<rect x="${TOGGLE_BAR_INSET_X}" y="${barY}" width="${barWidth}" height="${TOGGLE_BAR_HEIGHT}" rx="${TOGGLE_BAR_RADIUS}" fill="${accent}" filter="url(#glow)" opacity="0.55"/>`
 			: "";
 
@@ -555,6 +559,72 @@ export function renderGuardedIcon(def: GuardedIcon, state: GuardedState): string
   ${labelEls}
   ${glow}
   <rect x="${TOGGLE_BAR_INSET_X}" y="${barY}" width="${barWidth}" height="${TOGGLE_BAR_HEIGHT}" rx="${TOGGLE_BAR_RADIUS}" fill="${barFill}"/>
+</svg>`;
+}
+
+// === 3-position switch (labelless slot + offset knob) layout ===
+// Visual: a dark recessed track running along the chosen axis, with a lighter
+// rectangular knob that sits at one of three positions. The knob is slightly
+// wider on the cross-axis than the track so it reads as "sitting on top" of
+// the slot. A thin accent stripe across the short side of the knob acts as a
+// visual groove indicator — and is the only group-accent-colored element so
+// the same SVG works across cockpit/lights/advisory/etc. without redesign.
+const SWITCH_TRACK_LONG = 100;
+const SWITCH_TRACK_SHORT = 28;
+const SWITCH_TRACK_COLOR = "#1f1f1f";
+const SWITCH_TRACK_BORDER = "#444444";
+const SWITCH_KNOB_LONG = 40;
+const SWITCH_KNOB_SHORT = 50;
+const SWITCH_KNOB_COLOR = "#e0e0e0";
+const SWITCH_KNOB_BORDER = "#7a7a7a";
+const SWITCH_KNOB_RADIUS = 8;
+const SWITCH_GROOVE_THICKNESS = 3;
+
+export type SwitchPosition = "min" | "mid" | "max";
+
+export function renderSwitchIcon(def: SwitchIcon, position: SwitchPosition): string {
+	const accent = GROUP_ACCENT[def.group];
+	const isVertical = def.axis === "vertical";
+
+	const trackW = isVertical ? SWITCH_TRACK_SHORT : SWITCH_TRACK_LONG;
+	const trackH = isVertical ? SWITCH_TRACK_LONG : SWITCH_TRACK_SHORT;
+	const trackX = (SIZE - trackW) / 2;
+	const trackY = (SIZE - trackH) / 2;
+	const trackRx = Math.min(trackW, trackH) / 2;
+
+	const knobW = isVertical ? SWITCH_KNOB_SHORT : SWITCH_KNOB_LONG;
+	const knobH = isVertical ? SWITCH_KNOB_LONG : SWITCH_KNOB_SHORT;
+
+	// Position the knob along the long axis. min = top/left, max = bottom/right.
+	// Inset the knob center by half its own length so the knob never extends
+	// past the rounded track end-cap.
+	const trackStart = isVertical ? trackY : trackX;
+	const trackEnd = isVertical ? trackY + trackH : trackX + trackW;
+	const knobHalfLong = (isVertical ? knobH : knobW) / 2;
+	let longCenter: number;
+	if (position === "min") longCenter = trackStart + knobHalfLong;
+	else if (position === "max") longCenter = trackEnd - knobHalfLong;
+	else longCenter = SIZE / 2;
+
+	const knobCx = isVertical ? SIZE / 2 : longCenter;
+	const knobCy = isVertical ? longCenter : SIZE / 2;
+	const knobX = knobCx - knobW / 2;
+	const knobY = knobCy - knobH / 2;
+
+	// Accent groove across the short axis of the knob.
+	const grooveLen = (isVertical ? knobW : knobH) * 0.55;
+	const grooveW = isVertical ? grooveLen : SWITCH_GROOVE_THICKNESS;
+	const grooveH = isVertical ? SWITCH_GROOVE_THICKNESS : grooveLen;
+	const grooveX = knobCx - grooveW / 2;
+	const grooveY = knobCy - grooveH / 2;
+
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <rect x="${trackX}" y="${trackY}" width="${trackW}" height="${trackH}" rx="${trackRx}"
+        fill="${SWITCH_TRACK_COLOR}" stroke="${SWITCH_TRACK_BORDER}" stroke-width="2"/>
+  <rect x="${knobX}" y="${knobY}" width="${knobW}" height="${knobH}" rx="${SWITCH_KNOB_RADIUS}"
+        fill="${SWITCH_KNOB_COLOR}" stroke="${SWITCH_KNOB_BORDER}" stroke-width="2"/>
+  <rect x="${grooveX}" y="${grooveY}" width="${grooveW}" height="${grooveH}" rx="1" fill="${accent}"/>
 </svg>`;
 }
 

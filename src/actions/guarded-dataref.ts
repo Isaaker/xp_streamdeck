@@ -14,14 +14,11 @@ import { TIMINGS, TOLERANCE_FLOAT } from "../const";
 import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
-import { persistImage } from "../util/image-cache";
 import { trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
 type GuardedDataRefSettings = JsonObject & {
 	shortDataRef?: string;
-	shortValueOff?: string | number;
-	shortValueOn?: string | number;
 	hideShortConfirmation?: boolean;
 
 	longDataRef?: string;
@@ -32,21 +29,15 @@ type GuardedDataRefSettings = JsonObject & {
 	valueLocked?: string | number;
 	valueUnlocked?: string | number;
 	strictOnMatch?: boolean;
-	imageLocked?: string;
-	imageUnlocked?: string;
 };
 
 const STATE_LOCKED = 0;
-const STATE_UNLOCKED = 1;
+const STATE_UNLOCKED_OFF = 1;
+const STATE_UNLOCKED_ON = 2;
 const STATE_DIRTY = -1;
-
-const DEFAULT_IMAGE_LOCKED = "imgs/guarded/locked";
-const DEFAULT_IMAGE_UNLOCKED = "imgs/guarded/unlocked";
 
 interface ParsedSettings {
 	shortPath: string;
-	shortValueOff: number;
-	shortValueOn: number;
 	hideShortConfirmation: boolean;
 
 	longPath: string;
@@ -57,8 +48,6 @@ interface ParsedSettings {
 	valueLocked: number;
 	valueUnlocked: number;
 	strictOnMatch: boolean;
-	imageLocked?: string;
-	imageUnlocked?: string;
 }
 
 interface ActionState {
@@ -70,12 +59,17 @@ interface ActionState {
 	valueLocked: number;
 	valueUnlocked: number;
 	strictOnMatch: boolean;
-	imageLocked?: string;
-	imageUnlocked?: string;
-	imageLockedRaw?: string;
-	imageUnlockedRaw?: string;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
+
+	// Long-press DataRef tracked separately so the visual state can
+	// distinguish "guard open, function still off" from "guard open + function on".
+	longPath: string;
+	longValueOff: number;
+	longValueOn: number;
+	longHandle?: SubscriptionHandle;
+	lastLongValue?: DataRefValue;
+
 	currentState: number;
 	renderPromise?: Promise<void>;
 }
@@ -100,10 +94,12 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 			valueLocked: parsed.valueLocked,
 			valueUnlocked: parsed.valueUnlocked,
 			strictOnMatch: parsed.strictOnMatch,
+			longPath: parsed.longPath,
+			longValueOff: parsed.longValueOff,
+			longValueOn: parsed.longValueOn,
 			currentState: STATE_DIRTY,
 		};
 		this.states.set(ev.action.id, state);
-		await this.syncImages(ev.action.id, state, parsed);
 
 		if (state.guardPath) {
 			await this.applySubscription(state);
@@ -117,6 +113,7 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 		if (!state) return Promise.resolve();
 		this.cancelLongPressTimer(state);
 		this.dropSubscription(state);
+		this.dropLongSubscription(state);
 		this.states.delete(ev.action.id);
 		return Promise.resolve();
 	}
@@ -129,24 +126,27 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 
 		const parsed = parseSettings(ev.payload.settings ?? {});
 		const guardChanged = parsed.guardPath !== state.guardPath;
+		const longChanged = parsed.longPath !== state.longPath;
 
 		state.valueLocked = parsed.valueLocked;
 		state.valueUnlocked = parsed.valueUnlocked;
 		state.strictOnMatch = parsed.strictOnMatch;
-		await this.syncImages(ev.action.id, state, parsed);
+		state.longValueOff = parsed.longValueOff;
+		state.longValueOn = parsed.longValueOn;
 
-		if (guardChanged) {
+		if (guardChanged || longChanged) {
 			this.dropSubscription(state);
+			this.dropLongSubscription(state);
 			state.guardPath = parsed.guardPath;
+			state.longPath = parsed.longPath;
 			state.lastValue = undefined;
+			state.lastLongValue = undefined;
 			state.currentState = STATE_DIRTY;
 			if (state.guardPath) {
 				await this.applySubscription(state);
 			} else {
 				await clearTile(state.action);
 				await state.action.setState(STATE_LOCKED);
-				const fallback = state.imageLocked ?? DEFAULT_IMAGE_LOCKED;
-				await state.action.setImage(fallback);
 				state.currentState = STATE_LOCKED;
 			}
 			return;
@@ -154,7 +154,7 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 
 		state.currentState = STATE_DIRTY;
 		if (state.lastValue !== undefined) {
-			await this.renderState(state, state.lastValue);
+			await this.renderState(state);
 		}
 	}
 
@@ -203,12 +203,8 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 		}
 
 		try {
-			const target = await this.toggleDataRef(
-				parsed.shortPath,
-				parsed.shortValueOff,
-				parsed.shortValueOn,
-				state,
-			);
+			// Hard-coded 0 ↔ 1 toggle: a guard's only job is to open/close.
+			const target = await this.toggleDataRef(parsed.shortPath, 0, 1, state);
 			streamDeck.logger.info(`guarded-dataref: short toggle ${parsed.shortPath} → ${target}`);
 			if (!parsed.hideShortConfirmation) {
 				await state.action.showOk();
@@ -243,8 +239,9 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 	}
 
 	// Read current value of `path`, decide whether it is currently "on", and
-	// write the opposite. If `path` is the same as the subscribed guardPath,
-	// optimistically update lastValue/render to skip the WS round-trip.
+	// write the opposite. Optimistically updates the matching cached value
+	// (lastValue for guard, lastLongValue for long path) so the next render
+	// doesn't have to wait for the WS round-trip.
 	private async toggleDataRef(
 		path: string,
 		valueOff: number,
@@ -253,16 +250,21 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 	): Promise<number> {
 		const { basePath, index } = parseDataRefPath(path);
 		const drId = await this.xplane.getDataRefId(basePath);
-		const current =
-			path === state.guardPath && state.lastValue !== undefined
-				? state.lastValue
-				: applyIndex(await this.xplane.readDataRef(drId), index);
-		const isOn = mapValueToStateIndex(current, valueOff, valueOn, false) === STATE_UNLOCKED;
+		let current: DataRefValue;
+		if (path === state.guardPath && state.lastValue !== undefined) {
+			current = state.lastValue;
+		} else if (path === state.longPath && state.lastLongValue !== undefined) {
+			current = state.lastLongValue;
+		} else {
+			current = applyIndex(await this.xplane.readDataRef(drId), index);
+		}
+		const isOn = isOnValue(current, valueOff, valueOn, false);
 		const target = isOn ? valueOff : valueOn;
 		await this.xplane.writeDataRef(drId, target, index);
-		if (path === state.guardPath) {
-			state.lastValue = target;
-			await this.renderState(state, target);
+		if (path === state.guardPath) state.lastValue = target;
+		if (path === state.longPath) state.lastLongValue = target;
+		if (path === state.guardPath || path === state.longPath) {
+			await this.renderState(state);
 		}
 		return target;
 	}
@@ -274,35 +276,6 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 		}
 	}
 
-	private async syncImages(
-		actionId: string,
-		state: ActionState,
-		parsed: ParsedSettings,
-	): Promise<void> {
-		if (parsed.imageLocked !== state.imageLockedRaw) {
-			state.imageLockedRaw = parsed.imageLocked;
-			try {
-				state.imageLocked = await persistImage(actionId, "locked", parsed.imageLocked);
-			} catch (err) {
-				streamDeck.logger.warn("guarded-dataref: persistImage locked failed", err);
-				state.imageLocked = parsed.imageLocked;
-			}
-		}
-		if (parsed.imageUnlocked !== state.imageUnlockedRaw) {
-			state.imageUnlockedRaw = parsed.imageUnlocked;
-			try {
-				state.imageUnlocked = await persistImage(
-					actionId,
-					"unlocked",
-					parsed.imageUnlocked,
-				);
-			} catch (err) {
-				streamDeck.logger.warn("guarded-dataref: persistImage unlocked failed", err);
-				state.imageUnlocked = parsed.imageUnlocked;
-			}
-		}
-	}
-
 	private async applySubscription(state: ActionState): Promise<void> {
 		if (!state.guardPath) return;
 
@@ -311,13 +284,13 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 			return;
 		}
 
-		const { basePath, index } = parseDataRefPath(state.guardPath);
-
+		// Guard subscription (drives Locked vs Unlocked-*).
+		const guard = parseDataRefPath(state.guardPath);
 		try {
-			state.handle = await this.xplane.subscribe(basePath, (raw) => {
+			state.handle = await this.xplane.subscribe(guard.basePath, (raw) => {
 				let value: DataRefValue;
 				try {
-					value = applyIndex(raw, index);
+					value = applyIndex(raw, guard.index);
 				} catch (err) {
 					streamDeck.logger.warn(
 						`guarded-dataref: index apply failed for ${state.guardPath}`,
@@ -329,17 +302,17 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 					return;
 				}
 				state.lastValue = value;
-				this.renderState(state, value).catch((err) =>
+				this.renderState(state).catch((err) =>
 					streamDeck.logger.warn("guarded-dataref: render failed", err),
 				);
 			});
 
 			try {
-				const id = await this.xplane.getDataRefId(basePath);
-				const initial = applyIndex(await this.xplane.readDataRef(id), index);
+				const id = await this.xplane.getDataRefId(guard.basePath);
+				const initial = applyIndex(await this.xplane.readDataRef(id), guard.index);
 				if (state.lastValue === undefined) {
 					state.lastValue = initial;
-					await this.renderState(state, initial);
+					await this.renderState(state);
 				}
 			} catch (err) {
 				streamDeck.logger.warn(
@@ -352,6 +325,46 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 			await setNotFound(state.action);
 			await state.action.showAlert();
 		}
+
+		// Long-press DataRef subscription — only when it's a distinct path
+		// (otherwise lastValue already covers it). Drives Unlocked-Off vs Unlocked-On.
+		if (state.longPath && state.longPath !== state.guardPath) {
+			const long = parseDataRefPath(state.longPath);
+			try {
+				state.longHandle = await this.xplane.subscribe(long.basePath, (raw) => {
+					try {
+						state.lastLongValue = applyIndex(raw, long.index);
+					} catch (err) {
+						streamDeck.logger.warn(
+							`guarded-dataref: long index apply failed for ${state.longPath}`,
+							err,
+						);
+						return;
+					}
+					this.renderState(state).catch((err) =>
+						streamDeck.logger.warn("guarded-dataref: long render failed", err),
+					);
+				});
+				try {
+					const id = await this.xplane.getDataRefId(long.basePath);
+					const initial = applyIndex(await this.xplane.readDataRef(id), long.index);
+					if (state.lastLongValue === undefined) {
+						state.lastLongValue = initial;
+						await this.renderState(state);
+					}
+				} catch (err) {
+					streamDeck.logger.warn(
+						`guarded-dataref: long initial read failed for ${state.longPath}`,
+						err,
+					);
+				}
+			} catch (err) {
+				streamDeck.logger.warn(
+					`guarded-dataref: long subscribe failed for ${state.longPath}`,
+					err,
+				);
+			}
+		}
 	}
 
 	private dropSubscription(state: ActionState): void {
@@ -361,13 +374,21 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 		}
 	}
 
-	private renderState(state: ActionState, value: DataRefValue): Promise<void> {
-		const target = mapValueToStateIndex(
-			value,
-			state.valueLocked,
-			state.valueUnlocked,
-			state.strictOnMatch,
-		);
+	private dropLongSubscription(state: ActionState): void {
+		if (state.longHandle) {
+			this.xplane.unsubscribe(state.longHandle);
+			state.longHandle = undefined;
+		}
+	}
+
+	private renderState(state: ActionState): Promise<void> {
+		if (state.lastValue === undefined) return Promise.resolve();
+		// When guard and long share the same DataRef, lastValue covers both.
+		const longValue =
+			state.longPath && state.longPath === state.guardPath
+				? state.lastValue
+				: state.lastLongValue;
+		const target = computeTargetState(state, state.lastValue, longValue);
 		const previous = state.renderPromise ?? Promise.resolve();
 		const next = previous
 			.catch(() => {
@@ -376,16 +397,10 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 			.then(async () => {
 				if (target === state.currentState) return;
 				streamDeck.logger.info(
-					`guarded-dataref: setState ${target} for ${state.guardPath}`,
+					`guarded-dataref: setState ${target} for ${state.guardPath} (longPath=${state.longPath || "<none>"})`,
 				);
 				await clearTile(state.action);
 				await state.action.setState(target);
-				const customImage =
-					target === STATE_UNLOCKED ? state.imageUnlocked : state.imageLocked;
-				const image =
-					customImage ??
-					(target === STATE_UNLOCKED ? DEFAULT_IMAGE_UNLOCKED : DEFAULT_IMAGE_LOCKED);
-				await state.action.setImage(image);
 				state.currentState = target;
 			});
 		state.renderPromise = next;
@@ -397,6 +412,7 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 			this.cancelLongPressTimer(state);
 			if (state.guardPath) {
 				this.dropSubscription(state);
+				this.dropLongSubscription(state);
 				state.currentState = STATE_DIRTY;
 			}
 			setOffline(state.action).catch((err) =>
@@ -425,27 +441,17 @@ function parseSettings(s: GuardedDataRefSettings): ParsedSettings {
 	const guardPathRaw = trimString(s.guardDataRef);
 	const guardPath = guardPathRaw || shortPath;
 
-	const shortValueOff = toFiniteNumber(s.shortValueOff) ?? 0;
-	const shortValueOn = toFiniteNumber(s.shortValueOn) ?? 1;
 	const longValueOff = toFiniteNumber(s.longValueOff) ?? 0;
 	const longValueOn = toFiniteNumber(s.longValueOn) ?? 1;
 
-	// Guard locked/unlocked default to short's off/on so a single-DataRef setup
-	// (guard = short, empty guardDataRef field) needs no extra wiring.
-	const valueLocked = toFiniteNumber(s.valueLocked) ?? shortValueOff;
-	const valueUnlocked = toFiniteNumber(s.valueUnlocked) ?? shortValueOn;
-
-	const imageLocked =
-		typeof s.imageLocked === "string" && s.imageLocked.length > 0 ? s.imageLocked : undefined;
-	const imageUnlocked =
-		typeof s.imageUnlocked === "string" && s.imageUnlocked.length > 0
-			? s.imageUnlocked
-			: undefined;
+	// Guard locked = 0, unlocked = 1 — short press toggles between these two
+	// values. Override valueLocked/valueUnlocked only if the visual state
+	// should be derived from a different DataRef value range.
+	const valueLocked = toFiniteNumber(s.valueLocked) ?? 0;
+	const valueUnlocked = toFiniteNumber(s.valueUnlocked) ?? 1;
 
 	return {
 		shortPath,
-		shortValueOff,
-		shortValueOn,
 		hideShortConfirmation: s.hideShortConfirmation === true,
 		longPath,
 		longValueOff,
@@ -454,26 +460,48 @@ function parseSettings(s: GuardedDataRefSettings): ParsedSettings {
 		valueLocked,
 		valueUnlocked,
 		strictOnMatch: s.strictOnMatch === true,
-		imageLocked,
-		imageUnlocked,
 	};
 }
 
-function mapValueToStateIndex(
+// True when `value` is closer to `valueOn` than to `valueOff` (or — under
+// strict mode — exactly matches `valueOn` within float tolerance). Shared
+// between guard (locked vs unlocked) and long-press (function off vs on).
+function isOnValue(
 	value: DataRefValue,
-	valueLocked: number,
-	valueUnlocked: number,
+	valueOff: number,
+	valueOn: number,
 	strictOnMatch: boolean,
-): typeof STATE_LOCKED | typeof STATE_UNLOCKED {
+): boolean {
 	const num = coerceNumber(value);
-	if (num === undefined) return STATE_LOCKED;
-	if (strictOnMatch) {
-		return Math.abs(num - valueUnlocked) < TOLERANCE_FLOAT ? STATE_UNLOCKED : STATE_LOCKED;
-	}
-	if (valueLocked === 0 && valueUnlocked === 1) {
-		return num >= 0.5 ? STATE_UNLOCKED : STATE_LOCKED;
-	}
-	const dLocked = Math.abs(num - valueLocked);
-	const dUnlocked = Math.abs(num - valueUnlocked);
-	return dUnlocked < dLocked ? STATE_UNLOCKED : STATE_LOCKED;
+	if (num === undefined) return false;
+	if (strictOnMatch) return Math.abs(num - valueOn) < TOLERANCE_FLOAT;
+	if (valueOff === 0 && valueOn === 1) return num >= 0.5;
+	const dOff = Math.abs(num - valueOff);
+	const dOn = Math.abs(num - valueOn);
+	return dOn < dOff;
+}
+
+function computeTargetState(
+	state: ActionState,
+	guardValue: DataRefValue,
+	longValue: DataRefValue | undefined,
+): typeof STATE_LOCKED | typeof STATE_UNLOCKED_OFF | typeof STATE_UNLOCKED_ON {
+	const unlocked = isOnValue(
+		guardValue,
+		state.valueLocked,
+		state.valueUnlocked,
+		state.strictOnMatch,
+	);
+	if (!unlocked) return STATE_LOCKED;
+	// Without a long path or a known long value we can't tell whether the
+	// function is on — default to "unlocked off" so the bright LED look
+	// stays gated on real confirmation.
+	if (!state.longPath || longValue === undefined) return STATE_UNLOCKED_OFF;
+	const functionOn = isOnValue(
+		longValue,
+		state.longValueOff,
+		state.longValueOn,
+		state.strictOnMatch,
+	);
+	return functionOn ? STATE_UNLOCKED_ON : STATE_UNLOCKED_OFF;
 }

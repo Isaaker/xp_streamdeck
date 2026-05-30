@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import sharp from "sharp";
+import { renderSwitchStateSvg, type SwitchTilePosition } from "../src/util/switch-image.ts";
 import type { GuardedIcon } from "./icons/catalog.ts";
 import { catalog } from "./icons/catalog.ts";
 import {
@@ -18,9 +19,11 @@ import {
 	renderNudgeDisplayIcon,
 	renderNudgeIcon,
 	renderSimOfflineIcon,
+	renderSwitchIcon,
 	renderToggleIcon,
 	renderToggleStateIcon,
 	renderViewIcon,
+	type SwitchPosition,
 } from "./icons/template.ts";
 
 // Action UUIDs whose key.png / key@2x.png should be the neutral default
@@ -39,7 +42,17 @@ const NEUTRAL_DEFAULT_KEY_ACTIONS: ReadonlySet<string> = new Set([
 	"guarded-command",
 ]);
 
-const GUARDED_STATES = ["locked", "unlocked"] as const;
+// Catalog button images keep the old 2-state naming (`_locked.png` /
+// `_unlocked.png`) for backwards-compat — the "unlocked" variant maps to the
+// new "unlocked_on" rendering (hazard dim + LED on), matching the old look.
+const CATALOG_GUARDED_STATES = [
+	{ file: "locked", state: "locked" as const },
+	{ file: "unlocked", state: "unlocked_on" as const },
+];
+// Bundle defaults expose the full 3-state set so guarded-dataref can show
+// "Guard open / function still off" without faking it.
+const BUNDLE_GUARDED_STATES = ["locked", "unlocked_off", "unlocked_on"] as const;
+const SWITCH_POSITIONS: SwitchPosition[] = ["min", "mid", "max"];
 
 const OUT_DIR = resolve(process.cwd(), "out/icons");
 // Bundle assets land directly inside the plugin bundle so the runtime can
@@ -75,6 +88,7 @@ async function main(): Promise<void> {
 	let viewCount = 0;
 	let alertCount = 0;
 	let guardedCount = 0;
+	let switchCount = 0;
 
 	for (const def of catalog) {
 		const groupDir = await ensureGroupDir(def.group);
@@ -128,11 +142,18 @@ async function main(): Promise<void> {
 				alertCount += 1;
 			}
 		} else if (def.kind === "guarded") {
-			for (const state of GUARDED_STATES) {
+			for (const { file, state } of CATALOG_GUARDED_STATES) {
 				const svg = renderGuardedIcon(def, state);
 				const png = await renderPng(svg, 144);
-				await writeFile(resolve(groupDir, `${def.name}_${state}.png`), png);
+				await writeFile(resolve(groupDir, `${def.name}_${file}.png`), png);
 				guardedCount += 1;
+			}
+		} else if (def.kind === "switch") {
+			for (const position of SWITCH_POSITIONS) {
+				const svg = renderSwitchIcon(def, position);
+				const png = await renderPng(svg, 144);
+				await writeFile(resolve(groupDir, `${def.name}_${position}.png`), png);
+				switchCount += 1;
 			}
 		} else {
 			const svg = renderBackgroundIcon(def);
@@ -153,13 +174,14 @@ async function main(): Promise<void> {
 		backgroundCount +
 		viewCount +
 		alertCount +
-		guardedCount;
+		guardedCount +
+		switchCount;
 	console.log(
 		`Wrote ${total} PNGs to ${OUT_DIR} ` +
 			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges + ` +
 			`${nudgeDisplayCount} nudge-displays + ${commandCount} commands + ${knobCount} knobs + ` +
 			`${gcuKeyCount} gcu_keys + ${backgroundCount} backgrounds + ${viewCount} views + ` +
-			`${alertCount} alert states + ${guardedCount} guarded states, ` +
+			`${alertCount} alert states + ${guardedCount} guarded states + ${switchCount} switch positions, ` +
 			`grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
 	);
 
@@ -180,12 +202,12 @@ async function main(): Promise<void> {
 		label: "",
 		group: "cockpit",
 	};
-	for (const state of GUARDED_STATES) {
+	for (const state of BUNDLE_GUARDED_STATES) {
 		const svg = renderGuardedIcon(guardedDefault, state);
 		const png = await renderPng(svg, 144);
 		await writeFile(resolve(GUARDED_DIR, `${state}.png`), png);
 	}
-	console.log(`Wrote bundle assets: ${GUARDED_DIR}/{locked,unlocked}.png`);
+	console.log(`Wrote bundle assets: ${GUARDED_DIR}/{locked,unlocked_off,unlocked_on}.png`);
 
 	// Action-icons: per-UUID glyphs, written into the plugin bundle so they
 	// show up in the Stream Deck library sidebar and as the default key image.
@@ -230,6 +252,31 @@ async function main(): Promise<void> {
 		await writeFile(resolve(STATES_DIR, filename), png);
 	}
 	console.log(`Wrote 4 toggle-state PNGs to ${STATES_DIR}`);
+
+	// DataRef Switch state defaults (3-position lever placeholders).
+	const SWITCH_STATE_SIZES: Array<[string, number]> = [
+		["switch_up.png", 72],
+		["switch_up@2x.png", 144],
+		["switch_mid.png", 72],
+		["switch_mid@2x.png", 144],
+		["switch_down.png", 72],
+		["switch_down@2x.png", 144],
+	];
+	const switchStateSvgs: Record<SwitchTilePosition, string> = {
+		min: renderSwitchStateSvg("min"),
+		mid: renderSwitchStateSvg("mid"),
+		max: renderSwitchStateSvg("max"),
+	};
+	for (const [filename, size] of SWITCH_STATE_SIZES) {
+		const pos: SwitchTilePosition = filename.startsWith("switch_up")
+			? "min"
+			: filename.startsWith("switch_mid")
+				? "mid"
+				: "max";
+		const png = await renderPng(switchStateSvgs[pos], size);
+		await writeFile(resolve(STATES_DIR, filename), png);
+	}
+	console.log(`Wrote 6 switch-state PNGs to ${STATES_DIR}`);
 }
 
 main().catch((err) => {

@@ -14,7 +14,6 @@ import { TIMINGS, TOLERANCE_FLOAT } from "../const";
 import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
-import { persistImage } from "../util/image-cache";
 import { trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -30,8 +29,6 @@ type GuardedCommandSettings = JsonObject & {
 	guardDataRef?: string;
 	valueLocked?: string | number;
 	valueUnlocked?: string | number;
-	imageLocked?: string;
-	imageUnlocked?: string;
 	strictOnMatch?: boolean;
 };
 
@@ -40,9 +37,6 @@ const STATE_UNLOCKED = 1;
 
 const STATE_DIRTY = -1;
 
-const DEFAULT_IMAGE_LOCKED = "imgs/guarded/locked";
-const DEFAULT_IMAGE_UNLOCKED = "imgs/guarded/unlocked";
-
 interface ParsedSettings {
 	shortPath: string;
 	longPath: string;
@@ -50,8 +44,6 @@ interface ParsedSettings {
 	guardPath: string;
 	valueLocked: number;
 	valueUnlocked: number;
-	imageLocked?: string;
-	imageUnlocked?: string;
 	strictOnMatch: boolean;
 	hideShortConfirmation: boolean;
 }
@@ -68,10 +60,6 @@ interface ActionState {
 	valueLocked: number;
 	valueUnlocked: number;
 	strictOnMatch: boolean;
-	imageLocked?: string;
-	imageUnlocked?: string;
-	imageLockedRaw?: string;
-	imageUnlockedRaw?: string;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 	currentState: number;
@@ -101,7 +89,6 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 			currentState: STATE_DIRTY,
 		};
 		this.states.set(ev.action.id, state);
-		await this.syncImages(ev.action.id, state, parsed);
 
 		if (state.guardPath) {
 			await this.applySubscription(state);
@@ -132,7 +119,6 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 		state.valueLocked = parsed.valueLocked;
 		state.valueUnlocked = parsed.valueUnlocked;
 		state.strictOnMatch = parsed.strictOnMatch;
-		await this.syncImages(ev.action.id, state, parsed);
 
 		if (guardChanged) {
 			this.dropSubscription(state);
@@ -144,14 +130,12 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 			} else {
 				await clearTile(state.action);
 				await state.action.setState(STATE_LOCKED);
-				const fallback = state.imageLocked ?? DEFAULT_IMAGE_LOCKED;
-				await state.action.setImage(fallback);
 				state.currentState = STATE_LOCKED;
 			}
 			return;
 		}
 
-		// Force a re-render so changed thresholds and image overrides take effect.
+		// Force a re-render so changed thresholds take effect.
 		state.currentState = STATE_DIRTY;
 		if (state.lastValue !== undefined) {
 			await this.renderState(state, state.lastValue);
@@ -302,35 +286,6 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 		}
 	}
 
-	private async syncImages(
-		actionId: string,
-		state: ActionState,
-		parsed: ParsedSettings,
-	): Promise<void> {
-		if (parsed.imageLocked !== state.imageLockedRaw) {
-			state.imageLockedRaw = parsed.imageLocked;
-			try {
-				state.imageLocked = await persistImage(actionId, "locked", parsed.imageLocked);
-			} catch (err) {
-				streamDeck.logger.warn("guarded-command: persistImage locked failed", err);
-				state.imageLocked = parsed.imageLocked;
-			}
-		}
-		if (parsed.imageUnlocked !== state.imageUnlockedRaw) {
-			state.imageUnlockedRaw = parsed.imageUnlocked;
-			try {
-				state.imageUnlocked = await persistImage(
-					actionId,
-					"unlocked",
-					parsed.imageUnlocked,
-				);
-			} catch (err) {
-				streamDeck.logger.warn("guarded-command: persistImage unlocked failed", err);
-				state.imageUnlocked = parsed.imageUnlocked;
-			}
-		}
-	}
-
 	private async applySubscription(state: ActionState): Promise<void> {
 		if (!state.guardPath) return;
 
@@ -408,12 +363,6 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 				);
 				await clearTile(state.action);
 				await state.action.setState(target);
-				const customImage =
-					target === STATE_UNLOCKED ? state.imageUnlocked : state.imageLocked;
-				const image =
-					customImage ??
-					(target === STATE_UNLOCKED ? DEFAULT_IMAGE_UNLOCKED : DEFAULT_IMAGE_LOCKED);
-				await state.action.setImage(image);
 				state.currentState = target;
 			});
 		state.renderPromise = next;
@@ -458,12 +407,6 @@ function parseSettings(s: GuardedCommandSettings): ParsedSettings {
 			: s.longPressMode === "autoRepeat"
 				? "autoRepeat"
 				: "hold";
-	const imageLocked =
-		typeof s.imageLocked === "string" && s.imageLocked.length > 0 ? s.imageLocked : undefined;
-	const imageUnlocked =
-		typeof s.imageUnlocked === "string" && s.imageUnlocked.length > 0
-			? s.imageUnlocked
-			: undefined;
 	return {
 		shortPath: trimString(s.shortPressCommand),
 		longPath: trimString(s.longPressCommand),
@@ -471,8 +414,6 @@ function parseSettings(s: GuardedCommandSettings): ParsedSettings {
 		guardPath: trimString(s.guardDataRef),
 		valueLocked: toFiniteNumber(s.valueLocked) ?? 0,
 		valueUnlocked: toFiniteNumber(s.valueUnlocked) ?? 1,
-		imageLocked,
-		imageUnlocked,
 		strictOnMatch: s.strictOnMatch === true,
 		hideShortConfirmation: s.hideShortConfirmation === true,
 	};

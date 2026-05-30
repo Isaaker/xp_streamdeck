@@ -51,7 +51,7 @@
 					"TitleAlignment": "middle"
 				},
 				{
-					"Image": "imgs/guarded/unlocked",
+					"Image": "imgs/guarded/unlocked_on",
 					"TitleAlignment": "middle"
 				}
 			]
@@ -60,7 +60,7 @@
 			"Name": "Guarded DataRef",
 			"UUID": "com.robertw.xplane.guarded-dataref",
 			"Icon": "imgs/actions/guarded-command/icon",
-			"Tooltip": "Two-stage DataRef button: short press toggles DataRef A (e.g. open cover), long press (≥500 ms) toggles DataRef B (e.g. switch behind cover). Image follows guard DataRef state.",
+			"Tooltip": "Two-stage DataRef button: short press toggles the guard DataRef 0↔1 (open cover), long press (≥500 ms) toggles the guarded DataRef (function on/off). Three visual states reflect locked / unlocked-off / unlocked-on.",
 			"PropertyInspectorPath": "ui/guarded-dataref.html",
 			"Controllers": [
 				"Keypad"
@@ -72,7 +72,11 @@
 					"TitleAlignment": "middle"
 				},
 				{
-					"Image": "imgs/guarded/unlocked",
+					"Image": "imgs/guarded/unlocked_off",
+					"TitleAlignment": "middle"
+				},
+				{
+					"Image": "imgs/guarded/unlocked_on",
 					"TitleAlignment": "middle"
 				}
 			]
@@ -83,6 +87,22 @@
 			"Icon": "imgs/actions/rotary/icon",
 			"Tooltip": "Fire a CommandRef (optional begin/end HOLD on last enum position) and show a live DataRef value as title. For magneto, frequency tuning, FMS knobs, AP setpoints.",
 			"PropertyInspectorPath": "ui/rotary.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/rotary/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
+			"Name": "Rotary DataRef",
+			"UUID": "com.robertw.xplane.rotary-dataref",
+			"Icon": "imgs/actions/rotary/icon",
+			"Tooltip": "Increment/decrement a DataRef by a fixed step on each press. LEFT/DOWN subtract, RIGHT/UP add. Optional Min/Max clamp and long-press coarse step. For setpoints (HDG/ALT bug, BARO) where no matching CommandRef exists.",
+			"PropertyInspectorPath": "ui/rotary-dataref.html",
 			"Controllers": [
 				"Keypad"
 			],
@@ -158,10 +178,35 @@
 			]
 		},
 		{
+			"Name": "DataRef Switch",
+			"UUID": "com.robertw.xplane.dataref-switch",
+			"Icon": "imgs/actions/dataref-toggle/icon",
+			"Tooltip": "N-position switch driven by a single DataRef. Short press steps toward Max (current + Step); long press (≥500 ms) steps toward Min. Stops at the configured Min/Max ends — perfect for 3-pos cockpit switches like AW109 cargo lights.",
+			"PropertyInspectorPath": "ui/dataref-switch.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"DisableAutomaticStates": true,
+			"States": [
+				{
+					"Image": "imgs/states/switch_up",
+					"TitleAlignment": "middle"
+				},
+				{
+					"Image": "imgs/states/switch_mid",
+					"TitleAlignment": "middle"
+				},
+				{
+					"Image": "imgs/states/switch_down",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
 			"Name": "DataRef Toggle",
 			"UUID": "com.robertw.xplane.dataref-toggle",
 			"Icon": "imgs/actions/dataref-toggle/icon",
-			"Tooltip": "Two-state DataRef button: image follows live value, click toggles via write or command. Hold Mode turns it into a momentary press/release (test/reset buttons).",
+			"Tooltip": "Two-state DataRef button: image follows live value, click toggles via write or command. Hold Mode turns it into a momentary press/release (test/reset buttons). Set State DataRef to read the visual state from a different DataRef than the one written on press (e.g. indicator lamp vs reset button).",
 			"PropertyInspectorPath": "ui/dataref-toggle.html",
 			"Controllers": [
 				"Keypad"
