@@ -10,7 +10,7 @@ import type { JsonObject } from "@elgato/utils";
 import { toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearOffline, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
-import { formatDataRefValue } from "../util/format";
+import { formatDataRefValue, type ValueMode } from "../util/format";
 import { normalizeFormat, trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -24,16 +24,19 @@ type MultiDataRefDisplaySettings = JsonObject & {
 	slot1Format?: string;
 	slot1UnitScale?: string | number;
 	slot1Precision?: string | number;
+	slot1ValueMode?: ValueMode;
 	slot2Label?: string;
 	slot2DataRef?: string;
 	slot2Format?: string;
 	slot2UnitScale?: string | number;
 	slot2Precision?: string | number;
+	slot2ValueMode?: ValueMode;
 	slot3Label?: string;
 	slot3DataRef?: string;
 	slot3Format?: string;
 	slot3UnitScale?: string | number;
 	slot3Precision?: string | number;
+	slot3ValueMode?: ValueMode;
 };
 
 interface SlotState {
@@ -42,6 +45,7 @@ interface SlotState {
 	format: string;
 	unitScale?: number;
 	precision?: number;
+	valueMode: ValueMode;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 	notFound: boolean;
@@ -107,6 +111,7 @@ export class XPlaneMultiDataRefDisplay extends SingletonAction<MultiDataRefDispl
 			slot.format = next.format;
 			slot.unitScale = next.unitScale;
 			slot.precision = next.precision;
+			slot.valueMode = next.valueMode;
 			if (pathChanged) {
 				this.dropSlotSubscription(slot);
 				slot.path = next.path;
@@ -165,6 +170,7 @@ export class XPlaneMultiDataRefDisplay extends SingletonAction<MultiDataRefDispl
 							format: slot.format,
 							unitScale: slot.unitScale,
 							precision: slot.precision,
+							valueMode: slot.valueMode,
 						});
 			lines.push(slot.label ? `${slot.label} ${value}` : value);
 		}
@@ -207,6 +213,7 @@ interface ParsedSlot {
 	format: string;
 	unitScale?: number;
 	precision?: number;
+	valueMode: ValueMode;
 }
 
 interface ParsedSettings {
@@ -224,6 +231,7 @@ function parseSettings(s: MultiDataRefDisplaySettings): ParsedSettings {
 				s.slot1Format,
 				s.slot1UnitScale,
 				s.slot1Precision,
+				s.slot1ValueMode,
 			),
 			parseSlot(
 				s.slot2Label,
@@ -231,6 +239,7 @@ function parseSettings(s: MultiDataRefDisplaySettings): ParsedSettings {
 				s.slot2Format,
 				s.slot2UnitScale,
 				s.slot2Precision,
+				s.slot2ValueMode,
 			),
 			parseSlot(
 				s.slot3Label,
@@ -238,6 +247,7 @@ function parseSettings(s: MultiDataRefDisplaySettings): ParsedSettings {
 				s.slot3Format,
 				s.slot3UnitScale,
 				s.slot3Precision,
+				s.slot3ValueMode,
 			),
 		],
 	};
@@ -249,6 +259,7 @@ function parseSlot(
 	format: string | undefined,
 	unitScale: string | number | undefined,
 	precision: string | number | undefined,
+	valueMode: ValueMode | undefined,
 ): ParsedSlot {
 	return {
 		path: trimString(path),
@@ -256,5 +267,6 @@ function parseSlot(
 		format: normalizeFormat(format),
 		unitScale: toFiniteNumber(unitScale),
 		precision: toFiniteNumber(precision),
+		valueMode: valueMode === "string" ? "string" : "numeric",
 	};
 }

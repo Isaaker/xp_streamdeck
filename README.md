@@ -166,6 +166,39 @@ Pressing the key cycles OFF → R → L → BOTH; pressing at BOTH instead holds
 | Unit | `MHz` |
 | Unit Scale | `0.001` |
 
+### Rotary DataRef
+
+Increment / decrement a writable DataRef by a fixed step on each press — for setpoints (HDG / ALT bug, BARO, AP airspeed, …) where the aircraft exposes only a writable DataRef and no matching `*_up` / `*_down` CommandRef pair. Pair two or four keys on the deck (LEFT/RIGHT, optionally plus UP/DOWN) to drive one setpoint up and down.
+
+Property Inspector fields:
+
+- **DataRef Path** — the writable DataRef, e.g. `sim/cockpit2/autopilot/heading_dial_deg_mag_pilot`. Supports array indexing (see [Array DataRefs](#array-datarefs)).
+- **Live Value** — read-only preview while editing the path.
+- **Delta** — positive step size (e.g. `1`, `10`, `0.01`).
+- **Direction** — sign per key: `Right (+ delta)` / `Up (+ delta)` add, `Left (− delta)` / `Down (− delta)` subtract.
+- **Min Value** / **Max Value** — optional clamp. Leave empty for unbounded setpoints; when both are set the value clamps at the endstops.
+- **Feedback** — opt-out of the `showOk()` flash on success.
+- **Endstop** — opt-out of the alert flash when already at Min / Max (silent no-op instead).
+- **Long-press (coarse step)** *(collapsible)* — **Coarse Delta**: optional larger step fired on hold ≥ 500 ms. Useful for fine/coarse on the same button (e.g. HDG bug ±1 short / ±10 long).
+- **Title display** *(collapsible)* — same numeric / enum formatting pipeline as [Rotary](#rotary): Label, Format Mode, Unit Scale, Format, Unit, Precision, Enum Map.
+
+#### Example: HDG bug ±1 (fine) / ±10 (long press, coarse)
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/cockpit2/autopilot/heading_dial_deg_mag_pilot` |
+| Delta | `1` |
+| Direction | `Right (+ delta)` |
+| Coarse Delta | `10` |
+| Min Value | `0` |
+| Max Value | `360` |
+| Label | `HDG` |
+| Format Mode | `Numeric` |
+| Format | `%.0f` |
+| Unit | `°` |
+
+Pair with a second key on the same DataRef, `Direction = Left (− delta)`, same Delta / Coarse Delta.
+
 ### DataRef Display
 
 Shows a live X-Plane DataRef value as the button title. Pure read-only — no click action.
@@ -310,6 +343,63 @@ Press while OFF → fires `servos_on`; press while ON → fires `servos_off`. Th
 
 Press and hold → writes `1`, button switches to ON image; release → writes `0`, button returns to OFF. Trigger Mode and command fields stay hidden while Hold Mode is on.
 
+### DataRef Switch
+
+N-position switch driven by a single writable DataRef. **Short press** steps toward Max (`current + Step`); **long press** (≥ 500 ms) steps toward Min. The value clamps at the configured Min / Max ends. Renders as a 3-position lever tile (up / mid / down) by default — for a 2-pos switch use `Min=-1 / Max=1 / Step=2`; for a 3-pos use `Step=1`.
+
+Property Inspector fields:
+
+- **DataRef Path** — the writable DataRef. Supports array indexing.
+- **Live Value** — read-only preview while editing the path.
+- **Min Value** / **Max Value** — endstops. Defaults `-1` / `1`.
+- **Step** — positive step size. Use the full Min-to-Max delta for a 2-pos switch (skips the mid position), `1` for a 3-pos switch.
+- **Orientation** — `Vertical (Up / Down)` *(default)* or `Horizontal (Left / Right)`. Vertical pairs with UP/DOWN keys; horizontal with LEFT/RIGHT. With horizontal the action always renders the tile itself (the bundled default state images are vertical).
+- **Invert Direction** — flip **both** the write direction and the tile image. Use when the aircraft wires the DataRef inverted (e.g. AW109 `aw109/cockpit/switch/fuel/xfeed`: `+1` sits visually up, `−1` visually down — opposite to most switches). Short press then steps toward Min, long press toward Max, and the tile shows Min on the bottom / Max on the top (or right / left in horizontal).
+- **Labels (dynamic)** — optional `value=label` map (e.g. `-1=UP, 0=MID, 1=DN`) rendered as the live title.
+- **Static Label** — short caption baked into the rendered switch image (e.g. `BAT`); persists across positions.
+- **Static Label Position** — `Top` or `Bottom`.
+- **Hide Confirmation** — opt-out of the `showOk()` flash on every successful press.
+- **Hide Endstop Alert** — suppress the alert when pressing past Min / Max (silent no-op).
+
+State images come from the bundled `imgs/states/switch_{up,mid,down}.png` by default; assign custom per-position images via the Stream Deck state pickers. Setting a Static Label, switching to horizontal orientation, or enabling Invert Direction makes the action render the tile at runtime — those settings override the state image.
+
+#### Example: 2-position BAT switch
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/cockpit/electrical/battery_on` |
+| Min Value | `0` |
+| Max Value | `1` |
+| Step | `1` |
+| Static Label | `BAT` |
+| Labels (dynamic) | `0=OFF, 1=ON` |
+
+#### Example: AW109 fuel cross-feed (inverted wiring)
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `aw109/cockpit/switch/fuel/xfeed` |
+| Min Value | `-1` |
+| Max Value | `1` |
+| Step | `1` |
+| Invert Direction | *(checked)* |
+| Static Label | `XFEED` |
+
+Short press writes toward `-1` (switch goes down in the cockpit); long press toward `+1` (switch goes up). The tile image follows visually — at `-1` the switch points down, at `+1` up — matching the cockpit orientation despite the inverted DataRef wiring.
+
+#### Example: 3-position cargo light (horizontal)
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `aw109/cockpit/switch/cargo_light` |
+| Min Value | `-1` |
+| Max Value | `1` |
+| Step | `1` |
+| Orientation | `Horizontal (Left / Right)` |
+| Static Label | `CARGO` |
+
+Pair with two physical keys (assigned LEFT and RIGHT positions on the deck). Short press steps toward Max (right), long press toward Min (left); the mid position is reached by stepping through.
+
 ### Guarded Command
 
 Two-stage button modeled on cockpit covers that protect dangerous switches. **Short press** fires `shortPressCommand` (e.g. flip the cover open); **long press** (≥ 500 ms) fires the protected `longPressCommand` (e.g. engage the starter). Optionally subscribes to a `Guard DataRef` and renders one of two images — `locked` (cover closed) or `unlocked` (cover open) — so the button reflects the actual cockpit state.
@@ -431,7 +521,7 @@ Some X-Plane DataRefs are arrays — one value per engine, per cylinder, per aer
 - `sim/flightmodel/engine/ENGN_running` — `int[16]`, one per engine.
 - `sim/cockpit2/switches/landing_lights_on` — `int[10]`.
 
-Append `[N]` to the DataRef path in any action that takes a DataRef path (Display, Toggle, Write, Command + Display, Rotary, Multi DataRef Display) to address a single element. Without `[N]`, Display-style actions fall back to element `[0]` (legacy behaviour); Toggle and Write target the DataRef as a whole, which is fine for scalar DataRefs but unreliable for arrays — always use `[N]` when the DataRef is an array.
+Append `[N]` to the DataRef path in any action that takes a DataRef path (Display, Toggle, Switch, Write, Command + Display, Rotary, Rotary DataRef, Multi DataRef Display) to address a single element. Without `[N]`, Display-style actions fall back to element `[0]` (legacy behaviour); Toggle, Switch, and Write target the DataRef as a whole, which is fine for scalar DataRefs but unreliable for arrays — always use `[N]` when the DataRef is an array.
 
 #### Example: fuel pump for engine 1
 

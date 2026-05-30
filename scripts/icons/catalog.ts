@@ -165,6 +165,7 @@ export const catalog: IconDef[] = [
 	{ kind: "nudge", name: "hdg_left", label: "HDG", direction: "left", group: "autopilot" },
 	{ kind: "nudge", name: "hdg_right", label: "HDG", direction: "right", group: "autopilot" },
 	{ kind: "knob", name: "hdg_sync", variant: "push", label: "HDG SYNC", group: "autopilot" },
+	{ kind: "knob", name: "hdg_sync_bare", variant: "push", group: "autopilot" },
 	{ kind: "nudge", name: "src_left", label: "SRC", direction: "left", group: "autopilot" },
 	{ kind: "nudge", name: "src_right", label: "SRC", direction: "right", group: "autopilot" },
 	{ kind: "nudge", name: "alt_up", label: "ALT", direction: "up", group: "autopilot" },
@@ -189,6 +190,15 @@ export const catalog: IconDef[] = [
 	{ kind: "nudge", name: "vs_down", label: "VS", direction: "down", group: "autopilot" },
 	{ kind: "nudge", name: "spd_up", label: "SPD", direction: "up", group: "autopilot" },
 	{ kind: "nudge", name: "spd_down", label: "SPD", direction: "down", group: "autopilot" },
+
+	// === Autopilot — labelless directional arrows (yellow) ===
+	// Bare triangle in the autopilot accent, no label — for generic
+	// up/down/left/right nudges where the surrounding deck layout already
+	// makes the function obvious.
+	{ kind: "nudge", name: "ap_up", direction: "up", group: "autopilot" },
+	{ kind: "nudge", name: "ap_down", direction: "down", group: "autopilot" },
+	{ kind: "nudge", name: "ap_left", direction: "left", group: "autopilot" },
+	{ kind: "nudge", name: "ap_right", direction: "right", group: "autopilot" },
 
 	// === Lights (toggles) — `lt_` prefix avoids clashing with AP "nav" ===
 	{ kind: "toggle", name: "lt_bcn", label: "BCN", group: "lights" },

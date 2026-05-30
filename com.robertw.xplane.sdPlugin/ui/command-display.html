@@ -49,6 +49,12 @@
 				placeholder="optional, prefixed above the live value"
 			></sdpi-textfield>
 		</sdpi-item>
+		<sdpi-item label="Value Mode">
+			<sdpi-select setting="valueMode" default="numeric">
+				<option value="numeric">Numeric (default)</option>
+				<option value="string">String (data-type DataRefs)</option>
+			</sdpi-select>
+		</sdpi-item>
 		<sdpi-item label="Format">
 			<sdpi-textfield
 				setting="format"
