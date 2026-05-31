@@ -10,8 +10,18 @@
 
 const SIZE = 144;
 const BG = "#0d0d0d";
-const FILL = "#4a4a4a";
-const BORDER = "#8a8a8a";
+
+// Body color palette. "gray" is the default; "red" / "green" are picked from
+// the PI when the user wants a hard visual cue (e.g. red for emergency cut-off
+// switches, green for normal-operating system switches). Darker fill + lighter
+// border = standard cockpit-switch look that stays readable against #0d0d0d.
+export type SwitchBodyColor = "gray" | "red" | "green";
+
+const BODY_PALETTE: Record<SwitchBodyColor, { fill: string; border: string }> = {
+	gray: { fill: "#4a4a4a", border: "#8a8a8a" },
+	red: { fill: "#b91c1c", border: "#ef4444" },
+	green: { fill: "#166534", border: "#22c55e" },
+};
 
 const FONT_STACK =
 	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif";
@@ -117,6 +127,7 @@ export function renderSwitchStateSvg(
 	orientation: SwitchOrientation = "vertical",
 	label = "",
 	labelPos: SwitchLabelPosition = "top",
+	bodyColor: SwitchBodyColor = "gray",
 ): string {
 	const hasLabel = label.length > 0;
 	const path =
@@ -132,10 +143,12 @@ export function renderSwitchStateSvg(
         fill="${LABEL_COLOR}" letter-spacing="1">${escapeXml(label)}</text>`;
 	}
 
+	const palette = BODY_PALETTE[bodyColor];
+
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
   ${labelEl}
-  <path d="${path}" fill="${FILL}" stroke="${BORDER}" stroke-width="2" stroke-linejoin="round"/>
+  <path d="${path}" fill="${palette.fill}" stroke="${palette.border}" stroke-width="2" stroke-linejoin="round"/>
 </svg>`;
 }
 

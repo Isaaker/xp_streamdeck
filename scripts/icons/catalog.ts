@@ -90,6 +90,15 @@ export type BackgroundIcon = {
 	group: IconGroup;
 	color: string;
 };
+// Same solid fill as `background`, but with a back-arrow (left triangle) at
+// the bottom of the tile. Upper area stays free for a user-provided title
+// overlay. Used as the "back / previous page" companion to plain bg_* tiles.
+export type BackgroundBackIcon = {
+	kind: "background-back";
+	name: string;
+	group: IconGroup;
+	color: string;
+};
 // G1000 GCU keypad button — solid dark tile, oversized bold character
 // centered. No accent stripe or border; the character is the icon.
 export type GcuKeyIcon = IconBase & { kind: "gcu_key" };
@@ -129,6 +138,7 @@ export type IconDef =
 	| CommandIcon
 	| KnobIcon
 	| BackgroundIcon
+	| BackgroundBackIcon
 	| GcuKeyIcon
 	| ViewIcon
 	| AlertIcon
@@ -246,6 +256,13 @@ export const catalog: IconDef[] = [
 	// min = top, max = bottom. Horizontal: min = left, max = right.
 	{ kind: "switch", name: "switch_v", axis: "vertical", group: "cockpit" },
 	{ kind: "switch", name: "switch_h", axis: "horizontal", group: "cockpit" },
+	// Color-suffixed variants — same geometry, different groove accent.
+	{ kind: "switch", name: "switch_v_green", axis: "vertical", group: "cockpit" },
+	{ kind: "switch", name: "switch_h_green", axis: "horizontal", group: "cockpit" },
+	{ kind: "switch", name: "switch_v_red", axis: "vertical", group: "emergency" },
+	{ kind: "switch", name: "switch_h_red", axis: "horizontal", group: "emergency" },
+	{ kind: "switch", name: "switch_v_blue", axis: "vertical", group: "views" },
+	{ kind: "switch", name: "switch_h_blue", axis: "horizontal", group: "views" },
 
 	// === Labelless push buttons (label set dynamically via setTitle, or unused) ===
 	// `nolabel` (cockpit/green) already covers the green toggle variant.
@@ -450,6 +467,20 @@ export const catalog: IconDef[] = [
 	{ kind: "background", name: "bg_gray", color: "#999EA1", group: "backgrounds" },
 	{ kind: "background", name: "bg_lila", color: "#822c9e", group: "backgrounds" },
 	{ kind: "background", name: "bg_bown", color: "#915c2d", group: "backgrounds" },
+
+	// === Back-arrow background tiles (same fill as bg_*, left arrow at bottom) ===
+	// User writes the label themselves via Stream Deck's title field; the arrow
+	// is just the "previous page / back" visual hint. White fill intentionally
+	// omitted — arrow + line are always white, so it'd be invisible.
+	{ kind: "background-back", name: "bg_back_black", color: "#000000", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_yellow", color: "#ffeb00", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_red", color: "#ef4444", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_green", color: "#22c55e", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_orange", color: "#f59e0b", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_blue", color: "#3b82f6", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_gray", color: "#999EA1", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_lila", color: "#822c9e", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_bown", color: "#915c2d", group: "backgrounds" },
 
 	// === G1000 — text command buttons (orange accent) ===
 	{ kind: "command", name: "g_menu", label: "MENU", group: "g1000" },

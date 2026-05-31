@@ -18,6 +18,7 @@ import { clearTile, setNotFound, setOffline } from "../util/error-tile";
 import { trimString } from "../util/settings";
 import {
 	renderSwitchStateSvg,
+	type SwitchBodyColor,
 	type SwitchLabelPosition,
 	type SwitchOrientation,
 	type SwitchTilePosition,
@@ -37,6 +38,7 @@ type DataRefSwitchSettings = JsonObject & {
 	staticLabelPosition?: SwitchLabelPosition;
 	orientation?: SwitchOrientation;
 	invertDirection?: boolean;
+	bodyColor?: SwitchBodyColor;
 };
 
 const STATE_MIN = 0;
@@ -56,6 +58,7 @@ interface ParsedSettings {
 	staticLabelPosition: SwitchLabelPosition;
 	orientation: SwitchOrientation;
 	invertDirection: boolean;
+	bodyColor: SwitchBodyColor;
 }
 
 interface ActionState {
@@ -70,6 +73,7 @@ interface ActionState {
 	staticLabelPosition: SwitchLabelPosition;
 	orientation: SwitchOrientation;
 	invertDirection: boolean;
+	bodyColor: SwitchBodyColor;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 	currentState: number;
@@ -103,6 +107,7 @@ export class XPlaneDataRefSwitch extends SingletonAction<DataRefSwitchSettings> 
 			staticLabelPosition: parsed.staticLabelPosition,
 			orientation: parsed.orientation,
 			invertDirection: parsed.invertDirection,
+			bodyColor: parsed.bodyColor,
 			currentState: STATE_DIRTY,
 			longPressFired: false,
 		};
@@ -139,6 +144,7 @@ export class XPlaneDataRefSwitch extends SingletonAction<DataRefSwitchSettings> 
 		state.staticLabelPosition = parsed.staticLabelPosition;
 		state.orientation = parsed.orientation;
 		state.invertDirection = parsed.invertDirection;
+		state.bodyColor = parsed.bodyColor;
 
 		if (pathChanged) {
 			this.dropSubscription(state);
@@ -328,11 +334,13 @@ export class XPlaneDataRefSwitch extends SingletonAction<DataRefSwitchSettings> 
 		// - the user set a static label (need to bake it into the image), OR
 		// - the orientation is horizontal (manifest defaults are vertical only), OR
 		// - the user wants the visual inverted (manifest defaults don't carry
-		//   the swap, e.g. AW109 cargo light DataRef is wired inverted).
+		//   the swap, e.g. AW109 cargo light DataRef is wired inverted), OR
+		// - the user picked a non-default body color (defaults are gray only).
 		// Otherwise let Stream Deck show the manifest default / user-picker image.
 		const hasStaticLabel = state.staticLabel.length > 0;
 		const isHorizontal = state.orientation === "horizontal";
 		const invert = state.invertDirection;
+		const isColored = state.bodyColor !== "gray";
 		const visualTarget =
 			invert && target === STATE_MIN
 				? STATE_MAX
@@ -341,7 +349,7 @@ export class XPlaneDataRefSwitch extends SingletonAction<DataRefSwitchSettings> 
 					: target;
 		const svgPosition: SwitchTilePosition =
 			visualTarget === STATE_MIN ? "min" : visualTarget === STATE_MAX ? "max" : "mid";
-		const renderCustom = hasStaticLabel || isHorizontal || invert;
+		const renderCustom = hasStaticLabel || isHorizontal || invert || isColored;
 		const customImage: string | undefined = renderCustom
 			? svgToDataUrl(
 					renderSwitchStateSvg(
@@ -349,6 +357,7 @@ export class XPlaneDataRefSwitch extends SingletonAction<DataRefSwitchSettings> 
 						state.orientation,
 						state.staticLabel,
 						state.staticLabelPosition,
+						state.bodyColor,
 					),
 				)
 			: undefined;
@@ -422,6 +431,8 @@ function parseSettings(s: DataRefSwitchSettings): ParsedSettings {
 		s.staticLabelPosition === "bottom" ? "bottom" : "top";
 	const orientation: SwitchOrientation =
 		s.orientation === "horizontal" ? "horizontal" : "vertical";
+	const bodyColor: SwitchBodyColor =
+		s.bodyColor === "red" ? "red" : s.bodyColor === "green" ? "green" : "gray";
 	return {
 		path: trimString(s.datarefPath),
 		minValue,
@@ -434,6 +445,7 @@ function parseSettings(s: DataRefSwitchSettings): ParsedSettings {
 		staticLabelPosition,
 		orientation,
 		invertDirection: s.invertDirection === true,
+		bodyColor,
 	};
 }
 

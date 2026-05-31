@@ -2,6 +2,7 @@
 // @ts-expect-error
 import {
 	type AlertIcon,
+	type BackgroundBackIcon,
 	type BackgroundIcon,
 	type CommandIcon,
 	type DisplayIcon,
@@ -452,6 +453,46 @@ export function renderViewIcon(def: ViewIcon): string {
 export function renderBackgroundIcon(def: BackgroundIcon): string {
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
   <rect width="${SIZE}" height="${SIZE}" fill="${def.color}"/>
+</svg>`;
+}
+
+// === Background with back arrow (solid fill + bottom-centered "<--" arrow) ===
+// Top edge gets a slender accent line that frames the user-provided title
+// overlay ("this is a page title"). Bottom edge gets a left-pointing arrow
+// with a stem (visually "<--" rather than a bare triangle) to signal "back".
+// Arrow + line are always white to match the user's white title overlays —
+// the white-bg variant is intentionally absent from the catalog.
+const BG_BACK_TOP_LINE_Y = 26;
+const BG_BACK_TOP_LINE_WIDTH = 96;
+const BG_BACK_TOP_LINE_HEIGHT = 3;
+const BG_BACK_ARROW_CY = 116;
+const BG_BACK_ARROW_HEAD_W = 24;
+const BG_BACK_ARROW_HEAD_H = 32;
+const BG_BACK_ARROW_STEM_W = 32;
+const BG_BACK_ARROW_STEM_H = 8;
+
+export function renderBackgroundBackIcon(def: BackgroundBackIcon): string {
+	const ink = "#ffffff";
+
+	const lineX = (SIZE - BG_BACK_TOP_LINE_WIDTH) / 2;
+	const topLine = `<rect x="${lineX}" y="${BG_BACK_TOP_LINE_Y}" width="${BG_BACK_TOP_LINE_WIDTH}" height="${BG_BACK_TOP_LINE_HEIGHT}" rx="1.5" fill="${ink}"/>`;
+
+	// Total arrow length = head width + stem width, centered on SIZE/2.
+	const totalW = BG_BACK_ARROW_HEAD_W + BG_BACK_ARROW_STEM_W;
+	const cy = BG_BACK_ARROW_CY;
+	const leftEdge = (SIZE - totalW) / 2;
+	const tipX = leftEdge;
+	const baseX = leftEdge + BG_BACK_ARROW_HEAD_W;
+	const halfHead = BG_BACK_ARROW_HEAD_H / 2;
+	const halfStem = BG_BACK_ARROW_STEM_H / 2;
+	const head = `<polygon points="${tipX},${cy} ${baseX},${cy - halfHead} ${baseX},${cy + halfHead}" fill="${ink}"/>`;
+	const stem = `<rect x="${baseX}" y="${cy - halfStem}" width="${BG_BACK_ARROW_STEM_W}" height="${BG_BACK_ARROW_STEM_H}" fill="${ink}"/>`;
+
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${def.color}"/>
+  ${topLine}
+  ${head}
+  ${stem}
 </svg>`;
 }
 

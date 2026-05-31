@@ -9,6 +9,7 @@ import {
 	type IconState,
 	renderActionGlyph,
 	renderAlertIcon,
+	renderBackgroundBackIcon,
 	renderBackgroundIcon,
 	renderCommandIcon,
 	renderDefaultKeyIcon,
@@ -155,6 +156,11 @@ async function main(): Promise<void> {
 				await writeFile(resolve(groupDir, `${def.name}_${position}.png`), png);
 				switchCount += 1;
 			}
+		} else if (def.kind === "background-back") {
+			const svg = renderBackgroundBackIcon(def);
+			const png = await renderPng(svg, 144);
+			await writeFile(resolve(groupDir, `${def.name}.png`), png);
+			backgroundCount += 1;
 		} else {
 			const svg = renderBackgroundIcon(def);
 			const png = await renderPng(svg, 144);
