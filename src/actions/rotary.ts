@@ -9,11 +9,13 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { selectors } from "../selectors/registry";
 import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { parseEnumMap } from "../util/enum";
 import { clearOffline, combineTitle, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
+import { extractPlaceholderKeys, substitutePlaceholders } from "../util/placeholders";
 import { normalizeFormat, trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -69,6 +71,7 @@ export class XPlaneRotary extends SingletonAction<RotarySettings> {
 		super();
 		this.xplane.on("offline", () => this.onXPlaneOffline());
 		this.xplane.on("online", () => this.onXPlaneOnline());
+		selectors.watch((changed) => this.onSelectorsChanged(changed));
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<RotarySettings>): Promise<void> {
@@ -141,20 +144,23 @@ export class XPlaneRotary extends SingletonAction<RotarySettings> {
 			return;
 		}
 
+		const snap = selectors.snapshot();
+
 		// HOLD branch: enum mode + checkbox on + current value is second-to-last
 		// (so the next step would land on the last position). Uses begin/end on
 		// `holdCommand` instead of activate on `commandPath`.
 		if (shouldHoldOnLast(state, parsed)) {
+			const holdCommand = substitutePlaceholders(parsed.holdCommand, snap);
 			try {
-				const id = await this.xplane.getCommandId(parsed.holdCommand);
+				const id = await this.xplane.getCommandId(holdCommand);
 				await this.xplane.beginCommand(id);
 				if (state) {
 					state.holdInProgress = true;
 					state.activeHoldId = id;
 				}
-				streamDeck.logger.info(`rotary: hold begin ${parsed.holdCommand} (id=${id})`);
+				streamDeck.logger.info(`rotary: hold begin ${holdCommand} (id=${id})`);
 			} catch (err) {
-				streamDeck.logger.error(`rotary: hold begin failed: ${parsed.holdCommand}`, err);
+				streamDeck.logger.error(`rotary: hold begin failed: ${holdCommand}`, err);
 				await ev.action.showAlert();
 			}
 			return;
@@ -172,15 +178,16 @@ export class XPlaneRotary extends SingletonAction<RotarySettings> {
 			return;
 		}
 
+		const commandPath = substitutePlaceholders(parsed.commandPath, snap);
 		try {
-			const id = await this.xplane.getCommandId(parsed.commandPath);
+			const id = await this.xplane.getCommandId(commandPath);
 			await this.xplane.activateCommand(id);
-			streamDeck.logger.info(`rotary: activate ${parsed.commandPath} (id=${id})`);
+			streamDeck.logger.info(`rotary: activate ${commandPath} (id=${id})`);
 			if (!hideConfirmation) {
 				await ev.action.showOk();
 			}
 		} catch (err) {
-			streamDeck.logger.error(`rotary: command failed: ${parsed.commandPath}`, err);
+			streamDeck.logger.error(`rotary: command failed: ${commandPath}`, err);
 			await ev.action.showAlert();
 		}
 	}
@@ -214,7 +221,8 @@ export class XPlaneRotary extends SingletonAction<RotarySettings> {
 			await setOffline(state.action);
 			return;
 		}
-		const { basePath, index } = parseDataRefPath(state.parsed.datarefPath);
+		const resolved = substitutePlaceholders(state.parsed.datarefPath, selectors.snapshot());
+		const { basePath, index } = parseDataRefPath(resolved);
 		try {
 			state.handle = await this.xplane.subscribe(basePath, (raw) => {
 				try {
@@ -306,6 +314,22 @@ export class XPlaneRotary extends SingletonAction<RotarySettings> {
 			clearOffline(state.action)
 				.then(() => this.applySubscription(state))
 				.catch((err) => streamDeck.logger.warn("rotary: re-subscribe failed", err));
+		}
+	}
+
+	private onSelectorsChanged(changed: ReadonlySet<string>): void {
+		for (const state of this.states.values()) {
+			if (!state.parsed.datarefPath) continue;
+			const keys = extractPlaceholderKeys(state.parsed.datarefPath);
+			if (!keys.some((k) => changed.has(k))) continue;
+			this.dropSubscription(state);
+			state.lastValue = undefined;
+			this.applySubscription(state).catch((err) =>
+				streamDeck.logger.warn(
+					`rotary: selector re-subscribe failed for ${state.parsed.datarefPath}`,
+					err,
+				),
+			);
 		}
 	}
 }

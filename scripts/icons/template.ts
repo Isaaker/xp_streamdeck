@@ -6,6 +6,7 @@ import {
 	type BackgroundIcon,
 	type CommandIcon,
 	type DisplayIcon,
+	type DotIcon,
 	type GcuKeyIcon,
 	GROUP_ACCENT,
 	type GuardedIcon,
@@ -445,6 +446,20 @@ export function renderViewIcon(def: ViewIcon): string {
         font-family="${FONT_STACK}" font-size="${VIEW_NUMBER_FONT_SIZE}" font-weight="800"
         fill="${LABEL_COLOR}" letter-spacing="1">${numberText}</text>
   <rect x="${VIEW_ACCENT_LINE_INSET_X}" y="${lineY}" width="${lineWidth}" height="${VIEW_ACCENT_LINE_HEIGHT}" fill="${accent}"/>
+</svg>`;
+}
+
+// === Dot (bare push) ===
+// Single accent-coloured filled circle at canvas centre, same radius as the
+// knob-push dot. No ring, no label — minimal "press here" affordance reused
+// across many functionally-similar physical buttons (AW109 RTU push set, …).
+const DOT_RADIUS = KNOB_PUSH_DOT_RADIUS;
+
+export function renderDotIcon(def: DotIcon): string {
+	const accent = GROUP_ACCENT[def.group];
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <circle cx="${SIZE / 2}" cy="${SIZE / 2}" r="${DOT_RADIUS}" fill="${accent}"/>
 </svg>`;
 }
 

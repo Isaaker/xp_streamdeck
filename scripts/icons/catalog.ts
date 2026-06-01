@@ -130,6 +130,14 @@ export type SwitchIcon = {
 	axis: "vertical" | "horizontal";
 	group: IconGroup;
 };
+// Bare accent-coloured dot at canvas centre, no ring, no label. Generic
+// "push me" tile reused across many similar physical buttons (e.g. all 7
+// AW109 RTU push buttons share one icon).
+export type DotIcon = {
+	kind: "dot";
+	name: string;
+	group: IconGroup;
+};
 export type IconDef =
 	| ToggleIcon
 	| DisplayIcon
@@ -143,7 +151,8 @@ export type IconDef =
 	| ViewIcon
 	| AlertIcon
 	| GuardedIcon
-	| SwitchIcon;
+	| SwitchIcon
+	| DotIcon;
 
 export const catalog: IconDef[] = [
 	// === Autopilot — mode toggles ===
@@ -287,12 +296,15 @@ export const catalog: IconDef[] = [
 
 	// === Engine readouts (PT6 turboprop: NG/ITT/TRQ/NP + house keeping) ===
 	{ kind: "display", name: "eng_ng", label: "NG", group: "readouts" },
+	{ kind: "display", name: "eng_n1", label: "N1", group: "readouts" },
 	{ kind: "display", name: "eng_itt", label: "ITT", group: "readouts" },
+	{ kind: "display", name: "eng_tot", label: "TOT", group: "readouts" },
 	{ kind: "display", name: "eng_trq", label: "TRQ", group: "readouts" },
 	{ kind: "display", name: "eng_np", label: "NP", group: "readouts" },
 	{ kind: "display", name: "eng_ff", label: "FF", group: "readouts" },
 	{ kind: "display", name: "eng_oil_p", label: "OIL P", group: "readouts" },
 	{ kind: "display", name: "eng_oil_t", label: "OIL T", group: "readouts" },
+	{ kind: "display", name: "hyd", label: "HYD", group: "readouts" },
 	{ kind: "display", name: "eng_volt", label: "VOLT", group: "readouts" },
 	{ kind: "display", name: "eng_amp", label: "AMP", group: "readouts" },
 	{ kind: "display", name: "fuel", label: "FUEL", group: "readouts" },
@@ -507,6 +519,7 @@ export const catalog: IconDef[] = [
 	{ kind: "knob", name: "g_inner_left", variant: "inner-ccw", group: "g1000" },
 	{ kind: "knob", name: "g_inner_right", variant: "inner-cw", group: "g1000" },
 	{ kind: "knob", name: "g_push", variant: "push", group: "g1000" },
+	{ kind: "dot", name: "p_push", group: "g1000" },
 
 	// === G1000 GCU — keypad buttons (digits, letters, special keys) ===
 	{ kind: "gcu_key", name: "gcu_0", label: "0", group: "g1000" },

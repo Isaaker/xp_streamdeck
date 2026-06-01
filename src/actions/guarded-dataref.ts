@@ -11,9 +11,11 @@ import streamDeck, {
 import type { JsonObject } from "@elgato/utils";
 
 import { TIMINGS, TOLERANCE_FLOAT } from "../const";
+import { selectors } from "../selectors/registry";
 import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
+import { extractPlaceholderKeys, substitutePlaceholders } from "../util/placeholders";
 import { trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -82,6 +84,7 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 		super();
 		this.xplane.on("offline", () => this.onXPlaneOffline());
 		this.xplane.on("online", () => this.onXPlaneOnline());
+		selectors.watch((changed) => this.onSelectorsChanged(changed));
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<GuardedDataRefSettings>): Promise<void> {
@@ -243,17 +246,18 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 	// (lastValue for guard, lastLongValue for long path) so the next render
 	// doesn't have to wait for the WS round-trip.
 	private async toggleDataRef(
-		path: string,
+		rawPath: string,
 		valueOff: number,
 		valueOn: number,
 		state: ActionState,
 	): Promise<number> {
-		const { basePath, index } = parseDataRefPath(path);
+		const resolved = substitutePlaceholders(rawPath, selectors.snapshot());
+		const { basePath, index } = parseDataRefPath(resolved);
 		const drId = await this.xplane.getDataRefId(basePath);
 		let current: DataRefValue;
-		if (path === state.guardPath && state.lastValue !== undefined) {
+		if (rawPath === state.guardPath && state.lastValue !== undefined) {
 			current = state.lastValue;
-		} else if (path === state.longPath && state.lastLongValue !== undefined) {
+		} else if (rawPath === state.longPath && state.lastLongValue !== undefined) {
 			current = state.lastLongValue;
 		} else {
 			current = applyIndex(await this.xplane.readDataRef(drId), index);
@@ -261,9 +265,9 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 		const isOn = isOnValue(current, valueOff, valueOn, false);
 		const target = isOn ? valueOff : valueOn;
 		await this.xplane.writeDataRef(drId, target, index);
-		if (path === state.guardPath) state.lastValue = target;
-		if (path === state.longPath) state.lastLongValue = target;
-		if (path === state.guardPath || path === state.longPath) {
+		if (rawPath === state.guardPath) state.lastValue = target;
+		if (rawPath === state.longPath) state.lastLongValue = target;
+		if (rawPath === state.guardPath || rawPath === state.longPath) {
 			await this.renderState(state);
 		}
 		return target;
@@ -284,8 +288,9 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 			return;
 		}
 
+		const snap = selectors.snapshot();
 		// Guard subscription (drives Locked vs Unlocked-*).
-		const guard = parseDataRefPath(state.guardPath);
+		const guard = parseDataRefPath(substitutePlaceholders(state.guardPath, snap));
 		try {
 			state.handle = await this.xplane.subscribe(guard.basePath, (raw) => {
 				let value: DataRefValue;
@@ -329,7 +334,7 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 		// Long-press DataRef subscription — only when it's a distinct path
 		// (otherwise lastValue already covers it). Drives Unlocked-Off vs Unlocked-On.
 		if (state.longPath && state.longPath !== state.guardPath) {
-			const long = parseDataRefPath(state.longPath);
+			const long = parseDataRefPath(substitutePlaceholders(state.longPath, snap));
 			try {
 				state.longHandle = await this.xplane.subscribe(long.basePath, (raw) => {
 					try {
@@ -431,6 +436,28 @@ export class XPlaneGuardedDataRef extends SingletonAction<GuardedDataRefSettings
 					),
 				);
 			}
+		}
+	}
+
+	private onSelectorsChanged(changed: ReadonlySet<string>): void {
+		for (const state of this.states.values()) {
+			if (!state.guardPath) continue;
+			const keys = [
+				...extractPlaceholderKeys(state.guardPath),
+				...extractPlaceholderKeys(state.longPath),
+			];
+			if (!keys.some((k) => changed.has(k))) continue;
+			this.dropSubscription(state);
+			this.dropLongSubscription(state);
+			state.lastValue = undefined;
+			state.lastLongValue = undefined;
+			state.currentState = STATE_DIRTY;
+			this.applySubscription(state).catch((err) =>
+				streamDeck.logger.warn(
+					`guarded-dataref: selector re-subscribe failed for ${state.guardPath}`,
+					err,
+				),
+			);
 		}
 	}
 }

@@ -11,9 +11,11 @@ import streamDeck, {
 import type { JsonObject } from "@elgato/utils";
 
 import { TOLERANCE_FLOAT } from "../const";
+import { selectors } from "../selectors/registry";
 import { coerceNumber, describeValue, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
+import { extractPlaceholderKeys, substitutePlaceholders } from "../util/placeholders";
 import { trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -85,6 +87,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		super();
 		this.xplane.on("offline", () => this.onXPlaneOffline());
 		this.xplane.on("online", () => this.onXPlaneOnline());
+		selectors.watch((changed) => this.onSelectorsChanged(changed));
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<DataRefToggleSettings>): Promise<void> {
@@ -160,16 +163,19 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			return;
 		}
 
+		const snap = selectors.snapshot();
+		const writePath = substitutePlaceholders(parsed.path, snap);
+
 		// Hold mode bypasses toggle/command machinery: write valueOn on press;
 		// the matching valueOff happens in onKeyUp. triggerMode and
 		// strictOnMatch are ignored here.
 		if (parsed.holdMode) {
 			try {
-				const { basePath, index } = parseDataRefPath(parsed.path);
+				const { basePath, index } = parseDataRefPath(writePath);
 				const drId = await this.xplane.getDataRefId(basePath);
 				await this.xplane.writeDataRef(drId, parsed.valueOn, index);
 				streamDeck.logger.info(
-					`dataref-toggle: hold press ${parsed.path} = ${parsed.valueOn} (id=${drId})`,
+					`dataref-toggle: hold press ${writePath} = ${parsed.valueOn} (id=${drId})`,
 				);
 				if (state) {
 					state.lastValue = parsed.valueOn;
@@ -198,15 +204,16 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 					await ev.action.showAlert();
 					return;
 				}
-				const cmdId = await this.xplane.getCommandId(parsed.commandPath);
+				const commandPath = substitutePlaceholders(parsed.commandPath, snap);
+				const cmdId = await this.xplane.getCommandId(commandPath);
 				await this.xplane.activateCommand(cmdId);
 				streamDeck.logger.info(
-					`dataref-toggle: command activate ${parsed.commandPath} (id=${cmdId})`,
+					`dataref-toggle: command activate ${commandPath} (id=${cmdId})`,
 				);
 				// No optimistic update — for a generic command we cannot predict
 				// the resulting DataRef value, so we wait for the WS update.
 			} else if (parsed.triggerMode === "command-on-off") {
-				const { basePath, index } = parseDataRefPath(parsed.path);
+				const { basePath, index } = parseDataRefPath(writePath);
 				const drId = await this.xplane.getDataRefId(basePath);
 				const current =
 					state?.lastValue !== undefined
@@ -219,14 +226,15 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 						parsed.valueOn,
 						parsed.strictOnMatch,
 					) === STATE_ON;
-				const targetPath = isOn ? parsed.commandOffPath : parsed.commandOnPath;
-				if (!targetPath) {
+				const rawTargetPath = isOn ? parsed.commandOffPath : parsed.commandOnPath;
+				if (!rawTargetPath) {
 					streamDeck.logger.warn(
 						`dataref-toggle: ${isOn ? "commandOffPath" : "commandOnPath"} is empty in on-off command mode`,
 					);
 					await ev.action.showAlert();
 					return;
 				}
+				const targetPath = substitutePlaceholders(rawTargetPath, snap);
 				const cmdId = await this.xplane.getCommandId(targetPath);
 				await this.xplane.activateCommand(cmdId);
 				streamDeck.logger.info(
@@ -238,7 +246,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 					await this.renderState(state, target);
 				}
 			} else {
-				const { basePath, index } = parseDataRefPath(parsed.path);
+				const { basePath, index } = parseDataRefPath(writePath);
 				const drId = await this.xplane.getDataRefId(basePath);
 				const current =
 					state?.lastValue !== undefined
@@ -254,7 +262,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 				const target = isOn ? parsed.valueOff : parsed.valueOn;
 				await this.xplane.writeDataRef(drId, target, index);
 				streamDeck.logger.info(
-					`dataref-toggle: write ${parsed.path} = ${target} (id=${drId})`,
+					`dataref-toggle: write ${writePath} = ${target} (id=${drId})`,
 				);
 				if (state) {
 					state.lastValue = target;
@@ -274,12 +282,13 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		if (!parsed.holdMode || !parsed.path) return;
 
 		const state = this.states.get(ev.action.id);
+		const writePath = substitutePlaceholders(parsed.path, selectors.snapshot());
 		try {
-			const { basePath, index } = parseDataRefPath(parsed.path);
+			const { basePath, index } = parseDataRefPath(writePath);
 			const drId = await this.xplane.getDataRefId(basePath);
 			await this.xplane.writeDataRef(drId, parsed.valueOff, index);
 			streamDeck.logger.info(
-				`dataref-toggle: hold release ${parsed.path} = ${parsed.valueOff} (id=${drId})`,
+				`dataref-toggle: hold release ${writePath} = ${parsed.valueOff} (id=${drId})`,
 			);
 			if (state) {
 				state.lastValue = parsed.valueOff;
@@ -299,7 +308,8 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			return;
 		}
 
-		const { basePath, index } = parseDataRefPath(state.statePath);
+		const resolved = substitutePlaceholders(state.statePath, selectors.snapshot());
+		const { basePath, index } = parseDataRefPath(resolved);
 
 		try {
 			state.handle = await this.xplane.subscribe(basePath, (raw) => {
@@ -415,6 +425,23 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 					),
 				);
 			}
+		}
+	}
+
+	private onSelectorsChanged(changed: ReadonlySet<string>): void {
+		for (const state of this.states.values()) {
+			if (!state.statePath) continue;
+			const keys = extractPlaceholderKeys(state.statePath);
+			if (!keys.some((k) => changed.has(k))) continue;
+			this.dropSubscription(state);
+			state.lastValue = undefined;
+			state.currentState = STATE_DIRTY;
+			this.applySubscription(state).catch((err) =>
+				streamDeck.logger.warn(
+					`dataref-toggle: selector re-subscribe failed for ${state.statePath}`,
+					err,
+				),
+			);
 		}
 	}
 }

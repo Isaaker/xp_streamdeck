@@ -7,10 +7,12 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { selectors } from "../selectors/registry";
 import { toFiniteNumber } from "../util/coerce";
 import { parseDataRefPath } from "../util/dataref-path";
 import { combineTitle } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
+import { substitutePlaceholders } from "../util/placeholders";
 import { normalizeFormat, trimString } from "../util/settings";
 import type { XPlaneClient } from "../xplane";
 import { SubscribableAction, type SubscribableState } from "./base/subscribable-action";
@@ -80,7 +82,8 @@ export class XPlaneDataRefWrite extends SubscribableAction<DataRefWriteSettings,
 
 	override async onKeyDown(ev: KeyDownEvent<DataRefWriteSettings>): Promise<void> {
 		const settings = ev.payload.settings ?? {};
-		const path = trimString(settings.datarefPath);
+		const rawPath = trimString(settings.datarefPath);
+		const path = substitutePlaceholders(rawPath, selectors.snapshot());
 		const value = toFiniteNumber(settings.value);
 		const holdMode = settings.holdMode === true;
 		const hideConfirmation = settings.hideConfirmation === true;
@@ -118,7 +121,8 @@ export class XPlaneDataRefWrite extends SubscribableAction<DataRefWriteSettings,
 		const settings = ev.payload.settings ?? {};
 		if (settings.holdMode !== true) return;
 
-		const path = trimString(settings.datarefPath);
+		const rawPath = trimString(settings.datarefPath);
+		const path = substitutePlaceholders(rawPath, selectors.snapshot());
 		if (!path) return;
 		const releaseValue = toFiniteNumber(settings.releaseValue) ?? 0;
 

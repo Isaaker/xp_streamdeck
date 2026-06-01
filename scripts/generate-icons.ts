@@ -14,6 +14,7 @@ import {
 	renderCommandIcon,
 	renderDefaultKeyIcon,
 	renderDisplayIcon,
+	renderDotIcon,
 	renderGcuKeyIcon,
 	renderGuardedIcon,
 	renderKnobIcon,
@@ -161,6 +162,11 @@ async function main(): Promise<void> {
 			const png = await renderPng(svg, 144);
 			await writeFile(resolve(groupDir, `${def.name}.png`), png);
 			backgroundCount += 1;
+		} else if (def.kind === "dot") {
+			const svg = renderDotIcon(def);
+			const png = await renderPng(svg, 144);
+			await writeFile(resolve(groupDir, `${def.name}.png`), png);
+			commandCount += 1;
 		} else {
 			const svg = renderBackgroundIcon(def);
 			const png = await renderPng(svg, 144);

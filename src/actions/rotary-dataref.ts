@@ -11,11 +11,13 @@ import streamDeck, {
 import type { JsonObject } from "@elgato/utils";
 
 import { TIMINGS, TOLERANCE_FLOAT } from "../const";
+import { selectors } from "../selectors/registry";
 import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { parseEnumMap } from "../util/enum";
 import { clearOffline, combineTitle, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
 import { formatDataRefValue } from "../util/format";
+import { extractPlaceholderKeys, substitutePlaceholders } from "../util/placeholders";
 import { normalizeFormat, trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -76,6 +78,7 @@ export class XPlaneRotaryDataRef extends SingletonAction<RotaryDataRefSettings> 
 		super();
 		this.xplane.on("offline", () => this.onXPlaneOffline());
 		this.xplane.on("online", () => this.onXPlaneOnline());
+		selectors.watch((changed) => this.onSelectorsChanged(changed));
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<RotaryDataRefSettings>): Promise<void> {
@@ -185,7 +188,8 @@ export class XPlaneRotaryDataRef extends SingletonAction<RotaryDataRefSettings> 
 		}
 
 		try {
-			const { basePath, index } = parseDataRefPath(parsed.datarefPath);
+			const resolvedPath = substitutePlaceholders(parsed.datarefPath, selectors.snapshot());
+			const { basePath, index } = parseDataRefPath(resolvedPath);
 			const drId = await this.xplane.getDataRefId(basePath);
 			const currentRaw =
 				state.lastValue !== undefined
@@ -199,7 +203,7 @@ export class XPlaneRotaryDataRef extends SingletonAction<RotaryDataRefSettings> 
 
 			if (Math.abs(target - current) < TOLERANCE_FLOAT) {
 				streamDeck.logger.info(
-					`rotary-dataref: ${kind} press at endstop for ${parsed.datarefPath} (value=${current})`,
+					`rotary-dataref: ${kind} press at endstop for ${resolvedPath} (value=${current})`,
 				);
 				if (!parsed.hideEndstopAlert) await state.action.showAlert();
 				return;
@@ -207,7 +211,7 @@ export class XPlaneRotaryDataRef extends SingletonAction<RotaryDataRefSettings> 
 
 			await this.xplane.writeDataRef(drId, target, index);
 			streamDeck.logger.info(
-				`rotary-dataref: ${kind} step ${parsed.datarefPath} ${current} → ${target}`,
+				`rotary-dataref: ${kind} step ${resolvedPath} ${current} → ${target}`,
 			);
 			state.lastValue = target;
 			this.render(state);
@@ -236,7 +240,8 @@ export class XPlaneRotaryDataRef extends SingletonAction<RotaryDataRefSettings> 
 			await setOffline(state.action);
 			return;
 		}
-		const { basePath, index } = parseDataRefPath(state.parsed.datarefPath);
+		const resolved = substitutePlaceholders(state.parsed.datarefPath, selectors.snapshot());
+		const { basePath, index } = parseDataRefPath(resolved);
 		try {
 			state.handle = await this.xplane.subscribe(basePath, (raw) => {
 				try {
@@ -317,6 +322,22 @@ export class XPlaneRotaryDataRef extends SingletonAction<RotaryDataRefSettings> 
 			clearOffline(state.action)
 				.then(() => this.applySubscription(state))
 				.catch((err) => streamDeck.logger.warn("rotary-dataref: re-subscribe failed", err));
+		}
+	}
+
+	private onSelectorsChanged(changed: ReadonlySet<string>): void {
+		for (const state of this.states.values()) {
+			if (!state.parsed.datarefPath) continue;
+			const keys = extractPlaceholderKeys(state.parsed.datarefPath);
+			if (!keys.some((k) => changed.has(k))) continue;
+			this.dropSubscription(state);
+			state.lastValue = undefined;
+			this.applySubscription(state).catch((err) =>
+				streamDeck.logger.warn(
+					`rotary-dataref: selector re-subscribe failed for ${state.parsed.datarefPath}`,
+					err,
+				),
+			);
 		}
 	}
 }

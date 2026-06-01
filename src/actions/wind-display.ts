@@ -7,9 +7,11 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { selectors } from "../selectors/registry";
 import { coerceNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearOffline, setOffline } from "../util/error-tile";
+import { extractPlaceholderKeys, substitutePlaceholders } from "../util/placeholders";
 import { trimString, trimStringOr } from "../util/settings";
 import { renderWindDataUrl } from "../util/wind-svg";
 import type { SubscriptionHandle, XPlaneClient } from "../xplane";
@@ -49,6 +51,7 @@ export class XPlaneWindDisplay extends SingletonAction<WindDisplaySettings> {
 		super();
 		this.xplane.on("offline", () => this.onXPlaneOffline());
 		this.xplane.on("online", () => this.onXPlaneOnline());
+		selectors.watch((changed) => this.onSelectorsChanged(changed));
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<WindDisplaySettings>): Promise<void> {
@@ -107,7 +110,8 @@ export class XPlaneWindDisplay extends SingletonAction<WindDisplaySettings> {
 
 	private async subscribeSlot(state: ActionState, slot: SlotState): Promise<void> {
 		if (!slot.path) return;
-		const { basePath, index } = parseDataRefPath(slot.path);
+		const resolved = substitutePlaceholders(slot.path, selectors.snapshot());
+		const { basePath, index } = parseDataRefPath(resolved);
 		try {
 			slot.handle = await this.xplane.subscribe(basePath, (raw) => {
 				try {
@@ -181,6 +185,25 @@ export class XPlaneWindDisplay extends SingletonAction<WindDisplaySettings> {
 					this.render(state);
 				})
 				.catch((err) => streamDeck.logger.warn("wind-display: re-subscribe failed", err));
+		}
+	}
+
+	private onSelectorsChanged(changed: ReadonlySet<string>): void {
+		for (const state of this.states.values()) {
+			const slots = [state.dir, state.speed, state.oat].filter((slot) => {
+				if (!slot.path) return false;
+				return extractPlaceholderKeys(slot.path).some((k) => changed.has(k));
+			});
+			if (slots.length === 0) continue;
+			for (const slot of slots) {
+				this.dropSlot(slot);
+				slot.lastValue = undefined;
+			}
+			Promise.all(slots.map((slot) => this.subscribeSlot(state, slot)))
+				.then(() => this.render(state))
+				.catch((err) =>
+					streamDeck.logger.warn("wind-display: selector re-subscribe failed", err),
+				);
 		}
 	}
 }
