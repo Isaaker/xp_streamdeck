@@ -340,9 +340,9 @@ const KNOB_PUSH_DOT_RADIUS = 14;
 // accent stripe — the ring/dot is the accent), symbol shrinks and shifts
 // down so it stays visually balanced under the label.
 const KNOB_PUSH_LABELED_LABEL_BASELINE_Y = 32;
-const KNOB_PUSH_LABELED_CY = 94;
-const KNOB_PUSH_LABELED_RING_RADIUS = 32;
-const KNOB_PUSH_LABELED_DOT_RADIUS = 11;
+const KNOB_PUSH_LABELED_CY = 96;
+const KNOB_PUSH_LABELED_RING_RADIUS = 38;
+const KNOB_PUSH_LABELED_DOT_RADIUS = 14;
 // Arc spans 270° with a 90° gap at the top centered on -90° (straight up).
 // Right side of the gap = -45°, left side = -135°.
 const KNOB_GAP_START_DEG = -45;
