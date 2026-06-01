@@ -11,10 +11,12 @@ import streamDeck, {
 import type { JsonObject } from "@elgato/utils";
 
 import { TIMINGS, TOLERANCE_FLOAT } from "../const";
+import { selectors } from "../selectors/registry";
 import { coerceNumber, describeValue, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { type EnumMap, parseEnumMap } from "../util/enum";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
+import { extractPlaceholderKeys, substitutePlaceholders } from "../util/placeholders";
 import { trimString } from "../util/settings";
 import {
 	renderSwitchStateSvg,
@@ -90,6 +92,7 @@ export class XPlaneDataRefSwitch extends SingletonAction<DataRefSwitchSettings> 
 		super();
 		this.xplane.on("offline", () => this.onXPlaneOffline());
 		this.xplane.on("online", () => this.onXPlaneOnline());
+		selectors.watch((changed) => this.onSelectorsChanged(changed));
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<DataRefSwitchSettings>): Promise<void> {
@@ -210,7 +213,8 @@ export class XPlaneDataRefSwitch extends SingletonAction<DataRefSwitchSettings> 
 		}
 
 		try {
-			const { basePath, index } = parseDataRefPath(parsed.path);
+			const resolvedPath = substitutePlaceholders(parsed.path, selectors.snapshot());
+			const { basePath, index } = parseDataRefPath(resolvedPath);
 			const drId = await this.xplane.getDataRefId(basePath);
 			const currentRaw =
 				state.lastValue !== undefined
@@ -266,7 +270,8 @@ export class XPlaneDataRefSwitch extends SingletonAction<DataRefSwitchSettings> 
 			return;
 		}
 
-		const { basePath, index } = parseDataRefPath(state.path);
+		const resolved = substitutePlaceholders(state.path, selectors.snapshot());
+		const { basePath, index } = parseDataRefPath(resolved);
 
 		try {
 			state.handle = await this.xplane.subscribe(basePath, (raw) => {
@@ -417,6 +422,23 @@ export class XPlaneDataRefSwitch extends SingletonAction<DataRefSwitchSettings> 
 					),
 				);
 			}
+		}
+	}
+
+	private onSelectorsChanged(changed: ReadonlySet<string>): void {
+		for (const state of this.states.values()) {
+			if (!state.path) continue;
+			const keys = extractPlaceholderKeys(state.path);
+			if (!keys.some((k) => changed.has(k))) continue;
+			this.dropSubscription(state);
+			state.lastValue = undefined;
+			state.currentState = STATE_DIRTY;
+			this.applySubscription(state).catch((err) =>
+				streamDeck.logger.warn(
+					`dataref-switch: selector re-subscribe failed for ${state.path}`,
+					err,
+				),
+			);
 		}
 	}
 }

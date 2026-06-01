@@ -7,10 +7,12 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { selectors } from "../selectors/registry";
 import { toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearOffline, NOT_FOUND_SUFFIX, setOffline } from "../util/error-tile";
 import { formatDataRefValue, type ValueMode } from "../util/format";
+import { extractPlaceholderKeys, substitutePlaceholders } from "../util/placeholders";
 import { normalizeFormat, trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -65,6 +67,7 @@ export class XPlaneMultiDataRefDisplay extends SingletonAction<MultiDataRefDispl
 		super();
 		this.xplane.on("offline", () => this.onXPlaneOffline());
 		this.xplane.on("online", () => this.onXPlaneOnline());
+		selectors.watch((changed) => this.onSelectorsChanged(changed));
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<MultiDataRefDisplaySettings>): Promise<void> {
@@ -127,7 +130,8 @@ export class XPlaneMultiDataRefDisplay extends SingletonAction<MultiDataRefDispl
 		if (!slot.path) return;
 		if (this.xplane.isOffline()) return;
 
-		const { basePath, index } = parseDataRefPath(slot.path);
+		const resolved = substitutePlaceholders(slot.path, selectors.snapshot());
+		const { basePath, index } = parseDataRefPath(resolved);
 		try {
 			slot.handle = await this.xplane.subscribe(basePath, (raw) => {
 				try {
@@ -202,6 +206,29 @@ export class XPlaneMultiDataRefDisplay extends SingletonAction<MultiDataRefDispl
 				})
 				.catch((err) =>
 					streamDeck.logger.warn("multi-dataref-display: re-subscribe failed", err),
+				);
+		}
+	}
+
+	private onSelectorsChanged(changed: ReadonlySet<string>): void {
+		for (const state of this.states.values()) {
+			const affected = state.slots.filter((slot) => {
+				if (!slot.path) return false;
+				return extractPlaceholderKeys(slot.path).some((k) => changed.has(k));
+			});
+			if (affected.length === 0) continue;
+			for (const slot of affected) {
+				this.dropSlotSubscription(slot);
+				slot.lastValue = undefined;
+				slot.notFound = false;
+			}
+			Promise.all(affected.map((slot) => this.applySlotSubscription(state, slot)))
+				.then(() => this.render(state))
+				.catch((err) =>
+					streamDeck.logger.warn(
+						"multi-dataref-display: selector re-subscribe failed",
+						err,
+					),
 				);
 		}
 	}

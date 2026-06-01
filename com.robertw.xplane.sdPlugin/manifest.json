@@ -130,6 +130,22 @@
 			]
 		},
 		{
+			"Name": "Display Selector",
+			"UUID": "com.robertw.xplane.display-selector",
+			"Icon": "imgs/actions/display-selector/icon",
+			"Tooltip": "Hold a named index (1..N) that other buttons substitute for {KEY} in their DataRef/Command paths. Short press = next, long press = previous.",
+			"PropertyInspectorPath": "ui/display-selector.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/display-selector/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
 			"Name": "Multi DataRef Display",
 			"UUID": "com.robertw.xplane.multi-dataref-display",
 			"Icon": "imgs/actions/multi-dataref-display/icon",

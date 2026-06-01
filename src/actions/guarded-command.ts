@@ -11,9 +11,11 @@ import streamDeck, {
 import type { JsonObject } from "@elgato/utils";
 
 import { TIMINGS, TOLERANCE_FLOAT } from "../const";
+import { selectors } from "../selectors/registry";
 import { coerceNumber, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
+import { extractPlaceholderKeys, substitutePlaceholders } from "../util/placeholders";
 import { trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -74,6 +76,7 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 		super();
 		this.xplane.on("offline", () => this.onXPlaneOffline());
 		this.xplane.on("online", () => this.onXPlaneOnline());
+		selectors.watch((changed) => this.onSelectorsChanged(changed));
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<GuardedCommandSettings>): Promise<void> {
@@ -192,17 +195,16 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 			return;
 		}
 
+		const shortPath = substitutePlaceholders(parsed.shortPath, selectors.snapshot());
 		try {
-			const id = await this.xplane.getCommandId(parsed.shortPath);
+			const id = await this.xplane.getCommandId(shortPath);
 			await this.xplane.activateCommand(id);
-			streamDeck.logger.info(
-				`guarded-command: short activate ${parsed.shortPath} (id=${id})`,
-			);
+			streamDeck.logger.info(`guarded-command: short activate ${shortPath} (id=${id})`);
 			if (!parsed.hideShortConfirmation) {
 				await state.action.showOk();
 			}
 		} catch (err) {
-			streamDeck.logger.error(`guarded-command: short failed ${parsed.shortPath}`, err);
+			streamDeck.logger.error(`guarded-command: short failed ${shortPath}`, err);
 			await state.action.showAlert();
 		}
 	}
@@ -216,37 +218,36 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 			return;
 		}
 
+		const longPath = substitutePlaceholders(parsed.longPath, selectors.snapshot());
 		try {
-			const id = await this.xplane.getCommandId(parsed.longPath);
+			const id = await this.xplane.getCommandId(longPath);
 			state.longPressActiveCommandId = id;
 			state.longPressActiveMode = parsed.longMode;
 
 			if (parsed.longMode === "hold") {
 				await this.xplane.beginCommand(id);
-				streamDeck.logger.info(`guarded-command: long begin ${parsed.longPath} (id=${id})`);
+				streamDeck.logger.info(`guarded-command: long begin ${longPath} (id=${id})`);
 			} else if (parsed.longMode === "autoRepeat") {
 				await this.xplane.activateCommand(id);
 				streamDeck.logger.info(
-					`guarded-command: long auto-repeat start ${parsed.longPath} (id=${id})`,
+					`guarded-command: long auto-repeat start ${longPath} (id=${id})`,
 				);
 				state.repeatInterval = setInterval(() => {
 					this.xplane
 						.activateCommand(id)
 						.catch((err) =>
 							streamDeck.logger.error(
-								`guarded-command: repeat failed ${parsed.longPath}`,
+								`guarded-command: repeat failed ${longPath}`,
 								err,
 							),
 						);
 				}, TIMINGS.REPEAT_INTERVAL_MS);
 			} else {
 				await this.xplane.activateCommand(id);
-				streamDeck.logger.info(
-					`guarded-command: long activate ${parsed.longPath} (id=${id})`,
-				);
+				streamDeck.logger.info(`guarded-command: long activate ${longPath} (id=${id})`);
 			}
 		} catch (err) {
-			streamDeck.logger.error(`guarded-command: long failed ${parsed.longPath}`, err);
+			streamDeck.logger.error(`guarded-command: long failed ${longPath}`, err);
 			state.longPressActiveCommandId = undefined;
 			state.longPressActiveMode = undefined;
 			await state.action.showAlert();
@@ -294,7 +295,8 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 			return;
 		}
 
-		const { basePath, index } = parseDataRefPath(state.guardPath);
+		const resolved = substitutePlaceholders(state.guardPath, selectors.snapshot());
+		const { basePath, index } = parseDataRefPath(resolved);
 
 		try {
 			state.handle = await this.xplane.subscribe(basePath, (raw) => {
@@ -396,6 +398,23 @@ export class XPlaneGuardedCommand extends SingletonAction<GuardedCommandSettings
 					),
 				);
 			}
+		}
+	}
+
+	private onSelectorsChanged(changed: ReadonlySet<string>): void {
+		for (const state of this.states.values()) {
+			if (!state.guardPath) continue;
+			const keys = extractPlaceholderKeys(state.guardPath);
+			if (!keys.some((k) => changed.has(k))) continue;
+			this.dropSubscription(state);
+			state.lastValue = undefined;
+			state.currentState = STATE_DIRTY;
+			this.applySubscription(state).catch((err) =>
+				streamDeck.logger.warn(
+					`guarded-command: selector re-subscribe failed for ${state.guardPath}`,
+					err,
+				),
+			);
 		}
 	}
 }
