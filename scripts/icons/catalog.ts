@@ -304,6 +304,7 @@ export const catalog: IconDef[] = [
 	{ kind: "display", name: "eng_ff", label: "FF", group: "readouts" },
 	{ kind: "display", name: "eng_oil_p", label: "OIL P", group: "readouts" },
 	{ kind: "display", name: "eng_oil_t", label: "OIL T", group: "readouts" },
+	{ kind: "display", name: "hyd", label: "HYD", group: "readouts" },
 	{ kind: "display", name: "eng_volt", label: "VOLT", group: "readouts" },
 	{ kind: "display", name: "eng_amp", label: "AMP", group: "readouts" },
 	{ kind: "display", name: "fuel", label: "FUEL", group: "readouts" },
