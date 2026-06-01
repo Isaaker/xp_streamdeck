@@ -13,6 +13,7 @@ import type { JsonObject } from "@elgato/utils";
 import { TIMINGS } from "../const";
 import { selectors } from "../selectors/registry";
 import { toFiniteNumber } from "../util/coerce";
+import { renderSelectorSvg, svgToDataUrl } from "../util/selector-image";
 import { trimString } from "../util/settings";
 
 type DisplaySelectorSettings = JsonObject & {
@@ -155,8 +156,15 @@ export class XPlaneDisplaySelector extends SingletonAction<DisplaySelectorSettin
 	private async render(state: ActionState): Promise<void> {
 		const value = state.key ? (selectors.get(state.key) ?? 1) : 1;
 		const clamped = Math.max(1, Math.min(state.count, Math.round(value)));
-		const title = state.label.length > 0 ? `${state.label}\n${clamped}` : String(clamped);
-		await state.action.setTitle(title);
+		const svg = renderSelectorSvg({
+			value: clamped,
+			count: state.count,
+			label: state.label || undefined,
+		});
+		await state.action.setImage(svgToDataUrl(svg));
+		// Clear any leftover title overlay from an earlier setTitle() build so
+		// the rendered image owns the tile.
+		await state.action.setTitle("");
 	}
 }
 
@@ -164,6 +172,6 @@ function parseSettings(s: DisplaySelectorSettings): ParsedSettings {
 	const key = trimString(s.key);
 	const countRaw = toFiniteNumber(s.count) ?? DEFAULT_COUNT;
 	const count = Math.max(1, Math.round(countRaw));
-	const label = trimString(s.label) || key;
+	const label = trimString(s.label);
 	return { key, count, label };
 }
