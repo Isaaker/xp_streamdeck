@@ -145,7 +145,7 @@ Please Note: This Profile is still in development and not finish and complete te
 
 Filename: xp_stream_aw109.streamDeckProfile
 
-Plugin Version Required: 1.3.0.0 or newer
+Plugin Version Required: 1.4.0.0 or newer (Uses the new Display Selector)
 
 ### Features: ###
 
