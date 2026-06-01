@@ -507,6 +507,47 @@ Property Inspector fields:
 
 Press and hold → writes `1`; release → writes `0`. The icon stays single-state — for a visible press indication, use [DataRef Toggle](#dataref-toggle) with Hold Mode and Image OFF/ON.
 
+### Display Selector
+
+A single button that holds a named index `1..N` and lets every other action reuse one configuration across multiple identical panels. The motivating case is aircraft like the **AW109**, which exposes **physically duplicated panels** — `EDU1..EDU4`, `RFU1..RFU2`, etc. — each with its own DataRef and CommandRef tree (`aw109/cockpit/button/edu1/...`, `.../edu2/...`, ...). Putting every duplicate on its own button blows past the deck's key budget; routing them all through a selector collapses the duplicates into one set of buttons that re-target the chosen panel.
+
+The selector value is persisted via Stream Deck's global plugin settings — it survives restarts and is shared across all selector instances with the same key (so a duplicate "EDU" selector on a second page mirrors the first).
+
+Property Inspector fields:
+
+- **Selector Key** — short identifier used in placeholders, e.g. `EDU`, `RFU`, `COM`. Required. Allowed characters: `A-Z`, `a-z`, `0-9`, `_`; must start with a letter.
+- **Option Count** — number of positions the selector cycles through. Default `4`.
+- **Label** *(optional)* — caption shown above the current value. Defaults to the key.
+
+Press behaviour:
+
+- **Short press** — cycles forward `1 → 2 → 3 → 4 → 1`.
+- **Long press** (≥ 500 ms) — cycles backward `4 → 3 → 2 → 1 → 4`.
+
+#### Using `{KEY}` placeholders in any action
+
+**Every DataRef Path and Command Path on every action** accepts `{KEY}` markers. At runtime, `{KEY}` is replaced with the current value of the matching selector before the path is sent to X-Plane:
+
+- `aw109/cockpit/button/edu{EDU}/knob_push` → `aw109/cockpit/button/edu2/knob_push` (when `EDU = 2`)
+- `aw109/cockpit/knob/pdf{PDF}/brt` → `aw109/cockpit/knob/pdf3/brt` (when `PDF = 3`)
+
+Use **curly braces** `{...}` for selector placeholders — square brackets `[...]` remain reserved for X-Plane array indices (see [Array DataRefs](#array-datarefs)), and the two compose freely (`sim/cockpit/foo[{IDX}]` works). Unknown keys (no matching selector defined) are left literal, so the standard `?` not-found suffix surfaces the misconfiguration on the tile.
+
+When the selector value changes, every action that **subscribes** to a path containing the affected key automatically drops and re-subscribes to the new path — live displays jump to the newly-selected panel within one update cycle. One-shot writes and commands substitute fresh on each press, so there is no state to invalidate.
+
+The Property Inspector's **Live Value** preview and **DataRef / Command autocomplete** both substitute the current selector value while you edit, so you see the actual X-Plane value (and get useful suggestions) instead of "X-Plane unreachable" for the literal `{KEY}` string.
+
+#### Example: AW109 EDU panel (1 selector + 3 reused buttons covers 4 panels)
+
+| Action | Key fields |
+| --- | --- |
+| Display Selector | Key `EDU`, Count `4`, Label `EDU` |
+| Command | Command Path `aw109/cockpit/button/edu{EDU}/knob_push` |
+| DataRef Display | DataRef Path `aw109/cockpit/knob/edu{EDU}/brt`, Label `BRT` |
+| Rotary DataRef | DataRef Path `aw109/cockpit/knob/edu{EDU}/crs`, Label `CRS` |
+
+Three function-specific buttons + one selector instead of twelve fixed buttons. Press the selector to cycle to EDU2 — all three buttons retarget the EDU2 panel automatically.
+
 ### Background Tile
 
 Decorative filler tile with **no action** — pressing it does nothing. Useful as a visual separator between functional clusters on the deck (e.g. a black or colored stripe between autopilot and lights groups).
