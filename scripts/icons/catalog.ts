@@ -296,7 +296,9 @@ export const catalog: IconDef[] = [
 
 	// === Engine readouts (PT6 turboprop: NG/ITT/TRQ/NP + house keeping) ===
 	{ kind: "display", name: "eng_ng", label: "NG", group: "readouts" },
+	{ kind: "display", name: "eng_n1", label: "N1", group: "readouts" },
 	{ kind: "display", name: "eng_itt", label: "ITT", group: "readouts" },
+	{ kind: "display", name: "eng_tot", label: "TOT", group: "readouts" },
 	{ kind: "display", name: "eng_trq", label: "TRQ", group: "readouts" },
 	{ kind: "display", name: "eng_np", label: "NP", group: "readouts" },
 	{ kind: "display", name: "eng_ff", label: "FF", group: "readouts" },
