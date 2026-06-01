@@ -58,6 +58,47 @@
 		}
 	})();
 
+	// ---------------- Selector placeholder substitution ----------------
+	// Mirrors src/util/placeholders.ts on the plugin side. Lets the live
+	// preview and autocomplete query the *resolved* path (e.g. pdf1/brt)
+	// instead of the literal template (pdf{PDF}/brt) which X-Plane can't find.
+
+	let globalCached = {};
+
+	const refreshGlobal = async () => {
+		const client = getClient();
+		if (!client?.getGlobalSettings) return;
+		try {
+			const s = await client.getGlobalSettings();
+			if (s && typeof s === "object") globalCached = s;
+		} catch (err) {
+			console.error("xplane-pi-helpers: getGlobalSettings failed", err);
+		}
+	};
+
+	(async () => {
+		await refreshGlobal();
+		const client = getClient();
+		const live = client?.didReceiveGlobalSettings;
+		if (live && typeof live.subscribe === "function") {
+			live.subscribe((arg) => {
+				const s = arg?.payload?.settings ?? arg?.settings;
+				if (s && typeof s === "object") globalCached = s;
+			});
+		}
+	})();
+
+	const PLACEHOLDER_RE = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
+	const substitutePlaceholders = (path) => {
+		if (!path) return path;
+		const selectors = globalCached?.selectors;
+		if (!selectors || typeof selectors !== "object") return path;
+		return path.replace(PLACEHOLDER_RE, (match, key) => {
+			const value = selectors[key];
+			return typeof value === "number" && Number.isFinite(value) ? String(value) : match;
+		});
+	};
+
 	const updateSetting = async (key, value) => {
 		if (!cacheReady) await ready;
 		await refresh();
@@ -110,10 +151,11 @@
 
 	const fetchSuggestions = async (kind, prefix) => {
 		if (!prefix || prefix.length < 2) return [];
+		const resolvedPrefix = substitutePlaceholders(prefix);
 		const endpoint = kind === "command" ? "commands" : "datarefs";
 		try {
 			const res = await fetchWithTimeout(
-				`${API_BASE}/${endpoint}?filter[name]=${encodeURIComponent(prefix)}`,
+				`${API_BASE}/${endpoint}?filter[name]=${encodeURIComponent(resolvedPrefix)}`,
 			);
 			if (!res.ok) return [];
 			const body = await res.json();
@@ -158,7 +200,8 @@
 	// ---------------- Live DataRef preview ----------------
 
 	const fetchDataRefValue = async (rawName) => {
-		const { basePath, index } = parseDataRefPath(rawName);
+		const resolvedName = substitutePlaceholders(rawName);
+		const { basePath, index } = parseDataRefPath(resolvedName);
 		try {
 			const r1 = await fetchWithTimeout(
 				`${API_BASE}/datarefs?filter[name]=${encodeURIComponent(basePath)}`,
