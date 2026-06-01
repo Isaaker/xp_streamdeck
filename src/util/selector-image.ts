@@ -9,9 +9,10 @@ const BG = "#0d0d0d";
 const FONT_STACK =
 	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif";
 
-const DOT_RADIUS = 4;
-const DOT_SPACING = 14;
-const DOT_Y = 26;
+const DOT_RADIUS = 7;
+const DOT_PREFERRED_SPACING = 22;
+const DOT_ROW_MAX_WIDTH = SIZE - 24;
+const DOT_Y = 32;
 // Beyond this we can't fit the dots edge-to-edge — fall back to no dots
 // and let the number alone communicate the position.
 const MAX_DOTS = 10;
@@ -19,8 +20,8 @@ const DOT_ACTIVE = "#06b6d4";
 const DOT_INACTIVE = "#3a3a3a";
 
 const NUM_COLOR = "#ffffff";
-const NUM_FONT_SIZE = 78;
-const NUM_Y_NO_LABEL = 102;
+const NUM_FONT_SIZE = 58;
+const NUM_Y_NO_LABEL = 100;
 const NUM_Y_WITH_LABEL = 92;
 
 const LABEL_COLOR = "#9ca3af";
@@ -33,11 +34,13 @@ function escapeXml(s: string): string {
 
 function renderDots(count: number, current: number): string {
 	if (count < 2 || count > MAX_DOTS) return "";
-	const totalWidth = (count - 1) * DOT_SPACING;
+	// Tighten spacing past 6 dots so the row still fits with the bigger radius.
+	const spacing = Math.min(DOT_PREFERRED_SPACING, DOT_ROW_MAX_WIDTH / (count - 1));
+	const totalWidth = (count - 1) * spacing;
 	const startX = (SIZE - totalWidth) / 2;
 	let out = "";
 	for (let i = 1; i <= count; i++) {
-		const cx = startX + (i - 1) * DOT_SPACING;
+		const cx = startX + (i - 1) * spacing;
 		const fill = i === current ? DOT_ACTIVE : DOT_INACTIVE;
 		out += `<circle cx="${cx}" cy="${DOT_Y}" r="${DOT_RADIUS}" fill="${fill}"/>`;
 	}
