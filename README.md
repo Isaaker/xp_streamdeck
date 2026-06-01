@@ -517,7 +517,8 @@ Property Inspector fields:
 
 - **Selector Key** — short identifier used in placeholders, e.g. `EDU`, `RFU`, `COM`. Required. Allowed characters: `A-Z`, `a-z`, `0-9`, `_`; must start with a letter.
 - **Option Count** — number of positions the selector cycles through. Default `4`.
-- **Label** *(optional)* — caption shown above the current value. Defaults to the key.
+- **Default Value** — initial position used when the selector hasn't been set yet (first appearance, or after Stream Deck global settings are cleared). Default `1`. Useful e.g. for the AW109 where the pilot sits on the right and the `2` positions are the primary ones — set Default to `2` so a fresh deck targets the right-seat panels first.
+- **Label** *(optional)* — small caption rendered below the number. Leave empty to show only the number + position dots.
 
 Press behaviour:
 

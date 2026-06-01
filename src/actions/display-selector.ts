@@ -19,12 +19,14 @@ import { trimString } from "../util/settings";
 type DisplaySelectorSettings = JsonObject & {
 	key?: string;
 	count?: string | number;
+	defaultValue?: string | number;
 	label?: string;
 };
 
 interface ParsedSettings {
 	key: string;
 	count: number;
+	defaultValue: number;
 	label: string;
 }
 
@@ -32,6 +34,7 @@ interface ActionState {
 	action: KeyAction<DisplaySelectorSettings>;
 	key: string;
 	count: number;
+	defaultValue: number;
 	label: string;
 	longPressTimer?: NodeJS.Timeout;
 	longPressFired: boolean;
@@ -51,6 +54,7 @@ export class XPlaneDisplaySelector extends SingletonAction<DisplaySelectorSettin
 			action: ev.action,
 			key: parsed.key,
 			count: parsed.count,
+			defaultValue: parsed.defaultValue,
 			label: parsed.label,
 			longPressFired: false,
 		};
@@ -62,9 +66,9 @@ export class XPlaneDisplaySelector extends SingletonAction<DisplaySelectorSettin
 			}
 		});
 		this.states.set(ev.action.id, state);
-		// Seed default if the selector isn't set yet, so dependent buttons resolve to 1.
+		// Seed default if the selector isn't set yet, so dependent buttons resolve correctly.
 		if (state.key && selectors.get(state.key) === undefined) {
-			await selectors.set(state.key, 1);
+			await selectors.set(state.key, state.defaultValue);
 		}
 		await this.render(state);
 	}
@@ -86,9 +90,10 @@ export class XPlaneDisplaySelector extends SingletonAction<DisplaySelectorSettin
 		const parsed = parseSettings(ev.payload.settings ?? {});
 		state.key = parsed.key;
 		state.count = parsed.count;
+		state.defaultValue = parsed.defaultValue;
 		state.label = parsed.label;
 		if (state.key && selectors.get(state.key) === undefined) {
-			await selectors.set(state.key, 1);
+			await selectors.set(state.key, state.defaultValue);
 		}
 		await this.render(state);
 	}
@@ -128,7 +133,7 @@ export class XPlaneDisplaySelector extends SingletonAction<DisplaySelectorSettin
 
 	private async step(state: ActionState, direction: 1 | -1): Promise<void> {
 		if (direction === -1) state.longPressFired = true;
-		const current = selectors.get(state.key) ?? 1;
+		const current = selectors.get(state.key) ?? state.defaultValue;
 		const clamped = Math.max(1, Math.min(state.count, Math.round(current)));
 		// Wrap-around: forward N→1, backward 1→N.
 		const next =
@@ -154,7 +159,9 @@ export class XPlaneDisplaySelector extends SingletonAction<DisplaySelectorSettin
 	}
 
 	private async render(state: ActionState): Promise<void> {
-		const value = state.key ? (selectors.get(state.key) ?? 1) : 1;
+		const value = state.key
+			? (selectors.get(state.key) ?? state.defaultValue)
+			: state.defaultValue;
 		const clamped = Math.max(1, Math.min(state.count, Math.round(value)));
 		const svg = renderSelectorSvg({
 			value: clamped,
@@ -172,6 +179,8 @@ function parseSettings(s: DisplaySelectorSettings): ParsedSettings {
 	const key = trimString(s.key);
 	const countRaw = toFiniteNumber(s.count) ?? DEFAULT_COUNT;
 	const count = Math.max(1, Math.round(countRaw));
+	const defaultRaw = toFiniteNumber(s.defaultValue) ?? 1;
+	const defaultValue = Math.max(1, Math.min(count, Math.round(defaultRaw)));
 	const label = trimString(s.label);
-	return { key, count, label };
+	return { key, count, defaultValue, label };
 }
