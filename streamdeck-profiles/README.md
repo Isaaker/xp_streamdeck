@@ -18,6 +18,12 @@ parent `X-Plane` profile.
 Both commands quit and relaunch the Stream Deck app automatically. Folder
 UUIDs are preserved, so the parent profile's child links stay intact.
 
+## X-Plane Menu Profile
+
+This is a default Profile where all profiles are included. In the future there is a script on the way to update automatically the profiles. So you have not to Import manually via StreamDeck UI and reorder and Link the Cockpit profiles with it. Should then work automatically.
+
+Filename: xp_stream_parent.streamDeckProfile
+
 ## G1000 - X-Plane Default X1000 (G1000) ##
 
 Filename: xp_stream_g1000.streamDeckProfile
