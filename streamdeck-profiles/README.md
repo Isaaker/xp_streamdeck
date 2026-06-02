@@ -20,7 +20,23 @@ Plugin Version Required: 1.1.0.0 or newer
 
 Filename: xp_stream_c172sp.streamDeckProfile
 
-Plugin Version Required: 1.1.0.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
+
+### Features: ###
+
+* Default Cockpit Buttons
+* Garmin Autopilot
+* X1000 (X-Plane G1000)
+* GCU for G1000 (Alpha & Numeric)
+* Cockpit Views
+
+## Lancair Evolution by X-Plane ##
+
+The aircraft from "Austin Meyer"
+
+Filename: xp_stream_lancair.streamDeckProfile
+
+Plugin Version Required: 1.3.0.0 or newer
 
 ### Features: ###
 
@@ -35,7 +51,7 @@ Plugin Version Required: 1.1.0.0 or newer
 
 Filename: xp_stream_pa46.streamDeckProfile
 
-Plugin Version Required: 1.1.3.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
 ### Features: ###
 
@@ -50,7 +66,7 @@ Plugin Version Required: 1.1.3.0 or newer
 
 Filename: xp_stream_da42.streamDeckProfile
 
-Plugin Version Required: 1.1.0.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
 ### Features: ###
 
@@ -65,7 +81,7 @@ Plugin Version Required: 1.1.0.0 or newer
 
 Filename: xp_stream_dv20.streamDeckProfile
 
-Plugin Version Required: 1.1.0.0 or newer
+Plugin Version Required: 1.4.1.0 or newer
 
 ### Features: ###
 
@@ -81,7 +97,7 @@ Plugin Version Required: 1.1.0.0 or newer
 
 Filename: xp_stream_shark.streamDeckProfile
 
-Plugin Version Required: 1.1.1.0 or newer
+Plugin Version Required: 1.3.1.0 or newer
 
 ### Features: ###
 
@@ -95,7 +111,7 @@ Plugin Version Required: 1.1.1.0 or newer
 
 Filename: xp_stream_ph300.streamDeckProfile
 
-Plugin Version Required: 1.1.1.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
 ### Features: ###
 
@@ -112,7 +128,7 @@ I use the PC12 from Thranda in G1000 Configuration on the Mac because better exp
 
 Filename: xp_stream_pc12.streamDeckProfile
 
-Plugin Version Required: 1.1.1.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
 ### Features: ###
 
@@ -128,7 +144,7 @@ Plugin Version Required: 1.1.1.0 or newer
 
 Filename: xp_stream_ec130.streamDeckProfile
 
-Plugin Version Required: 1.2.0.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
 ### Features: ###
 
@@ -145,7 +161,7 @@ Please Note: This Profile is still in development and not finish and complete te
 
 Filename: xp_stream_aw109.streamDeckProfile
 
-Plugin Version Required: 1.4.0.0 or newer (Uses the new Display Selector)
+Plugin Version Required: 1.4.1.0 or newer (Uses the new Display Selector)
 
 ### Features: ###
 
