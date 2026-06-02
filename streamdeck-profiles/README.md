@@ -58,7 +58,7 @@ folder UUIDs are preserved across machines.
 
 ## X-Plane Menu Profile
 
-This is a default Profile where all profiles are included. In the future there is a script on the way to update automatically the profiles. So you have not to Import manually via StreamDeck UI and reorder and Link the Cockpit profiles with it. Should then work automatically.
+This is a default Profile where all profiles are included. Required to link all profiles together. The import/export mechanism supports this on the sync.
 
 Filename: xp_stream_parent.streamDeckProfile
 
