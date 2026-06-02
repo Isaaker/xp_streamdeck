@@ -18,6 +18,25 @@ parent `X-Plane` profile.
 Both commands quit and relaunch the Stream Deck app automatically. Folder
 UUIDs are preserved, so the parent profile's child links stay intact.
 
+### First-time setup on a new Mac
+
+If the target Mac already has profiles with the same names but different
+folder UUIDs (e.g. previously imported through the Stream Deck UI), the first
+`make import` will produce **duplicates** — the old profiles stay, the new
+ones from the repo land next to them. This is a one-time situation.
+
+To clean it up:
+
+1. In the Stream Deck app, delete every `xp_stream_*` profile **and** the
+   `X-Plane` parent profile.
+2. Run `make import`.
+3. Open the `X-Plane` parent and re-link the one tile that points to Stream
+   Deck's system "Default Profile" — that profile is intentionally not synced
+   and has a different UUID on every Mac.
+
+From then on every `git pull && make import` overwrites the same folder UUIDs
+in place — no more duplicates, no more re-linking.
+
 ## X-Plane Menu Profile
 
 This is a default Profile where all profiles are included. In the future there is a script on the way to update automatically the profiles. So you have not to Import manually via StreamDeck UI and reorder and Link the Cockpit profiles with it. Should then work automatically.
