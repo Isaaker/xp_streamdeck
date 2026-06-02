@@ -681,6 +681,17 @@ Ready-made Stream Deck XL profiles for several aircraft live in [`streamdeck-pro
 
 Each profile expects this plugin installed and the matching aircraft loaded in X-Plane.
 
+### Syncing profiles via `make`
+
+Profiles are versioned in this repo and synced with two targets that bypass the Stream Deck UI (which always creates "Copy" duplicates with fresh UUIDs and breaks the parent `X-Plane` profile's cross-links):
+
+- `make export` — interactive picker; choose which live profiles to snapshot back into `streamdeck-profiles/`. Use after editing a profile in the Stream Deck app on the dev Mac.
+- `make import` — restore every archive in `streamdeck-profiles/` into the Stream Deck app, patching the hardware-bound `Device.UUID` to the local machine. Additive: non-`xp_stream_*` profiles stay untouched.
+
+Both targets quit and relaunch the Stream Deck app automatically. Folder UUIDs are preserved across machines, so the parent profile's child links keep working when you `git pull && make import` on the flight-sim Mac.
+
+See [`streamdeck-profiles/README.md`](streamdeck-profiles/README.md) for the first-time setup procedure (delete the existing profiles once, then `make import`) and per-aircraft feature notes.
+
 ## Common Make targets
 
 Run `make help` for the full list. Most-used: `make build`, `make icons`, `make clean`, `make distclean`, `make setup`, `make package`.
