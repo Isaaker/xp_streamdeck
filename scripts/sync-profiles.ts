@@ -13,6 +13,7 @@ import {
 } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { createInterface } from "node:readline/promises";
 
 const PROFILES_DIR = join(
 	homedir(),
@@ -226,21 +227,90 @@ function ensureRepoProfilesDir(): void {
 	}
 }
 
-function exportProfiles(): void {
+type ExportTarget = { profile: LiveProfile; archiveBasename: string };
+
+function parseSelection(input: string, max: number): number[] | string {
+	const trimmed = input.trim().toLowerCase();
+	if (trimmed === "" || trimmed === "abort" || trimmed === "q") {
+		return "abort";
+	}
+	if (trimmed === "all" || trimmed === "*") {
+		return Array.from({ length: max }, (_, i) => i + 1);
+	}
+	const picks: number[] = [];
+	for (const part of trimmed.split(",")) {
+		const n = Number.parseInt(part.trim(), 10);
+		if (!Number.isInteger(n) || n < 1 || n > max) {
+			return `invalid entry "${part.trim()}" (must be 1..${max}, 'all', or 'abort')`;
+		}
+		if (!picks.includes(n)) {
+			picks.push(n);
+		}
+	}
+	return picks;
+}
+
+async function promptProfileSelection(targets: ExportTarget[]): Promise<ExportTarget[]> {
+	if (!process.stdin.isTTY) {
+		throw new Error(
+			"make export needs an interactive terminal to pick which profiles to export.\n" +
+				"Run it directly in a shell, not piped or under CI.",
+		);
+	}
+	console.log("\nLive profiles found:\n");
+	for (const [i, t] of targets.entries()) {
+		console.log(`  ${String(i + 1).padStart(2, " ")}) ${t.archiveBasename}`);
+	}
+	const rl = createInterface({ input: process.stdin, output: process.stdout });
+	try {
+		while (true) {
+			const answer = await rl.question(
+				"\nWhich profiles to export? (e.g. 3, or 1,3,5, or 'all'): ",
+			);
+			const parsed = parseSelection(answer, targets.length);
+			if (parsed === "abort") {
+				console.log("Aborted — nothing exported.");
+				return [];
+			}
+			if (typeof parsed === "string") {
+				console.log(`  ! ${parsed}`);
+				continue;
+			}
+			return parsed.map((n) => {
+				const t = targets[n - 1];
+				if (!t) {
+					throw new Error(`Index ${n} out of range`);
+				}
+				return t;
+			});
+		}
+	} finally {
+		rl.close();
+	}
+}
+
+async function exportProfiles(): Promise<void> {
 	const profiles = listLiveProfiles();
-	const targets = profiles
+	const targets: ExportTarget[] = profiles
 		.map((p) => ({ profile: p, ...shouldSyncProfile(p.manifest) }))
-		.filter((t): t is { profile: LiveProfile; sync: true; archiveBasename: string } => t.sync);
+		.filter((t): t is { profile: LiveProfile; sync: true; archiveBasename: string } => t.sync)
+		.map(({ profile, archiveBasename }) => ({ profile, archiveBasename }))
+		.sort((a, b) => a.archiveBasename.localeCompare(b.archiveBasename));
 
 	if (targets.length === 0) {
 		console.log("No xp_stream_* or X-Plane profiles found in ProfilesV3 — nothing to export.");
 		return;
 	}
 
+	const selected = await promptProfileSelection(targets);
+	if (selected.length === 0) {
+		return;
+	}
+
 	quitStreamDeck();
 	ensureRepoProfilesDir();
 
-	for (const { profile, archiveBasename } of targets) {
+	for (const { profile, archiveBasename } of selected) {
 		const stageDir = makeTempDir("xp-sd-export-");
 		try {
 			const innerProfiles = join(stageDir, "Profiles");
@@ -267,7 +337,7 @@ function exportProfiles(): void {
 		}
 	}
 
-	console.log(`\nExported ${targets.length} profile(s) → ${REPO_PROFILES_DIR}`);
+	console.log(`\nExported ${selected.length} profile(s) → ${REPO_PROFILES_DIR}`);
 	launchStreamDeck();
 }
 
@@ -327,10 +397,10 @@ function importProfiles(): void {
 	launchStreamDeck();
 }
 
-function main(): void {
+async function main(): Promise<void> {
 	const subcommand = process.argv[2];
 	if (subcommand === "export") {
-		exportProfiles();
+		await exportProfiles();
 	} else if (subcommand === "import") {
 		importProfiles();
 	} else {
@@ -339,9 +409,7 @@ function main(): void {
 	}
 }
 
-try {
-	main();
-} catch (err) {
+main().catch((err) => {
 	console.error(`ERROR: ${(err as Error).message}`);
 	process.exit(1);
-}
+});
