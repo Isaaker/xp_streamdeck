@@ -8,7 +8,7 @@ const ARROW_COLOR = "#22c55e";
 const TEXT_COLOR = "#ffffff";
 const SUB_TEXT_COLOR = "#94a3b8";
 const FONT_STACK =
-	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif";
+	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif";
 
 export interface WindRenderInput {
 	label?: string;

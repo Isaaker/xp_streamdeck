@@ -24,7 +24,7 @@ const BODY_PALETTE: Record<SwitchBodyColor, { fill: string; border: string }> = 
 };
 
 const FONT_STACK =
-	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif";
+	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif";
 const LABEL_COLOR = "#ffffff";
 const LABEL_FONT_SIZE = 22;
 const LABEL_TOP_BASELINE_Y = 22;

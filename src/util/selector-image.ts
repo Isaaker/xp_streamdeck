@@ -7,7 +7,7 @@ const SIZE = 144;
 const BG = "#0d0d0d";
 
 const FONT_STACK =
-	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif";
+	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif";
 
 const DOT_RADIUS = 7;
 const DOT_PREFERRED_SPACING = 22;

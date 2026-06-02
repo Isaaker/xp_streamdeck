@@ -1,6 +1,6 @@
 # Installation Guide
 
-This package contains everything needed to use the X-Plane Stream Deck plugin on macOS.
+This package contains everything needed to use the X-Plane Stream Deck plugin on macOS and Windows.
 
 ## What's Inside
 
@@ -14,7 +14,7 @@ This package contains everything needed to use the X-Plane Stream Deck plugin on
 
 ## Prerequisites
 
-- **macOS 12 or newer** — the plugin runs on Mac only.
+- **macOS 12 or newer** *or* **Windows 10 or newer**. Initial Windows port and AW109-profile validation were contributed by a community user.
 - **Stream Deck app 7.1+** — download from <https://www.elgato.com/downloads>.
 - **X-Plane 12.1.1 or newer** — the built-in Web API on `localhost:8086` is enabled by default. The only relevant setting:
   - *X-Plane → Settings → Network → **Disable Incoming Traffic*** must remain **unchecked**.
@@ -33,11 +33,13 @@ Expected: `HTTP/1.1 200 OK` plus a JSON body. `403` means *Disable Incoming Traf
 2. The Stream Deck app opens and prompts to install the plugin — confirm.
 3. The **X-Plane** category appears in the actions list on the right.
 
-> **First-time Gatekeeper warning?** The plugin is not Apple-notarized (private/free distribution). If macOS refuses to open the file on first launch, right-click `com.robertw.xplane.streamDeckPlugin` in Finder → **Open** → confirm in the dialog. As a fallback, remove the quarantine attribute from a terminal:
+> **macOS — First-time Gatekeeper warning?** The plugin is not Apple-notarized (private/free distribution). If macOS refuses to open the file on first launch, right-click `com.robertw.xplane.streamDeckPlugin` in Finder → **Open** → confirm in the dialog. As a fallback, remove the quarantine attribute from a terminal:
 >
 > ```bash
 > xattr -d com.apple.quarantine com.robertw.xplane.streamDeckPlugin
 > ```
+>
+> **Windows — SmartScreen / unsigned plugin warning?** The plugin is not code-signed. If Windows blocks the install, the Stream Deck app may show a confirmation dialog or SmartScreen may interpose — click *More info* → *Run anyway*, or right-click the `.streamDeckPlugin` file → **Properties** → tick *Unblock* at the bottom → **OK**, then double-click again.
 
 ## Step 2 — Import a Profile (optional but recommended)
 
@@ -67,7 +69,11 @@ Available profiles in this release:
 If a button shows a red `!`, check the plugin log:
 
 ```bash
+# macOS
 tail -f ~/Library/Logs/ElgatoStreamDeck/com.robertw.xplane*.log
+
+# Windows (PowerShell)
+Get-Content "$env:APPDATA\Elgato\StreamDeck\logs\Plugins\com.robertw.xplane*.log" -Wait -Tail 50
 ```
 
 ## Customizing Buttons
@@ -104,7 +110,7 @@ See `README.md` for the full action reference, including array DataRef syntax (`
 | --- | --- | --- |
 | All buttons show `!` | X-Plane Web API unreachable | Verify with the `curl` command above. Check *Disable Incoming Traffic* is unchecked and X-Plane is running. |
 | Plugin not visible in actions list | Install didn't complete | Re-run Step 1; quit and re-open the Stream Deck app. |
-| Live readouts stuck / blank | Plugin lost the WebSocket connection | Check `~/Library/Logs/ElgatoStreamDeck/com.robertw.xplane*.log`. Restart X-Plane and the Stream Deck app. |
+| Live readouts stuck / blank | Plugin lost the WebSocket connection | Check the plugin log (macOS: `~/Library/Logs/ElgatoStreamDeck/com.robertw.xplane*.log`, Windows: `%APPDATA%\Elgato\StreamDeck\logs\Plugins\com.robertw.xplane*.log`). Restart X-Plane and the Stream Deck app. |
 | Profile won't import | Stream Deck app version too old | Update the Stream Deck app to 7.1 or newer. |
 
 ## Uninstall

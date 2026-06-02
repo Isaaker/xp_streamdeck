@@ -1,8 +1,8 @@
-# xp_streamdeck — Stream Deck Plugin for X-Plane 12 on macOS
+# xp_streamdeck — Stream Deck Plugin for X-Plane 12
 
 ## Goal
 
-A native macOS Stream Deck plugin (Elgato Stream Deck XL) that controls X-Plane 12 via its native Web API — generic enough to drive any DataRef or CommandRef from a button, including state-based images (e.g. Gear UP/DOWN). Replaces the keyboard-shortcut workaround on Mac, where the Windows-only PilotsDeck has no equivalent.
+A cross-platform Stream Deck plugin (macOS + Windows; Elgato Stream Deck XL) that controls X-Plane 12 via its native Web API — generic enough to drive any DataRef or CommandRef from a button, including state-based images (e.g. Gear UP/DOWN). Replaces the keyboard-shortcut workaround on Mac, where the Windows-only PilotsDeck has no equivalent.
 
 ## Tech Stack
 
@@ -13,7 +13,7 @@ A native macOS Stream Deck plugin (Elgato Stream Deck XL) that controls X-Plane 
 - **HTTP client:** native `fetch` (Node 24)
 - **WebSocket client:** `ws`
 - **Property Inspector:** HTML + vanilla JS, optionally `@elgato/sdpi-components`
-- **Target:** macOS only (private/sideloaded — no notarization)
+- **Target:** macOS 12+ and Windows 10+ (private/sideloaded — no notarization on either OS). Build/dev tooling (`make build`, `make icons`) runs on both; `make export`/`make import` (profile sync via AppleScript) is macOS-only.
 
 ## Talking to X-Plane
 
@@ -120,12 +120,13 @@ To keep buttons visually consistent (one of M01's pain points was inconsistent p
   - **Toggle:** ≤4 chars at 44px; longer labels auto-shrink in fixed steps (5→36, 6→30, 7→26, 8→22, 9→20, 10+→18) via `toggleFontSize()`. Labels of the same length always render at the same size — groups stay uniform within themselves.
   - **Display:** fixed 22px (designed for 6-character max — `AP HDG`, `W SPD`).
   - **Nudge:** fixed 36px label (≤4 chars expected — the arrow is the visual focus, not the label).
-- **Renderer is reproducible only as far as system fonts go.** The SVG references `-apple-system, …, Helvetica Neue, Arial`. Rasterization on macOS picks one of those; on a Linux CI box without those fonts, output will differ. If cross-machine reproducibility becomes a requirement (OSS release etc.), embed an OFL/Apache font as base64 in the SVG.
+- **Cross-platform reproducible.** `scripts/icons/fonts/InterVariable.ttf` (OFL-1.1) is base64-embedded into every generated SVG via `scripts/icons/fonts.ts` → `withEmbeddedFont()`, applied centrally in `generate-icons.ts:renderPng`. The `font-family` (`XPSDInter`) is deliberately unique so a system-installed Inter never overrides the embedded one. Rendering is identical on macOS, Linux CI, and Windows. Runtime-rendered tiles (`src/util/*-svg.ts`) keep the system-font stack with `Segoe UI` added for Windows fallback — those values are dynamic and a small per-OS font difference is acceptable.
 
 ## Test Environment Reality
 
 - The **dev laptop has no Stream Deck connected.** Stream Deck app + plugin sideloading reach ~90% of testing surface; final hardware verification happens on the flight-sim Mac.
 - X-Plane runs on the same Mac as Stream Deck — both default to localhost.
+- **No Windows test machine available locally.** Windows is officially supported (manifest declares it; OFL Inter is embedded so build-time icons render identically), but runtime verification on Windows relies on community user reports. A community user did the original port and validated against the AW109 profile — flag suspected Windows-specific issues to be confirmed there before assuming they reproduce on real hardware.
 - Smoke-test the X-Plane Web API with `curl` first whenever debugging suspect plugin behavior:
   ```
   curl 'http://localhost:8086/api/v3/datarefs?filter[name]=sim/cockpit2/controls/gear_handle_down'

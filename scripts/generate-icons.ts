@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { renderSwitchStateSvg, type SwitchTilePosition } from "../src/util/switch-image.ts";
 import type { GuardedIcon } from "./icons/catalog.ts";
 import { catalog } from "./icons/catalog.ts";
+import { withEmbeddedFont } from "./icons/fonts.ts";
 import {
 	ACTION_ICON_NAMES,
 	type IconState,
@@ -63,7 +64,8 @@ const BUNDLE_IMGS_DIR = resolve(process.cwd(), "com.robertw.xplane.sdPlugin/imgs
 const STATES: IconState[] = ["on", "off"];
 
 async function renderPng(svg: string, size: number): Promise<Buffer> {
-	return sharp(Buffer.from(svg)).resize(size, size).png().toBuffer();
+	const withFont = withEmbeddedFont(svg);
+	return sharp(Buffer.from(withFont)).resize(size, size).png().toBuffer();
 }
 
 async function main(): Promise<void> {

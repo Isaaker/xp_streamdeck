@@ -2,12 +2,19 @@
 
 ![X-Plane 12 cockpit with Stream Deck XL configurator showing autopilot controls](StreamDeck_cockpit.jpg)
 
-Native Stream Deck plugin for X-Plane 12 on macOS, talking to the X-Plane Web API on `localhost:8086`.
+Native Stream Deck plugin for X-Plane 12 — runs on macOS and Windows, talking to the X-Plane Web API on `localhost:8086`.
+
+## Platform support
+
+- **Plugin runtime:** macOS 12+ and Windows 10+. Sideload from a Release tarball or build from this repo.
+- **Build & dev tooling:** `npm install`, `npm run build`, and `npm run icons` work on both OS. The `make` targets are convenience wrappers for macOS/Linux shells — Windows users should call the underlying `npm` scripts directly.
+- **`make export` / `make import`** (Stream Deck profile sync) is **macOS-only** because it drives the Stream Deck app via AppleScript and reads `~/Library/...`. Windows users manage profiles via the Stream Deck app's built-in import/export UI.
+- Initial Windows port and AW109-profile validation were contributed by a community user.
 
 ## Prerequisites
 
 - **X-Plane 12.1.1 or newer** — the built-in Web API was introduced in 12.1.1 and is enabled by default.
-- Node.js 24 (pinned via `.nvmrc` — run `nvm use` in this directory).
+- Node.js 24 (pinned via `.nvmrc`). macOS/Linux: `nvm use`. Windows: install [`nvm-windows`](https://github.com/coreybutler/nvm-windows) and run `nvm use 24`.
 - The Elgato Stream Deck CLI ships as a devDependency, so no global install is needed; invoke it via `npx streamdeck …` (or install globally with `npm i -g @elgato/cli` if you prefer the bare `streamdeck` command).
 
 ## X-Plane Web API setup
@@ -47,7 +54,11 @@ grep -i "web" "$HOME/X-Plane 12/Log.txt"
 Once the API is up, plugin activity goes to:
 
 ```bash
+# macOS
 tail -f ~/Library/Logs/ElgatoStreamDeck/com.robertw.xplane*.log
+
+# Windows (PowerShell)
+Get-Content "$env:APPDATA\Elgato\StreamDeck\logs\Plugins\com.robertw.xplane*.log" -Wait -Tail 50
 ```
 
 Each press should produce `Resolved sim/operation/pause_toggle -> id=…` and `Activated …`. If nothing appears on press, the plugin isn't loaded — re-run `npx streamdeck restart com.robertw.xplane`.
@@ -55,8 +66,15 @@ Each press should produce `Resolved sim/operation/pause_toggle -> id=…` and `A
 ## Build & install (development)
 
 ```bash
+# macOS / Linux
 make setup                                    # npm install
 make build                                    # rollup → bin/plugin.js
+npx streamdeck link com.robertw.xplane.sdPlugin
+npx streamdeck restart com.robertw.xplane
+
+# Windows — the make targets are convenience wrappers; call npm directly:
+npm install
+npm run build
 npx streamdeck link com.robertw.xplane.sdPlugin
 npx streamdeck restart com.robertw.xplane
 ```
@@ -682,6 +700,8 @@ Ready-made Stream Deck XL profiles for several aircraft live in [`streamdeck-pro
 Each profile expects this plugin installed and the matching aircraft loaded in X-Plane.
 
 ### Syncing profiles via `make`
+
+> **macOS-only.** `make export` and `make import` drive the Stream Deck app via AppleScript and read `~/Library/Application Support/...`. Windows users should manage profiles through the Stream Deck app's built-in import/export UI; the bundled `.streamDeckProfile` archives under `streamdeck-profiles/` are platform-agnostic.
 
 Profiles are versioned in this repo and synced with two targets that bypass the Stream Deck UI (which always creates "Copy" duplicates with fresh UUIDs and breaks the parent `X-Plane` profile's cross-links):
 

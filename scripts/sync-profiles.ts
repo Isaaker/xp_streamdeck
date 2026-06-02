@@ -15,6 +15,14 @@ import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { createInterface } from "node:readline/promises";
 
+if (process.platform !== "darwin") {
+	console.error(
+		"sync-profiles is a macOS-only dev tool (uses AppleScript and ~/Library/...).\n" +
+			"Windows users should manage profiles via the Stream Deck app's import/export UI.",
+	);
+	process.exit(2);
+}
+
 const PROFILES_DIR = join(
 	homedir(),
 	"Library/Application Support/com.elgato.StreamDeck/ProfilesV3",

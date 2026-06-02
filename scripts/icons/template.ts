@@ -17,6 +17,7 @@ import {
 	type ToggleIcon,
 	type ViewIcon,
 } from "./catalog.ts";
+import { FONT_FAMILY } from "./fonts.ts";
 
 export type IconState = "on" | "off";
 
@@ -25,8 +26,11 @@ const BG = "#0d0d0d";
 const LABEL_COLOR = "#ffffff";
 const BAR_OFF = "#1f1f1f";
 
-const FONT_STACK =
-	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif";
+// Resolves to the @font-face declared at the top of every generated SVG
+// (see generate-icons.ts → renderPng → withEmbeddedFont). The sans-serif
+// fallback is just a safety net if the style-block injection is ever
+// bypassed; under normal flow every rendered tile uses embedded Inter.
+const FONT_STACK = `'${FONT_FAMILY}', sans-serif`;
 
 // Labels are user-defined strings that get inlined into SVG <text> content,
 // so any of `< > &` would break the XML parser. We escape on the way in.

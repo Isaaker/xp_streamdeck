@@ -10,7 +10,7 @@ const SLOT_LABEL_COLOR = "#94a3b8";
 const SLOT_VALUE_COLOR = "#ffffff";
 const ACCENT_COLOR = "#22c55e";
 const FONT_STACK =
-	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif";
+	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif";
 
 const TITLE_BASELINE_Y = 22;
 const TITLE_FONT_SIZE = 18;
