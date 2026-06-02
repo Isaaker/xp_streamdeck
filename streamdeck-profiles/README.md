@@ -2,6 +2,22 @@
 
 Stream Desk XL Profiles only function together with the xp_streamdesk Plugin.
 
+## Sync via `make` ##
+
+Do **not** import/export these profiles through the Stream Deck UI — it creates
+"Copy" duplicates with fresh UUIDs and breaks the cross-profile links in the
+parent `X-Plane` profile.
+
+* `make export` — snapshot live profiles (`xp_stream_*` and the `X-Plane`
+  parent) from `~/Library/Application Support/com.elgato.StreamDeck/ProfilesV3/`
+  into this directory.
+* `make import` — restore every `*.streamDeckProfile` in this directory back
+  into `ProfilesV3/`, patching `Device.UUID` to the local Stream Deck hardware
+  so it works on any Mac (dev laptop ↔ sim Mac).
+
+Both commands quit and relaunch the Stream Deck app automatically. Folder
+UUIDs are preserved, so the parent profile's child links stay intact.
+
 ## G1000 - X-Plane Default X1000 (G1000) ##
 
 Filename: xp_stream_g1000.streamDeckProfile
