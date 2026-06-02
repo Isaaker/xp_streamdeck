@@ -37,6 +37,25 @@ To clean it up:
 From then on every `git pull && make import` overwrites the same folder UUIDs
 in place — no more duplicates, no more re-linking.
 
+### Adding a new profile
+
+Adding a new aircraft profile (e.g. B738):
+
+1. **In the Stream Deck app:** create the new profile and name it
+   `xp_stream_<aircraft>` — e.g. `xp_stream_b738`. The lowercase
+   `xp_stream_` prefix is required; the sync filter ignores anything else.
+2. Configure the pages and buttons.
+3. In the `X-Plane` parent profile, add a new "Switch Profile" tile that
+   points to the new profile.
+4. Run `make export` and select **both** the new profile *and*
+   `xp_stream_parent` — otherwise the sim Mac won't know about the link.
+5. *(Optional)* add a `## <Aircraft>` block with features to this README.
+6. Commit on a feature branch, open a PR, merge.
+
+On the sim Mac: `git pull && make import` picks up the new profile and the
+updated parent automatically — the new tile works on first launch because
+folder UUIDs are preserved across machines.
+
 ## X-Plane Menu Profile
 
 This is a default Profile where all profiles are included. In the future there is a script on the way to update automatically the profiles. So you have not to Import manually via StreamDeck UI and reorder and Link the Cockpit profiles with it. Should then work automatically.
