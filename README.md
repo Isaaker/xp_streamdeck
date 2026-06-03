@@ -361,6 +361,51 @@ Press while OFF → fires `servos_on`; press while ON → fires `servos_off`. Th
 
 Press and hold → writes `1`, button switches to ON image; release → writes `0`, button returns to OFF. Trigger Mode and command fields stay hidden while Hold Mode is on.
 
+### DataRef Lamp
+
+Read-only indicator: renders a colored lamp (lit) or a dark lamp depending on a DataRef value. Use it for cockpit annunciators where you just want to *see* a state — GEAR DOWN, BCN ON, AP engaged, low-fuel warning — without a click action. The lamp lights up only when the DataRef value matches **Value On** exactly (with float tolerance); every other value, including **Value Off**, leaves it dark.
+
+Property Inspector fields:
+
+- **DataRef Path** — the X-Plane DataRef to read. Supports array indexing (see [Array DataRefs](#array-datarefs)).
+- **Live Value** — read-only preview of the current value while editing the path.
+- **Value On** — the value that lights the lamp. Default `1`.
+- **Value Off** — the expected off value. Default `0`. *Functionally unused* — the lamp is lit only on exact match with **Value On**, everything else (including **Value Off**) is dark. The field documents the binary character of the DataRef for clarity.
+- **Color** — `Green` *(default)*, `Blue`, `Yellow`, `Orange`, `Red`.
+- **Label** — optional caption baked into the tile (e.g. `GEAR`, `BCN`).
+- **Label Position** — `Top` *(default)* or `Bottom`.
+
+When X-Plane goes offline the tile swaps to the standard offline placeholder; when the DataRef path is invalid the title gets a `?` not-found suffix — same behaviour as every other subscribe-based action.
+
+#### Example: gear DOWN indicator
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/cockpit2/controls/gear_handle_down` |
+| Value On | `1` |
+| Color | `Green` |
+| Label | `GEAR` |
+| Label Position | `Top` |
+
+#### Example: beacon light annunciator
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/cockpit2/switches/beacon_on` |
+| Value On | `1` |
+| Color | `Red` |
+| Label | `BCN` |
+
+#### Example: AP engaged lamp
+
+| Field | Value |
+| --- | --- |
+| DataRef Path | `sim/cockpit2/autopilot/servos_on` |
+| Value On | `1` |
+| Color | `Blue` |
+| Label | `AP` |
+| Label Position | `Bottom` |
+
 ### DataRef Switch
 
 N-position switch driven by a single writable DataRef. **Short press** steps toward Max (`current + Step`); **long press** (≥ 500 ms) steps toward Min. The value clamps at the configured Min / Max ends. Renders as a 3-position lever tile (up / mid / down) by default — for a 2-pos switch use `Min=-1 / Max=1 / Step=2`; for a 3-pos use `Step=1`.
