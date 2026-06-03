@@ -62,7 +62,7 @@ This is a default Profile where all profiles are included. Required to link all 
 
 Filename: xp_stream_parent.streamDeckProfile
 
-## G1000 - X-Plane Default X1000 (G1000) ##
+## Default X1000 (G1000) ##
 
 Filename: xp_stream_g1000.streamDeckProfile
 
@@ -76,7 +76,7 @@ Plugin Version Required: 1.1.0.0 or newer
 * Cockpit Views
 
 
-## Cessna 172 SP by X-Plane ##
+## Cessna 172 SP ##
 
 Filename: xp_stream_c172sp.streamDeckProfile
 
@@ -90,7 +90,7 @@ Plugin Version Required: 1.3.0.0 or newer
 * GCU for G1000 (Alpha & Numeric)
 * Cockpit Views
 
-## Lancair Evolution by X-Plane ##
+## Lancair Evolution ##
 
 The aircraft from "Austin Meyer"
 
@@ -107,7 +107,7 @@ Plugin Version Required: 1.3.0.0 or newer
 * Cockpit Views
 
 
-## Piper PA-46 M500 by X-Aerodynamics ##
+## Piper PA-46 M500 ##
 
 Filename: xp_stream_pa46.streamDeckProfile
 
@@ -122,7 +122,7 @@ Plugin Version Required: 1.3.0.0 or newer
 * GCU for G1000 (Alpha & Numeric)
 * Cockpit Views
 
-## Diamond DA42 and DA62 by Aerobask ##
+## Diamond DA42 and DA62 ##
 
 Filename: xp_stream_da42.streamDeckProfile
 
@@ -153,7 +153,7 @@ Plugin Version Required: 1.4.1.0 or newer
 
 
 
-## UL Shark by Aerobask ##
+## UL Shark ##
 
 Filename: xp_stream_shark.streamDeckProfile
 
@@ -167,7 +167,7 @@ Plugin Version Required: 1.3.1.0 or newer
 * Skyview Touch Support
 * Cockpit Views
 
-## Phenom 300 by Aerobask ##
+## Phenom 300 ##
 
 Filename: xp_stream_ph300.streamDeckProfile
 
@@ -217,8 +217,6 @@ Plugin Version Required: 1.3.0.0 or newer
 
 ## AW-109 SP 2.0
 
-Please Note: This Profile is still in development and not finish and complete tested.
-
 Filename: xp_stream_aw109.streamDeckProfile
 
 Plugin Version Required: 1.4.1.0 or newer (Uses the new Display Selector)
@@ -228,6 +226,20 @@ Plugin Version Required: 1.4.1.0 or newer (Uses the new Display Selector)
 * AW109 Cockpit Buttons
 * AW109 Autopilot
 * Overhead and Ground
+* Shows some Engine indicators
+* Ground Procedures (Cold&Dark)
+* Cockpit Views
+
+## Guimbal Cabri G2
+
+Filename: xp_stream_gabri_g2.streamDeckProfile
+
+Plugin Version Required: 1.4.3.0 or newer (Uses the new Display Selector)
+
+### Features: ###
+
+* G2 Cockpit Buttons
+* G2 Autopilot
 * Shows some Engine indicators
 * Ground Procedures (Cold&Dark)
 * Cockpit Views
