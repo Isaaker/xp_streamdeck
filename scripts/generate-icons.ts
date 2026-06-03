@@ -21,6 +21,7 @@ import {
 	renderKnobIcon,
 	renderNudgeDisplayIcon,
 	renderNudgeIcon,
+	renderPushButtonIcon,
 	renderSimOfflineIcon,
 	renderSwitchIcon,
 	renderToggleIcon,
@@ -93,6 +94,7 @@ async function main(): Promise<void> {
 	let alertCount = 0;
 	let guardedCount = 0;
 	let switchCount = 0;
+	let pushButtonCount = 0;
 
 	for (const def of catalog) {
 		const groupDir = await ensureGroupDir(def.group);
@@ -169,6 +171,11 @@ async function main(): Promise<void> {
 			const png = await renderPng(svg, 144);
 			await writeFile(resolve(groupDir, `${def.name}.png`), png);
 			commandCount += 1;
+		} else if (def.kind === "pushbutton") {
+			const svg = renderPushButtonIcon(def);
+			const png = await renderPng(svg, 144);
+			await writeFile(resolve(groupDir, `${def.name}.png`), png);
+			pushButtonCount += 1;
 		} else {
 			const svg = renderBackgroundIcon(def);
 			const png = await renderPng(svg, 144);
@@ -189,13 +196,15 @@ async function main(): Promise<void> {
 		viewCount +
 		alertCount +
 		guardedCount +
-		switchCount;
+		switchCount +
+		pushButtonCount;
 	console.log(
 		`Wrote ${total} PNGs to ${OUT_DIR} ` +
 			`(${toggleCount} toggle states + ${displayCount} displays + ${nudgeCount} nudges + ` +
 			`${nudgeDisplayCount} nudge-displays + ${commandCount} commands + ${knobCount} knobs + ` +
 			`${gcuKeyCount} gcu_keys + ${backgroundCount} backgrounds + ${viewCount} views + ` +
-			`${alertCount} alert states + ${guardedCount} guarded states + ${switchCount} switch positions, ` +
+			`${alertCount} alert states + ${guardedCount} guarded states + ${switchCount} switch positions + ` +
+			`${pushButtonCount} push buttons, ` +
 			`grouped into ${ensuredDirs.size} subdirs, all 144×144)`,
 	);
 

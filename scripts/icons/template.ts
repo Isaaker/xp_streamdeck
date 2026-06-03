@@ -13,6 +13,8 @@ import {
 	type KnobIcon,
 	type NudgeDisplayIcon,
 	type NudgeIcon,
+	type PushButtonColor,
+	type PushButtonIcon,
 	type SwitchIcon,
 	type ToggleIcon,
 	type ViewIcon,
@@ -464,6 +466,44 @@ export function renderDotIcon(def: DotIcon): string {
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
   <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
   <circle cx="${SIZE / 2}" cy="${SIZE / 2}" r="${DOT_RADIUS}" fill="${accent}"/>
+</svg>`;
+}
+
+// === Push button (round 3D button, doorbell / start-button style) ===
+// Chrome bezel ring around a colored face — reads as a physical button sitting
+// in a metal frame, not a lit lamp. The hard inner-shadow line and tight upper
+// glint are what kill the "lamp" impression. No label.
+const PUSHBUTTON_BEZEL_OUTER_R = 64;
+const PUSHBUTTON_BEZEL_INNER_R = 56;
+const PUSHBUTTON_FACE_R = 52;
+const PUSHBUTTON_CHROME_OUTER = "#9ca3af";
+const PUSHBUTTON_CHROME_INNER = "#4b5563";
+const PUSHBUTTON_INSET_SHADOW = "#000000";
+
+const PUSHBUTTON_PALETTE: Record<PushButtonColor, { face: string; glint: string }> = {
+	red: { face: "#dc2626", glint: "#fecaca" },
+	green: { face: "#16a34a", glint: "#bbf7d0" },
+	blue: { face: "#2563eb", glint: "#bfdbfe" },
+	// Off-white face so it doesn't glare; near-pure-white glint keeps the
+	// glossy plastic cue.
+	white: { face: "#d4d4d8", glint: "#ffffff" },
+};
+
+export function renderPushButtonIcon(def: PushButtonIcon): string {
+	const palette = PUSHBUTTON_PALETTE[def.color];
+	const cx = SIZE / 2;
+	const cy = SIZE / 2;
+	// Tight upper glint: positioned high on the face, narrow + opaque. Reads
+	// as a hard plastic reflection, not a diffuse halo.
+	const glintCy = cy - 26;
+	const glintRx = PUSHBUTTON_FACE_R * 0.48;
+	const glintRy = PUSHBUTTON_FACE_R * 0.16;
+	return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}">
+  <rect width="${SIZE}" height="${SIZE}" fill="${BG}"/>
+  <circle cx="${cx}" cy="${cy}" r="${PUSHBUTTON_BEZEL_OUTER_R}" fill="${PUSHBUTTON_CHROME_OUTER}"/>
+  <circle cx="${cx}" cy="${cy}" r="${PUSHBUTTON_BEZEL_INNER_R}" fill="${PUSHBUTTON_CHROME_INNER}"/>
+  <circle cx="${cx}" cy="${cy}" r="${PUSHBUTTON_FACE_R}" fill="${palette.face}" stroke="${PUSHBUTTON_INSET_SHADOW}" stroke-width="1.5"/>
+  <ellipse cx="${cx}" cy="${glintCy}" rx="${glintRx}" ry="${glintRy}" fill="${palette.glint}" opacity="0.85"/>
 </svg>`;
 }
 

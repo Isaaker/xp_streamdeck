@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane DataRef Lamp</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
+		<style>
+			.live-preview {
+				font-family: monospace;
+				color: #aaa;
+				font-size: 11px;
+				word-break: break-all;
+			}
+			.live-preview[data-state="not-found"],
+			.live-preview[data-state="error"] {
+				color: #d97;
+			}
+		</style>
+	</head>
+	<body>
+		<sdpi-item label="DataRef Path">
+			<sdpi-textfield
+				setting="datarefPath"
+				placeholder="sim/cockpit2/controls/gear_handle_down"
+				id="datarefField"
+				required
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Live Value">
+			<span class="live-preview" id="datarefPreview"></span>
+		</sdpi-item>
+		<sdpi-item label="Value On">
+			<sdpi-textfield
+				setting="valueOn"
+				placeholder="1"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Value Off">
+			<sdpi-textfield
+				setting="valueOff"
+				placeholder="0"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Color">
+			<sdpi-select setting="color" default="green">
+				<option value="green">Green</option>
+				<option value="blue">Blue</option>
+				<option value="yellow">Yellow</option>
+				<option value="orange">Orange</option>
+				<option value="red">Red</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item label="Label">
+			<sdpi-textfield
+				setting="label"
+				placeholder="e.g. GEAR"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Label Position">
+			<sdpi-select setting="labelPosition" default="top">
+				<option value="top">Top</option>
+				<option value="bottom">Bottom</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item>
+			<small style="color: #888; font-size: 11px">
+				The lamp lights up only when the DataRef value matches
+				<strong>Value On</strong> exactly. All other values (including
+				<strong>Value Off</strong>) leave the lamp dark.
+			</small>
+		</sdpi-item>
+
+		<script>
+			(() => {
+				const client = window.SDPIComponents?.streamDeckClient;
+				if (!client) {
+					console.error("SDPIComponents.streamDeckClient not available");
+					return;
+				}
+
+				const datarefField = document.getElementById("datarefField");
+				const datarefPreview = document.getElementById("datarefPreview");
+				if (datarefField) {
+					window.XPlanePI.attachAutocomplete(datarefField, "dataref");
+					window.XPlanePI.attachLivePreview(datarefField, datarefPreview);
+				}
+			})();
+		</script>
+	</body>
+</html>

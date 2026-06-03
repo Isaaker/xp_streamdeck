@@ -4,6 +4,7 @@ export type IconGroup =
 	| "cockpit"
 	| "readouts"
 	| "backgrounds"
+	| "buttons"
 	| "g1000"
 	| "views"
 	| "alerts"
@@ -23,6 +24,7 @@ export const GROUP_ACCENT: Record<IconGroup, string> = {
 	cockpit: "#22c55e", // green
 	readouts: "#9933CC", // WebSafe purple — all live-value tiles read as one set
 	backgrounds: "#000000", // unused — background tiles carry their own color
+	buttons: "#000000", // unused — push-button tiles carry their own color
 	g1000: "#f59e0b", // orange — Garmin-style amber for G1000 command/knob buttons
 	views: "#3b82f6", // blue — saved cockpit view recall buttons
 	alerts: "#000000", // unused — alert tiles derive their color from `severity`
@@ -138,6 +140,16 @@ export type DotIcon = {
 	name: string;
 	group: IconGroup;
 };
+// Round push-button tile — like a doorbell or start button. Filled body in the
+// chosen color, darker bezel ring, glossy upper highlight for a 3D pressable
+// look. No label (a Stream Deck title overlay can sit on top if needed).
+export type PushButtonColor = "red" | "green" | "white" | "blue";
+export type PushButtonIcon = {
+	kind: "pushbutton";
+	name: string;
+	color: PushButtonColor;
+	group: IconGroup;
+};
 export type IconDef =
 	| ToggleIcon
 	| DisplayIcon
@@ -152,7 +164,8 @@ export type IconDef =
 	| AlertIcon
 	| GuardedIcon
 	| SwitchIcon
-	| DotIcon;
+	| DotIcon
+	| PushButtonIcon;
 
 export const catalog: IconDef[] = [
 	// === Autopilot — mode toggles ===
@@ -315,6 +328,9 @@ export const catalog: IconDef[] = [
 	{ kind: "display", name: "fli", label: "FLI", group: "readouts" },
 	{ kind: "display", name: "oat", label: "OAT", group: "readouts" },
 	{ kind: "display", name: "rad_alt", label: "RAD ALT", group: "readouts" },
+	{ kind: "display", name: "bat", label: "BAT", group: "readouts" },
+	{ kind: "display", name: "rpm", label: "RPM", group: "readouts" },
+	{ kind: "display", name: "tr_min", label: "TR/MIN", group: "readouts" },
 	// Label-less display: just the accent line; setTitle() drops the live value below.
 	{ kind: "display", name: "eng_blank", label: "", group: "readouts" },
 
@@ -577,4 +593,10 @@ export const catalog: IconDef[] = [
 	// === Alerts (annunciator-style: flooded tile when ON) ===
 	{ kind: "alert", name: "caution", label: "CAUTION", severity: "caution", group: "alerts" },
 	{ kind: "alert", name: "warning", label: "WARNING", severity: "warning", group: "alerts" },
+
+	// === Push buttons (round 3D button, doorbell / start-button style) ===
+	{ kind: "pushbutton", name: "btn_red", color: "red", group: "buttons" },
+	{ kind: "pushbutton", name: "btn_green", color: "green", group: "buttons" },
+	{ kind: "pushbutton", name: "btn_white", color: "white", group: "buttons" },
+	{ kind: "pushbutton", name: "btn_blue", color: "blue", group: "buttons" },
 ];

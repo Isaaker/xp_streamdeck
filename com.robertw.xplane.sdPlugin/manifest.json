@@ -240,6 +240,22 @@
 			]
 		},
 		{
+			"Name": "DataRef Lamp",
+			"UUID": "com.robertw.xplane.dataref-lamp",
+			"Icon": "imgs/actions/dataref-toggle/icon",
+			"Tooltip": "Colored indicator lamp driven by a DataRef value. Lights up (blue / green / yellow / orange / red) when the DataRef matches the configured Value On; dark otherwise. Read-only.",
+			"PropertyInspectorPath": "ui/dataref-lamp.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/dataref-toggle/key",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
 			"Name": "Background Tile",
 			"UUID": "com.robertw.xplane.background",
 			"Icon": "imgs/actions/background/icon",
