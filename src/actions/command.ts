@@ -32,6 +32,7 @@ type Repeater = {
 export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	private readonly visible = new Map<string, KeyAction<CommandSettings>>();
 	private readonly repeaters = new Map<string, Repeater>();
+	private readonly pressed = new Set<string>();
 
 	constructor(private readonly xplane: XPlaneClient) {
 		super();
@@ -48,12 +49,16 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	}
 
 	override onWillDisappear(ev: WillDisappearEvent<CommandSettings>): Promise<void> {
+		this.pressed.delete(ev.action.id);
 		this.stopRepeater(ev.action.id);
 		this.visible.delete(ev.action.id);
 		return Promise.resolve();
 	}
 
 	override async onKeyDown(ev: KeyDownEvent<CommandSettings>): Promise<void> {
+		const actionId = ev.action.id;
+		this.pressed.add(actionId);
+
 		const rawPath = trimString(ev.payload.settings?.commandPath);
 		const path = substitutePlaceholders(rawPath, selectors.snapshot());
 		const holdMode = ev.payload.settings?.holdMode === true;
@@ -74,8 +79,12 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 				await this.xplane.activateCommand(id);
 				streamDeck.logger.info(`command activate: ${path} (id=${id})`);
 			}
-			if (!holdMode && ev.payload.settings?.autoRepeat === true) {
-				this.startRepeater(ev.action.id, id, path);
+			if (
+				!holdMode &&
+				ev.payload.settings?.autoRepeat === true &&
+				this.pressed.has(actionId)
+			) {
+				this.startRepeater(actionId, id, path);
 			}
 			if (!hideConfirmation) {
 				await ev.action.showOk();
@@ -87,6 +96,7 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	}
 
 	override async onKeyUp(ev: KeyUpEvent<CommandSettings>): Promise<void> {
+		this.pressed.delete(ev.action.id);
 		this.stopRepeater(ev.action.id);
 
 		const rawPath = trimString(ev.payload.settings?.commandPath);
