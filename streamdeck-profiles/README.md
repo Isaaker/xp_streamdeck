@@ -66,7 +66,7 @@ Filename: xp_stream_parent.streamDeckProfile
 
 Filename: xp_stream_g1000.streamDeckProfile
 
-Plugin Version Required: 1.1.0.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
 ### Features: ###
 
@@ -86,6 +86,20 @@ Plugin Version Required: 1.3.0.0 or newer
 
 * Default Cockpit Buttons
 * Garmin Autopilot
+* X1000 (X-Plane G1000)
+* GCU for G1000 (Alpha & Numeric)
+* Cockpit Views
+
+## Cirrus SR22 ##
+
+Filename: xp_stream_sr22.streamDeckProfile
+
+Plugin Version Required: 1.4.3.0 or newer
+
+### Features: ###
+
+* Default Cockpit Buttons
+* Autopilot
 * X1000 (X-Plane G1000)
 * GCU for G1000 (Alpha & Numeric)
 * Cockpit Views
@@ -219,7 +233,7 @@ Plugin Version Required: 1.3.0.0 or newer
 
 Filename: xp_stream_aw109.streamDeckProfile
 
-Plugin Version Required: 1.4.1.0 or newer (Uses the new Display Selector)
+Plugin Version Required: 1.4.3.0 or newer (Uses the new Display Selector)
 
 ### Features: ###
 
