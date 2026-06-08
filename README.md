@@ -4,6 +4,73 @@
 
 Native Stream Deck plugin for X-Plane 12 — runs on macOS and Windows, talking to the X-Plane Web API on `localhost:8086`.
 
+## Contents
+
+- [Platform support](#platform-support)
+- [Prerequisites](#prerequisites)
+- [X-Plane Web API setup](#x-plane-web-api-setup)
+- [Build & install (development)](#build--install-development)
+- [Features](#features)
+- [Actions](#actions)
+- [Button icons](#button-icons)
+- [Included aircraft & helicopter profiles](#included-aircraft--helicopter-profiles)
+- [Aircraft/Helicopter profiles (sync)](#aircrafthelicopter-profiles)
+- [Common Make targets](#common-make-targets)
+
+## Features
+
+- Native Stream Deck XL plugin for X-Plane 12 — no XPLM C++ side required.
+- Cross-platform: macOS 12+ and Windows 10+ (build & runtime).
+- Talks to the X-Plane Web API on `localhost:8086` — REST + WebSocket, ~10 Hz live DataRef updates.
+- Drives any DataRef or CommandRef from a button, including array-indexed DataRefs via `name[N]` (see [Array DataRefs](#array-datarefs)).
+- [Display Selector](#display-selector): one set of buttons drives multiple identical panels (e.g. AW109 `EDU1..EDU4`) via `{KEY}` placeholders in every DataRef / Command path.
+- 15 button action types — fire commands, write DataRefs, render live values, two-stage guarded covers, multi-position switches, wind arrow, …
+- Locally generated, visually consistent button icons (5 kinds, color-coded by group) — see [Button icons](#button-icons).
+- macOS profile sync via `make export` / `make import` — preserves folder UUIDs so parent-profile cross-links survive across machines.
+
+### Action types
+
+| Action | Purpose |
+| --- | --- |
+| [Command](#command) | Fire a CommandRef on press (with optional hold-to-repeat). |
+| [Command + Display](#command--display) | CommandRef on press + live DataRef title. |
+| [Rotary](#rotary) | Rotary-knob step command + live DataRef title (numeric or enum, with optional starter HOLD). |
+| [Rotary DataRef](#rotary-dataref) | Increment / decrement a writable DataRef by a fixed step (with optional coarse step on long press). |
+| [DataRef Display](#dataref-display) | Pure read-only live DataRef value as button title. |
+| [Multi DataRef Display](#multi-dataref-display) | Up to 3 live DataRefs stacked on one button. |
+| [Wind Display](#wind-display) | Rotating wind arrow + speed (and optional OAT). |
+| [DataRef Toggle](#dataref-toggle) | Two-state DataRef/Command toggle with OFF/ON images (and optional momentary hold mode). |
+| [DataRef Lamp](#dataref-lamp) | Read-only colored cockpit-annunciator lamp. |
+| [DataRef Switch](#dataref-switch) | N-position switch with short-press / long-press stepping. |
+| [Guarded Command](#guarded-command) | Two-stage cover button — short press = flip cover, long press = protected CommandRef. |
+| [Guarded DataRef](#guarded-dataref) | Same cover pattern, but both stages toggle DataRefs. |
+| [DataRef Write](#dataref-write) | Single-press write of a fixed value (with optional momentary hold mode). |
+| [Display Selector](#display-selector) | Cycles a named index `1..N` shared across actions via `{KEY}` placeholders. |
+| [Background Tile](#background-tile) | Decorative filler tile — no action. |
+
+## Included aircraft & helicopter profiles
+
+Ready-made Stream Deck XL profiles ship under [`streamdeck-profiles/`](streamdeck-profiles/README.md). Each profile expects this plugin installed and the matching aircraft loaded in X-Plane. See the [sync section](#aircrafthelicopter-profiles) below for `make export` / `make import` usage.
+
+| Profile | File | Min. plugin version |
+| --- | --- | --- |
+| X-Plane parent menu (links all profiles together) | `xp_stream_parent.streamDeckProfile` | — |
+| Default X1000 (G1000) | `xp_stream_g1000.streamDeckProfile` | 1.3.0.0 |
+| Cessna 172 SP | `xp_stream_c172sp.streamDeckProfile` | 1.3.0.0 |
+| Cirrus SR22 | `xp_stream_sr22.streamDeckProfile` | 1.4.3.0 |
+| Lancair Evolution (Austin Meyer) | `xp_stream_lancair.streamDeckProfile` | 1.3.0.0 |
+| Piper PA-46 M500 | `xp_stream_pa46.streamDeckProfile` | 1.3.0.0 |
+| Diamond DA42 / DA62 | `xp_stream_da42.streamDeckProfile` | 1.3.0.0 |
+| Diamond DA20 / DV20 by Aerobask | `xp_stream_dv20.streamDeckProfile` | 1.4.1.0 |
+| UL Shark | `xp_stream_shark.streamDeckProfile` | 1.3.1.0 |
+| Phenom 300 | `xp_stream_ph300.streamDeckProfile` | 1.3.0.0 |
+| Pilatus PC12 by Thranda (G1000) | `xp_stream_pc12.streamDeckProfile` | 1.3.0.0 |
+| EuroCopter EC130 (Garmin 430) | `xp_stream_ec130.streamDeckProfile` | 1.3.0.0 |
+| AW-109 SP 2.0 | `xp_stream_aw109.streamDeckProfile` | 1.4.3.0 |
+| Guimbal Cabri G2 | `xp_stream_gabri_g2.streamDeckProfile` | 1.4.3.0 |
+
+Per-aircraft feature notes and first-time setup live in [`streamdeck-profiles/README.md`](streamdeck-profiles/README.md).
+
 ## Platform support
 
 - **Plugin runtime:** macOS 12+ and Windows 10+. Sideload from a Release tarball or build from this repo.
