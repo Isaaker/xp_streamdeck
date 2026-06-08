@@ -121,6 +121,21 @@ Plugin Version Required: 1.3.0.0 or newer
 * Cockpit Views
 
 
+## VAN's VR10 ##
+
+Filename: xp_stream_rv10.streamDeckProfile
+
+Plugin Version Required: 1.4.0.0 or newer
+
+### Features: ###
+
+* Default Cockpit Buttons
+* Garmin Autopilot
+* X1000 (X-Plane G1000)
+* GCU for G1000 (Alpha & Numeric)
+* Cockpit Views
+
+
 ## Piper PA-46 M500 ##
 
 Filename: xp_stream_pa46.streamDeckProfile
