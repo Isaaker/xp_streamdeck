@@ -272,3 +272,19 @@ Plugin Version Required: 1.4.3.0 or newer (Uses the new Display Selector)
 * Shows some Engine indicators
 * Ground Procedures (Cold&Dark)
 * Cockpit Views
+
+## T-6A II Mustang by AOA
+I love this from the PC9 adapted airplane. The Cockpit Profile is not yet finish.
+Autopilot is missing as I have to findd out how it really works.
+The DataRef Data is not so unfriendly designed by AOA.
+
+Filename: xp_stream_t6a.streamDeckProfile
+
+Plugin Version Required: 1.4.4.0 or newer (Uses the new Display Selector)
+
+### Features: ###
+
+* T6A Cockpit Buttons
+* G1000 MFD integrated
+* Ground Procedures (Cold&Dark)
+* Cockpit Views
