@@ -273,7 +273,7 @@ Plugin Version Required: 1.4.3.0 or newer (Uses the new Display Selector)
 * Ground Procedures (Cold&Dark)
 * Cockpit Views
 
-## T-6A II Mustang by AOA
+## T-6A Texan II by AOA
 I love this from the PC9 adapted airplane. The Cockpit Profile is not yet finish.
 Autopilot is missing as I have to findd out how it really works.
 The DataRef Data is not so unfriendly designed by AOA.
