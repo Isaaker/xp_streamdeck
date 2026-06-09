@@ -1,6 +1,6 @@
 {
     "name": "xp-streamdeck",
-    "version": "1.4.4",
+    "version": "1.4.5",
     "private": true,
     "description": "Stream Deck plugin for X-Plane 12 on macOS via the native Web API.",
     "author": "Robert Wellinger",
