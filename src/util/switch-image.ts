@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 // Single source of truth for the 3-position switch tile — used both at build
 // time (scripts/generate-icons.ts writes the unlabeled defaults into the
 // plugin bundle) and at runtime (src/actions/dataref-switch.ts renders a

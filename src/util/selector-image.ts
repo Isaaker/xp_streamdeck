@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 // Runtime-rendered tile for the display-selector action. The big number in
 // the middle is the current selector value; the row of dots near the top
 // signals "this is a cycling selector" at a glance and shows which position

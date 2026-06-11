@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 // Runtime SVG renderer for the Multi-DataRef Display action. Same approach
 // as wind-svg.ts — produce a 144×144 SVG, hand it to setImage() as a base64
 // data URL. Gives us per-line font/size/color control that a flat setTitle()

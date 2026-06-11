@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 // Runtime SVG renderer for the DataRef Lamp action. Output is a base64 data
 // URL suitable for KeyAction.setImage(). Follows the same pattern as
 // wind-svg.ts / switch-image.ts: 144×144 canvas, system font stack, no

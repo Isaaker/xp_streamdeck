@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 const KEY_RE = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
 
 export function substitutePlaceholders(

@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 // Runtime SVG renderer for the Wind Display action. Output is a base64 data
 // URL suitable for KeyAction.setImage(). Kept separate from the build-time
 // renderer in scripts/icons/template.ts so the plugin bundle stays slim.

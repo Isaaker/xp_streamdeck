@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 export type DataRefValue = number | string | number[] | boolean;
 
 export type DataRefValueType = "int" | "float" | "double" | "int_array" | "float_array" | "data";
