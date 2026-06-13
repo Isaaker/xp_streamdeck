@@ -24,7 +24,7 @@ Native Stream Deck plugin for X-Plane 12 — runs on macOS and Windows, talking 
 - Talks to the X-Plane Web API on `localhost:8086` — REST + WebSocket, ~10 Hz live DataRef updates.
 - Drives any DataRef or CommandRef from a button, including array-indexed DataRefs via `name[N]` (see [Array DataRefs](#array-datarefs)).
 - [Display Selector](#display-selector): one set of buttons drives multiple identical panels (e.g. AW109 `EDU1..EDU4`) via `{KEY}` placeholders in every DataRef / Command path.
-- 15 button action types — fire commands, write DataRefs, render live values, two-stage guarded covers, multi-position switches, wind arrow, …
+- 16 button action types — fire commands, write DataRefs, render live values, two-stage guarded covers, multi-position switches, scripted multi-action macros, wind arrow, …
 - Locally generated, visually consistent button icons (5 kinds, color-coded by group) — see [Button icons](#button-icons).
 - macOS profile sync via `make export` / `make import` — preserves folder UUIDs so parent-profile cross-links survive across machines.
 
@@ -45,6 +45,7 @@ Native Stream Deck plugin for X-Plane 12 — runs on macOS and Windows, talking 
 | [Guarded Command](#guarded-command) | Two-stage cover button — short press = flip cover, long press = protected CommandRef. |
 | [Guarded DataRef](#guarded-dataref) | Same cover pattern, but both stages toggle DataRefs. |
 | [DataRef Write](#dataref-write) | Single-press write of a fixed value (with optional momentary hold mode). |
+| [Multi-Action / Macro](#multi-action--macro) | Run an ordered list of commands / DataRef writes / delays on press (and optional release); optional toggle with state-DataRef image. |
 | [Display Selector](#display-selector) | Cycles a named index `1..N` shared across actions via `{KEY}` placeholders. |
 | [Background Tile](#background-tile) | Decorative filler tile — no action. |
 
@@ -636,6 +637,73 @@ Property Inspector fields:
 | Release Value | `0` |
 
 Press and hold → writes `1`; release → writes `0`. The icon stays single-state — for a visible press indication, use [DataRef Toggle](#dataref-toggle) with Hold Mode and Image OFF/ON.
+
+### Multi-Action / Macro
+
+Runs an ordered list of commands and/or DataRef writes from a single key. Built for study-level aircraft (Zibo B737-800X, ToLiss) where one cockpit switch is split across several DataRefs and/or commands, so a single write only does half the job — it moves the lever animation but doesn't trigger the system logic, or vice versa. Guiding principle: **Command = actuate, DataRef = display.**
+
+Steps are written one per line in a text field. Blank lines and `#` comments are ignored. Grammar:
+
+- `cmd <commandPath>` — activate a CommandRef once.
+- `begin <commandPath>` / `end <commandPath>` — WebSocket begin/end hold (e.g. `begin` in the press list, `end` in the release list).
+- `write <datarefPath>[idx] = <value>` — write a numeric value. Array indexing via `[N]` (see [Array DataRefs](#array-datarefs)).
+- `delay <ms>` — pause before the next step (milliseconds).
+
+Paths support `{KEY}` selector placeholders (see [Display Selector](#display-selector)) and are resolved fresh on every press.
+
+Property Inspector fields:
+
+- **Label** — optional caption shown on the key.
+- **Press steps** — the list run on `keyDown`.
+- **Release steps** *(optional)* — the list run on `keyUp`; pair with the press list for momentary switches (e.g. write `1` on press, `0` on release).
+- **Toggle Mode** — when checked, the action alternates between **On** and **Off** lists instead of press/release. Release does nothing in toggle mode.
+- **When turning ON** / **When turning OFF** — the two toggle lists.
+- **State DataRef Path** — drives the button image (OFF/ON) and, in toggle mode, the direction — the single source of truth. Supports array indexing. When empty, toggle direction is tracked internally.
+- **Live Value** — read-only preview while editing the state path.
+- **Value Off** / **Value On** — values mapping to the OFF / ON image. Default `0` / `1`. Same matching logic as [DataRef Toggle](#dataref-toggle).
+- **Strict On Match** — when checked, only `value === Value On` (with float tolerance) counts as ON.
+- **Stop On Error** — abort the remaining steps after the first failure. Unchecked (default) = best-effort: continues past failures.
+- **Hide Confirmation** — opt-out of the `showOk()` flash on success. Errors always show the alert icon.
+
+#### Example: Zibo 737 GPU (toggle via DataRef writes, state from `gpu_on`)
+
+The Zibo GPU lever is spring-loaded: `laminar/B738/electrical/gpu_pos` moves the animation, `sim/cockpit/electrical/gpu_on` carries the electrical logic. The macro pulses the lever while setting the logic, and the button image follows the real `gpu_on` state.
+
+Toggle Mode *(checked)*, State DataRef Path `sim/cockpit/electrical/gpu_on`.
+
+When turning ON:
+
+```
+write laminar/B738/electrical/gpu_pos = 1
+write sim/cockpit/electrical/gpu_on = 1
+delay 5
+write laminar/B738/electrical/gpu_pos = 0
+```
+
+When turning OFF:
+
+```
+write laminar/B738/electrical/gpu_pos = -1
+write sim/cockpit/electrical/gpu_on = 0
+delay 5
+write laminar/B738/electrical/gpu_pos = 0
+```
+
+#### Example: momentary fire-test switch
+
+Press steps:
+
+```
+write sim/cockpit2/engine/actuators/fire_test[0] = 1
+```
+
+Release steps:
+
+```
+write sim/cockpit2/engine/actuators/fire_test[0] = 0
+```
+
+Press and hold → writes `1`; release → writes `0`. For more than one step, separate the two lists; the press list and release list each run top to bottom.
 
 ### Display Selector
 
