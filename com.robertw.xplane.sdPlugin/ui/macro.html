@@ -1,0 +1,156 @@
+<!doctype html>
+<!--
+  xp_streamdeck - Stream Deck plugin for X-Plane 12
+  Copyright (c) 2026 thWelly
+
+  Licensed under the MIT License.
+  See the LICENSE file in the project root for full license text.
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane Multi-Action / Macro</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
+		<style>
+			.live-preview {
+				font-family: monospace;
+				color: #aaa;
+				font-size: 11px;
+				word-break: break-all;
+			}
+			.live-preview[data-state="not-found"],
+			.live-preview[data-state="error"] {
+				color: #d97;
+			}
+			.hint {
+				color: #888;
+				font-size: 11px;
+				padding: 4px 0;
+			}
+			.hint code {
+				color: #bbb;
+			}
+		</style>
+	</head>
+	<body>
+		<sdpi-item label="Label">
+			<sdpi-textfield
+				setting="label"
+				placeholder="optional title shown on the key"
+			></sdpi-textfield>
+		</sdpi-item>
+
+		<div class="hint">
+			One step per line. Blank lines and <code>#</code> comments are ignored:<br />
+			<code>cmd &lt;commandPath&gt;</code> — activate a command once<br />
+			<code>begin &lt;commandPath&gt;</code> / <code>end &lt;commandPath&gt;</code> — hold
+			(begin on press, end on release)<br />
+			<code>write &lt;datarefPath&gt;[idx] = &lt;value&gt;</code> — write a numeric value<br />
+			<code>delay &lt;ms&gt;</code> — pause before the next step
+		</div>
+
+		<details open>
+			<summary>Press steps</summary>
+			<sdpi-item label="On press">
+				<sdpi-textarea
+					setting="pressSteps"
+					rows="6"
+					placeholder="cmd laminar/B738/gpu_toggle"
+				></sdpi-textarea>
+			</sdpi-item>
+		</details>
+
+		<details>
+			<summary>Release steps (optional)</summary>
+			<sdpi-item label="On release">
+				<sdpi-textarea
+					setting="releaseSteps"
+					rows="4"
+					placeholder="for momentary switches — e.g. write .../fire_test[0] = 0"
+				></sdpi-textarea>
+			</sdpi-item>
+		</details>
+
+		<sdpi-item label="Toggle Mode">
+			<sdpi-checkbox
+				setting="toggleMode"
+				label="Alternate On / Off lists instead of press/release"
+			></sdpi-checkbox>
+		</sdpi-item>
+
+		<details>
+			<summary>Toggle lists (used when Toggle Mode is on)</summary>
+			<sdpi-item label="When turning ON">
+				<sdpi-textarea
+					setting="onSteps"
+					rows="4"
+					placeholder="cmd sim/lights/taxi_lights_on"
+				></sdpi-textarea>
+			</sdpi-item>
+			<sdpi-item label="When turning OFF">
+				<sdpi-textarea
+					setting="offSteps"
+					rows="4"
+					placeholder="cmd sim/lights/taxi_lights_off"
+				></sdpi-textarea>
+			</sdpi-item>
+			<div class="hint">
+				Direction comes from the State DataRef below (single source of truth). If
+				none is set, the plugin tracks On/Off internally.
+			</div>
+		</details>
+
+		<details>
+			<summary>State feedback (button image)</summary>
+			<sdpi-item label="State DataRef Path">
+				<sdpi-textfield
+					setting="stateDataRefPath"
+					placeholder="sim/... (drives the On/Off image)"
+					id="stateDataRefField"
+				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Live Value">
+				<span class="live-preview" id="statePreview"></span>
+			</sdpi-item>
+			<sdpi-item label="Value Off">
+				<sdpi-textfield setting="valueOff" placeholder="0" inputmode="decimal"></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Value On">
+				<sdpi-textfield setting="valueOn" placeholder="1" inputmode="decimal"></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Strict On Match">
+				<sdpi-checkbox
+					setting="strictOnMatch"
+					label="On only when value exactly equals Value On"
+				></sdpi-checkbox>
+			</sdpi-item>
+		</details>
+
+		<sdpi-item label="Stop On Error">
+			<sdpi-checkbox
+				setting="stopOnError"
+				label="Abort remaining steps after the first failure"
+			></sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item label="Hide Confirmation">
+			<sdpi-checkbox
+				setting="hideConfirmation"
+				label="Don't show the OK checkmark on success"
+			></sdpi-checkbox>
+		</sdpi-item>
+
+		<script>
+			(async () => {
+				const field = document.getElementById("stateDataRefField");
+				const preview = document.getElementById("statePreview");
+				if (window.XPlanePI && field) {
+					await window.XPlanePI.attachAutocomplete(field, "dataref");
+					if (preview) {
+						await window.XPlanePI.attachLivePreview(field, preview);
+					}
+				}
+			})();
+		</script>
+	</body>
+</html>

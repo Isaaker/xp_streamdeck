@@ -1,6 +1,6 @@
 {
 	"Name": "X-Plane",
-	"Version": "1.4.5.0",
+	"Version": "1.4.6.0",
 	"Author": "Robert Wellinger",
 	"Actions": [
 		{
@@ -224,6 +224,27 @@
 			"Icon": "imgs/actions/dataref-toggle/icon",
 			"Tooltip": "Two-state DataRef button: image follows live value, click toggles via write or command. Hold Mode turns it into a momentary press/release (test/reset buttons). Set State DataRef to read the visual state from a different DataRef than the one written on press (e.g. indicator lamp vs reset button).",
 			"PropertyInspectorPath": "ui/dataref-toggle.html",
+			"Controllers": [
+				"Keypad"
+			],
+			"DisableAutomaticStates": true,
+			"States": [
+				{
+					"Image": "imgs/states/off",
+					"TitleAlignment": "middle"
+				},
+				{
+					"Image": "imgs/states/on",
+					"TitleAlignment": "middle"
+				}
+			]
+		},
+		{
+			"Name": "Multi-Action / Macro",
+			"UUID": "com.robertw.xplane.macro",
+			"Icon": "imgs/actions/command/icon",
+			"Tooltip": "Run an ordered list of commands / DataRef writes / delays on press (and optionally on release). Optional toggle mode runs an on-list / off-list alternately; the button image follows a state DataRef. One step per line: cmd <path>, begin <path>, end <path>, write <path>[idx] = <value>, delay <ms>.",
+			"PropertyInspectorPath": "ui/macro.html",
 			"Controllers": [
 				"Keypad"
 			],
