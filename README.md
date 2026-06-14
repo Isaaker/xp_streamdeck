@@ -892,6 +892,24 @@ Both targets quit and relaunch the Stream Deck app automatically. Folder UUIDs a
 
 See [`streamdeck-profiles/README.md`](streamdeck-profiles/README.md) for the first-time setup procedure (delete the existing profiles once, then `make import`) and per-aircraft feature notes.
 
+### Converting a PilotsDeck profile
+
+If you already have a [PilotsDeck](https://github.com/Fragtality/PilotsDeck) profile, you can adapt it to this plugin. Unlike `make export`/`make import`, this converter is **cross-platform** (pure-JS ZIP, no AppleScript) and runs on Windows and macOS:
+
+```
+make convert IN="SR2x G1000 - X-Plane12.streamDeckProfile"
+# or directly:
+npx tsx scripts/convert-pilotsdeck.ts <input.streamDeckProfile> [output.streamDeckProfile]
+```
+
+Both plugins share the same `.streamDeckProfile` container, so layout, titles, images and folder navigation carry over. Each button's PilotsDeck action is remapped to the closest action here: `command`, `dataref-toggle`, or `dataref-display`. The output profile is hardware/OS-neutral and imports on any Stream Deck — including a Mac.
+
+The converter prints a report of everything that needs manual rework. Known limitations:
+
+- **Graphical gauges** (PilotsDeck `display.gauge`) become a plain text readout — this plugin has no bar/arc action.
+- **Korry combo buttons** (command + lamp overlay in one action) map to a toggle; the layered top/bottom image rendering is not reproduced.
+- **FlyWithLua / Lvar addresses** cannot be reached over the Web API — those fields are cleared and listed in the report for manual replacement with real `sim/…` paths.
+
 ## Common Make targets
 
 Run `make help` for the full list. Most-used: `make build`, `make icons`, `make clean`, `make distclean`, `make setup`, `make package`.
