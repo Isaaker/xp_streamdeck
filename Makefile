@@ -58,6 +58,10 @@ import: ## Restore Stream Deck profiles from streamdeck-profiles/ into the app
 export: ## Snapshot live Stream Deck profiles into streamdeck-profiles/
 	npx tsx scripts/sync-profiles.ts export
 
+convert: ## Convert a PilotsDeck profile to this plugin. Usage: make convert IN=in.streamDeckProfile [OUT=out.streamDeckProfile]
+	@if [ -z "$(IN)" ]; then echo "IN is required, e.g. make convert IN='SR2x.streamDeckProfile'"; exit 1; fi
+	npx tsx scripts/convert-pilotsdeck.ts "$(IN)" $(if $(OUT),"$(OUT)",)
+
 package: build ## Build a distributable .streamDeckPlugin (uses streamdeck pack — see M08)
 	$(STREAMDECK) pack -f $(SDPLUGIN_DIR)
 
