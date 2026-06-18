@@ -61,6 +61,39 @@
 				inputmode="decimal"
 			></sdpi-textfield>
 		</sdpi-item>
+		<sdpi-item label="Orientation">
+			<sdpi-select setting="orientation" default="horizontal">
+				<option value="horizontal">Horizontal (Left / Right)</option>
+				<option value="vertical">Vertical (Up / Down)</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item label="Color">
+			<sdpi-select setting="bodyColor" default="gray">
+				<option value="gray">Gray (default)</option>
+				<option value="red">Red</option>
+				<option value="green">Green</option>
+				<option value="white">White</option>
+				<option value="blue">Blue</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item label="Static Label">
+			<sdpi-textfield
+				setting="staticLabel"
+				placeholder="e.g. GEAR"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Static Label Position">
+			<sdpi-select setting="staticLabelPosition" default="top">
+				<option value="top">Top</option>
+				<option value="bottom">Bottom</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item label="Invert">
+			<sdpi-checkbox setting="invert">
+				Flip the ON / OFF look (handle position + lit track) for DataRefs
+				wired the opposite way. Does not change what is written / read.
+			</sdpi-checkbox>
+		</sdpi-item>
 		<sdpi-item label="Hold Mode">
 			<sdpi-checkbox setting="holdMode" id="holdModeCheckbox">
 				Momentary: write <code>Value ON</code> on press, <code>Value OFF</code> on
@@ -103,9 +136,12 @@
 		</sdpi-item>
 		<sdpi-item>
 			<small style="color: #888; font-size: 11px">
-				Assign per-state images (OFF / ON) via the State pickers above —
-				they're handled by Stream Deck directly.
-			</small>
+					Orientation, Color and Static Label are rendered by the plugin into
+					the button tile — no need to upload your own images. Important: if
+					you DO assign custom State images (OFF / ON), they take precedence and
+					will hide the generated tile (incl. the label). Reset the State images
+					to default to get the generated look back.
+				</small>
 		</sdpi-item>
 
 		<script>

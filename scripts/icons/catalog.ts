@@ -151,7 +151,7 @@ export type DotIcon = {
 // Round push-button tile — like a doorbell or start button. Filled body in the
 // chosen color, darker bezel ring, glossy upper highlight for a 3D pressable
 // look. No label (a Stream Deck title overlay can sit on top if needed).
-export type PushButtonColor = "red" | "green" | "white" | "blue";
+export type PushButtonColor = "red" | "green" | "white" | "blue" | "black";
 export type PushButtonIcon = {
 	kind: "pushbutton";
 	name: string;
@@ -607,4 +607,5 @@ export const catalog: IconDef[] = [
 	{ kind: "pushbutton", name: "btn_green", color: "green", group: "buttons" },
 	{ kind: "pushbutton", name: "btn_white", color: "white", group: "buttons" },
 	{ kind: "pushbutton", name: "btn_blue", color: "blue", group: "buttons" },
+	{ kind: "pushbutton", name: "btn_black", color: "black", group: "buttons" },
 ];
