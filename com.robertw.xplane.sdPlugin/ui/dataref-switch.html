@@ -1,0 +1,154 @@
+<!doctype html>
+<!--
+  xp_streamdeck - Stream Deck plugin for X-Plane 12
+  Copyright (c) 2026 thWelly
+
+  Licensed under the MIT License.
+  See the LICENSE file in the project root for full license text.
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane DataRef Switch</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
+		<style>
+			.live-preview {
+				font-family: monospace;
+				color: #aaa;
+				font-size: 11px;
+				word-break: break-all;
+			}
+			.live-preview[data-state="not-found"],
+			.live-preview[data-state="error"] {
+				color: #d97;
+			}
+		</style>
+	</head>
+	<body>
+		<sdpi-item label="DataRef Path">
+			<sdpi-textfield
+				setting="datarefPath"
+				placeholder="aw109/cockpit/cargo_light_switch"
+				id="datarefField"
+				required
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Live Value">
+			<span class="live-preview" id="datarefPreview"></span>
+		</sdpi-item>
+		<sdpi-item label="Min Value">
+			<sdpi-textfield
+				setting="minValue"
+				placeholder="-1"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Max Value">
+			<sdpi-textfield
+				setting="maxValue"
+				placeholder="1"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Step">
+			<sdpi-textfield
+				setting="step"
+				placeholder="1"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Orientation">
+			<sdpi-select setting="orientation" default="vertical">
+				<option value="vertical">Vertical (Up / Down)</option>
+				<option value="horizontal">Horizontal (Left / Right)</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item label="Body Color">
+			<sdpi-select setting="bodyColor" default="gray">
+				<option value="gray">Gray (default)</option>
+				<option value="red">Red</option>
+				<option value="green">Green</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item label="Invert Direction">
+			<sdpi-checkbox setting="invertDirection">
+				Flip write direction and tile image. Use when the aircraft's
+				DataRef is wired inverted (e.g. AW109 fuel xfeed: +1 visually up,
+				−1 visually down — opposite to most switches).
+			</sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item>
+			<small style="color: #888; font-size: 11px">
+				<strong>Vertical:</strong> Min ↦ switch up, Max ↦ switch down. Pair short / long press with UP/DOWN buttons.<br />
+				<strong>Horizontal:</strong> Min ↦ switch left, Max ↦ switch right. Pair short / long press with LEFT/RIGHT buttons.<br />
+				<strong>Invert Direction</strong> swaps both at once: short press
+				steps toward Min instead of Max, long press toward Max instead of
+				Min, and the tile shows Min on the bottom / Max on the top
+				(or right / left when horizontal).
+			</small>
+		</sdpi-item>
+		<sdpi-item label="Labels (dynamic)">
+			<sdpi-textfield
+				setting="labels"
+				placeholder="-1=UP, 0=MID, 1=DN"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Static Label">
+			<sdpi-textfield
+				setting="staticLabel"
+				placeholder="e.g. BAT"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Static Label Position">
+			<sdpi-select setting="staticLabelPosition" default="top">
+				<option value="top">Top</option>
+				<option value="bottom">Bottom</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item>
+			<small style="color: #888; font-size: 11px">
+				<strong>Static Label</strong> is baked into the switch image
+				(e.g. "BAT") and stays put regardless of position.
+				<strong>Labels</strong> override the Stream Deck title with the
+				current position (e.g. "OFF" / "ON"). Use them together for a
+				button labeled "BAT" with a dynamic "OFF" status.
+			</small>
+		</sdpi-item>
+		<sdpi-item label="Hide Confirmation">
+			<sdpi-checkbox setting="hideShortConfirmation">
+				Suppress the green OK tick on every successful press.
+			</sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item label="Hide Endstop Alert">
+			<sdpi-checkbox setting="hideEndstopAlert">
+				Don't show the red alert when pressing past Min / Max — just ignore.
+			</sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item>
+			<small style="color: #888; font-size: 11px">
+				Short press steps toward Max (<code>current + Step</code>); long press
+				(≥ 500 ms) steps toward Min. Stops at the configured Min/Max ends.
+				Assign per-position images via the State pickers above (one per
+				position: Min / Mid / Max).
+			</small>
+		</sdpi-item>
+
+		<script>
+			(() => {
+				const client = window.SDPIComponents?.streamDeckClient;
+				if (!client) {
+					console.error("SDPIComponents.streamDeckClient not available");
+					return;
+				}
+
+				const datarefField = document.getElementById("datarefField");
+				const datarefPreview = document.getElementById("datarefPreview");
+				if (datarefField) {
+					window.XPlanePI.attachAutocomplete(datarefField, "dataref");
+					window.XPlanePI.attachLivePreview(datarefField, datarefPreview);
+				}
+			})();
+		</script>
+	</body>
+</html>

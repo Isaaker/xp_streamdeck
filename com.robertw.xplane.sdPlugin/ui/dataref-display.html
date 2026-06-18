@@ -1,4 +1,11 @@
 <!doctype html>
+<!--
+  xp_streamdeck - Stream Deck plugin for X-Plane 12
+  Copyright (c) 2026 thWelly
+
+  Licensed under the MIT License.
+  See the LICENSE file in the project root for full license text.
+-->
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
@@ -35,6 +42,21 @@
 				setting="label"
 				placeholder="optional, shown above the value (e.g. ALT)"
 			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Value Mode">
+			<sdpi-select setting="valueMode" default="numeric">
+				<option value="numeric">Numeric (default)</option>
+				<option value="string">String (data-type DataRefs)</option>
+			</sdpi-select>
+		</sdpi-item>
+		<sdpi-item>
+			<small style="color: #888; font-size: 11px">
+				Pick <strong>String</strong> for X-Plane <code>data</code>-type DataRefs
+				(byte arrays that represent text, e.g. radio displays). The bytes are
+				decoded as ASCII and trimmed at the first <code>\0</code>. Unit Scale
+				and Precision are ignored in String mode; <code>%s</code> in Format
+				wraps the decoded string (e.g. <code>STK %s</code>).
+			</small>
 		</sdpi-item>
 		<sdpi-item label="Format">
 			<sdpi-textfield

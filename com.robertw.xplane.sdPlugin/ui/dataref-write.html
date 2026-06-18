@@ -1,4 +1,11 @@
 <!doctype html>
+<!--
+  xp_streamdeck - Stream Deck plugin for X-Plane 12
+  Copyright (c) 2026 thWelly
+
+  Licensed under the MIT License.
+  See the LICENSE file in the project root for full license text.
+-->
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
@@ -36,6 +43,19 @@
 				placeholder="numeric value to write on press"
 				inputmode="decimal"
 				required
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Hold Mode">
+			<sdpi-checkbox
+				setting="holdMode"
+				label="Momentary: write Release Value on key release (test / reset buttons)"
+			></sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item label="Release Value">
+			<sdpi-textfield
+				setting="releaseValue"
+				placeholder="0 (default) — written on key release when Hold Mode is on"
+				inputmode="decimal"
 			></sdpi-textfield>
 		</sdpi-item>
 		<sdpi-item label="Feedback">

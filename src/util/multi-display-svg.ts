@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 // Runtime SVG renderer for the Multi-DataRef Display action. Same approach
 // as wind-svg.ts — produce a 144×144 SVG, hand it to setImage() as a base64
 // data URL. Gives us per-line font/size/color control that a flat setTitle()
@@ -10,7 +18,7 @@ const SLOT_LABEL_COLOR = "#94a3b8";
 const SLOT_VALUE_COLOR = "#ffffff";
 const ACCENT_COLOR = "#22c55e";
 const FONT_STACK =
-	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif";
+	"-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', 'Segoe UI', Arial, sans-serif";
 
 const TITLE_BASELINE_Y = 22;
 const TITLE_FONT_SIZE = 18;

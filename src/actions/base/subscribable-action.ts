@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 import streamDeck, {
 	type DidReceiveSettingsEvent,
 	SingletonAction,
@@ -6,8 +14,10 @@ import streamDeck, {
 } from "@elgato/streamdeck";
 import type { JsonObject } from "@elgato/utils";
 
+import { selectors } from "../../selectors/registry";
 import { applyIndex, parseDataRefPath } from "../../util/dataref-path";
 import { clearOffline, combineTitle, NOT_FOUND_SUFFIX, setOffline } from "../../util/error-tile";
+import { extractPlaceholderKeys, substitutePlaceholders } from "../../util/placeholders";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../../xplane";
 
 /**
@@ -55,6 +65,7 @@ export abstract class SubscribableAction<
 		super();
 		this.xplane.on("offline", () => this.onXPlaneOffline());
 		this.xplane.on("online", () => this.onXPlaneOnline());
+		selectors.watch((changed) => this.onSelectorsChanged(changed));
 	}
 
 	protected abstract createState(ev: WillAppearEvent<TSettings>): TState;
@@ -107,7 +118,8 @@ export abstract class SubscribableAction<
 			return;
 		}
 
-		const { basePath, index } = parseDataRefPath(state.path);
+		const resolved = substitutePlaceholders(state.path, selectors.snapshot());
+		const { basePath, index } = parseDataRefPath(resolved);
 
 		try {
 			state.handle = await this.xplane.subscribe(basePath, (raw) => {
@@ -157,6 +169,22 @@ export abstract class SubscribableAction<
 				.catch((err) =>
 					streamDeck.logger.warn(`${this.logName}: re-subscribe failed`, err),
 				);
+		}
+	}
+
+	private onSelectorsChanged(changed: ReadonlySet<string>): void {
+		for (const state of this.states.values()) {
+			if (!state.path) continue;
+			const keys = extractPlaceholderKeys(state.path);
+			if (!keys.some((k) => changed.has(k))) continue;
+			this.dropSubscription(state);
+			state.lastValue = undefined;
+			this.applySubscription(state).catch((err) =>
+				streamDeck.logger.warn(
+					`${this.logName}: selector re-subscribe failed for ${state.path}`,
+					err,
+				),
+			);
 		}
 	}
 }

@@ -1,8 +1,17 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 import streamDeck, {
 	action,
 	type DidReceiveSettingsEvent,
 	type KeyAction,
 	type KeyDownEvent,
+	type KeyUpEvent,
 	SingletonAction,
 	type WillAppearEvent,
 	type WillDisappearEvent,
@@ -10,10 +19,11 @@ import streamDeck, {
 import type { JsonObject } from "@elgato/utils";
 
 import { TOLERANCE_FLOAT } from "../const";
+import { selectors } from "../selectors/registry";
 import { coerceNumber, describeValue, toFiniteNumber } from "../util/coerce";
 import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
-import { persistImage } from "../util/image-cache";
+import { extractPlaceholderKeys, substitutePlaceholders } from "../util/placeholders";
 import { trimString } from "../util/settings";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
@@ -21,15 +31,15 @@ type TriggerMode = "write" | "command" | "command-on-off";
 
 type DataRefToggleSettings = JsonObject & {
 	datarefPath?: string;
+	stateDataRefPath?: string;
 	valueOff?: string | number;
 	valueOn?: string | number;
 	triggerMode?: TriggerMode;
 	commandPath?: string;
 	commandOnPath?: string;
 	commandOffPath?: string;
-	imageOff?: string;
-	imageOn?: string;
 	strictOnMatch?: boolean;
+	holdMode?: boolean;
 };
 
 const STATE_OFF = 0;
@@ -37,20 +47,25 @@ const STATE_ON = 1;
 
 interface ParsedSettings {
 	path: string;
+	statePath: string;
 	valueOff: number;
 	valueOn: number;
 	triggerMode: TriggerMode;
 	commandPath: string;
 	commandOnPath: string;
 	commandOffPath: string;
-	imageOff?: string;
-	imageOn?: string;
 	strictOnMatch: boolean;
+	holdMode: boolean;
 }
 
 interface ActionState {
 	action: KeyAction<DataRefToggleSettings>;
+	// Write target — set/written on key down/up.
 	path: string;
+	// Read source — subscribed for visual state. Equals `path` when the PI
+	// leaves "State DataRef Path" blank (back-compat); differs when a panel
+	// indicator and its press target are separate DataRefs.
+	statePath: string;
 	valueOff: number;
 	valueOn: number;
 	triggerMode: TriggerMode;
@@ -58,16 +73,6 @@ interface ActionState {
 	commandOnPath: string;
 	commandOffPath: string;
 	strictOnMatch: boolean;
-	// Resolved paths (or pass-through values) ready for setImage. Data URLs
-	// from settings are persisted to disk as files via persistImage so we
-	// hand Stream Deck a real path — Data URLs on multi-state actions have
-	// proven unreliable.
-	imageOff?: string;
-	imageOn?: string;
-	// Last raw setting values seen, used to detect changes and avoid
-	// re-persisting an unchanged image.
-	imageOffRaw?: string;
-	imageOnRaw?: string;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 	currentState: number;
@@ -75,13 +80,10 @@ interface ActionState {
 	// still in flight — without it, a fast double-click reads the same stale
 	// subscription cache twice and sends the same command twice.
 	inflightKeyDown: boolean;
-	// Serializes overlapping renderState() calls so setState + setImage from
-	// an earlier update can't interleave with a newer one.
+	// Serializes overlapping renderState() calls so setState from an earlier
+	// update can't interleave with a newer one.
 	renderPromise?: Promise<void>;
 }
-
-const DEFAULT_IMAGE_OFF = "imgs/states/off";
-const DEFAULT_IMAGE_ON = "imgs/states/on";
 
 const STATE_DIRTY = -1;
 
@@ -93,6 +95,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		super();
 		this.xplane.on("offline", () => this.onXPlaneOffline());
 		this.xplane.on("online", () => this.onXPlaneOnline());
+		selectors.watch((changed) => this.onSelectorsChanged(changed));
 	}
 
 	override async onWillAppear(ev: WillAppearEvent<DataRefToggleSettings>): Promise<void> {
@@ -101,6 +104,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		const state: ActionState = {
 			action: ev.action,
 			path: parsed.path,
+			statePath: parsed.statePath,
 			valueOff: parsed.valueOff,
 			valueOn: parsed.valueOn,
 			triggerMode: parsed.triggerMode,
@@ -112,7 +116,6 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			inflightKeyDown: false,
 		};
 		this.states.set(ev.action.id, state);
-		await this.syncImages(ev.action.id, state, parsed);
 		await this.applySubscription(state);
 	}
 
@@ -131,8 +134,9 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		if (!state) return;
 
 		const parsed = parseSettings(ev.payload.settings ?? {});
-		const pathChanged = parsed.path !== state.path;
+		const statePathChanged = parsed.statePath !== state.statePath;
 
+		state.path = parsed.path;
 		state.valueOff = parsed.valueOff;
 		state.valueOn = parsed.valueOn;
 		state.triggerMode = parsed.triggerMode;
@@ -140,47 +144,20 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		state.commandOnPath = parsed.commandOnPath;
 		state.commandOffPath = parsed.commandOffPath;
 		state.strictOnMatch = parsed.strictOnMatch;
-		await this.syncImages(ev.action.id, state, parsed);
 
-		if (pathChanged) {
+		if (statePathChanged) {
 			this.dropSubscription(state);
-			state.path = parsed.path;
+			state.statePath = parsed.statePath;
 			state.lastValue = undefined;
 			state.currentState = STATE_DIRTY;
 			await this.applySubscription(state);
 			return;
 		}
 
-		// Force a re-render so changed off/on thresholds and image overrides
-		// take effect immediately.
+		// Force a re-render so changed off/on thresholds take effect immediately.
 		state.currentState = STATE_DIRTY;
 		if (state.lastValue !== undefined) {
 			await this.renderState(state, state.lastValue);
-		}
-	}
-
-	private async syncImages(
-		actionId: string,
-		state: ActionState,
-		parsed: ParsedSettings,
-	): Promise<void> {
-		if (parsed.imageOff !== state.imageOffRaw) {
-			state.imageOffRaw = parsed.imageOff;
-			try {
-				state.imageOff = await persistImage(actionId, "off", parsed.imageOff);
-			} catch (err) {
-				streamDeck.logger.warn("dataref-toggle: persistImage off failed", err);
-				state.imageOff = parsed.imageOff;
-			}
-		}
-		if (parsed.imageOn !== state.imageOnRaw) {
-			state.imageOnRaw = parsed.imageOn;
-			try {
-				state.imageOn = await persistImage(actionId, "on", parsed.imageOn);
-			} catch (err) {
-				streamDeck.logger.warn("dataref-toggle: persistImage on failed", err);
-				state.imageOn = parsed.imageOn;
-			}
 		}
 	}
 
@@ -191,6 +168,31 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		if (!parsed.path) {
 			streamDeck.logger.warn("dataref-toggle: datarefPath is empty");
 			await ev.action.showAlert();
+			return;
+		}
+
+		const snap = selectors.snapshot();
+		const writePath = substitutePlaceholders(parsed.path, snap);
+
+		// Hold mode bypasses toggle/command machinery: write valueOn on press;
+		// the matching valueOff happens in onKeyUp. triggerMode and
+		// strictOnMatch are ignored here.
+		if (parsed.holdMode) {
+			try {
+				const { basePath, index } = parseDataRefPath(writePath);
+				const drId = await this.xplane.getDataRefId(basePath);
+				await this.xplane.writeDataRef(drId, parsed.valueOn, index);
+				streamDeck.logger.info(
+					`dataref-toggle: hold press ${writePath} = ${parsed.valueOn} (id=${drId})`,
+				);
+				if (state) {
+					state.lastValue = parsed.valueOn;
+					await this.renderState(state, parsed.valueOn);
+				}
+			} catch (err) {
+				streamDeck.logger.error("dataref-toggle hold press failed", err);
+				await ev.action.showAlert();
+			}
 			return;
 		}
 
@@ -210,15 +212,16 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 					await ev.action.showAlert();
 					return;
 				}
-				const cmdId = await this.xplane.getCommandId(parsed.commandPath);
+				const commandPath = substitutePlaceholders(parsed.commandPath, snap);
+				const cmdId = await this.xplane.getCommandId(commandPath);
 				await this.xplane.activateCommand(cmdId);
 				streamDeck.logger.info(
-					`dataref-toggle: command activate ${parsed.commandPath} (id=${cmdId})`,
+					`dataref-toggle: command activate ${commandPath} (id=${cmdId})`,
 				);
 				// No optimistic update — for a generic command we cannot predict
 				// the resulting DataRef value, so we wait for the WS update.
 			} else if (parsed.triggerMode === "command-on-off") {
-				const { basePath, index } = parseDataRefPath(parsed.path);
+				const { basePath, index } = parseDataRefPath(writePath);
 				const drId = await this.xplane.getDataRefId(basePath);
 				const current =
 					state?.lastValue !== undefined
@@ -231,14 +234,15 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 						parsed.valueOn,
 						parsed.strictOnMatch,
 					) === STATE_ON;
-				const targetPath = isOn ? parsed.commandOffPath : parsed.commandOnPath;
-				if (!targetPath) {
+				const rawTargetPath = isOn ? parsed.commandOffPath : parsed.commandOnPath;
+				if (!rawTargetPath) {
 					streamDeck.logger.warn(
 						`dataref-toggle: ${isOn ? "commandOffPath" : "commandOnPath"} is empty in on-off command mode`,
 					);
 					await ev.action.showAlert();
 					return;
 				}
+				const targetPath = substitutePlaceholders(rawTargetPath, snap);
 				const cmdId = await this.xplane.getCommandId(targetPath);
 				await this.xplane.activateCommand(cmdId);
 				streamDeck.logger.info(
@@ -250,7 +254,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 					await this.renderState(state, target);
 				}
 			} else {
-				const { basePath, index } = parseDataRefPath(parsed.path);
+				const { basePath, index } = parseDataRefPath(writePath);
 				const drId = await this.xplane.getDataRefId(basePath);
 				const current =
 					state?.lastValue !== undefined
@@ -266,7 +270,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 				const target = isOn ? parsed.valueOff : parsed.valueOn;
 				await this.xplane.writeDataRef(drId, target, index);
 				streamDeck.logger.info(
-					`dataref-toggle: write ${parsed.path} = ${target} (id=${drId})`,
+					`dataref-toggle: write ${writePath} = ${target} (id=${drId})`,
 				);
 				if (state) {
 					state.lastValue = target;
@@ -281,15 +285,39 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		}
 	}
 
+	override async onKeyUp(ev: KeyUpEvent<DataRefToggleSettings>): Promise<void> {
+		const parsed = parseSettings(ev.payload.settings ?? {});
+		if (!parsed.holdMode || !parsed.path) return;
+
+		const state = this.states.get(ev.action.id);
+		const writePath = substitutePlaceholders(parsed.path, selectors.snapshot());
+		try {
+			const { basePath, index } = parseDataRefPath(writePath);
+			const drId = await this.xplane.getDataRefId(basePath);
+			await this.xplane.writeDataRef(drId, parsed.valueOff, index);
+			streamDeck.logger.info(
+				`dataref-toggle: hold release ${writePath} = ${parsed.valueOff} (id=${drId})`,
+			);
+			if (state) {
+				state.lastValue = parsed.valueOff;
+				await this.renderState(state, parsed.valueOff);
+			}
+		} catch (err) {
+			streamDeck.logger.error("dataref-toggle hold release failed", err);
+			await ev.action.showAlert();
+		}
+	}
+
 	private async applySubscription(state: ActionState): Promise<void> {
-		if (!state.path) return;
+		if (!state.statePath) return;
 
 		if (this.xplane.isOffline()) {
 			await setOffline(state.action);
 			return;
 		}
 
-		const { basePath, index } = parseDataRefPath(state.path);
+		const resolved = substitutePlaceholders(state.statePath, selectors.snapshot());
+		const { basePath, index } = parseDataRefPath(resolved);
 
 		try {
 			state.handle = await this.xplane.subscribe(basePath, (raw) => {
@@ -298,7 +326,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 					value = applyIndex(raw, index);
 				} catch (err) {
 					streamDeck.logger.warn(
-						`dataref-toggle: index apply failed for ${state.path}`,
+						`dataref-toggle: index apply failed for ${state.statePath}`,
 						err,
 					);
 					setNotFound(state.action).catch((e) =>
@@ -310,7 +338,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 				state.lastValue = value;
 				if (!sameValue(prev, value)) {
 					streamDeck.logger.info(
-						`dataref-toggle: subscribe ${state.path} = ${describeValue(value)}`,
+						`dataref-toggle: subscribe ${state.statePath} = ${describeValue(value)}`,
 					);
 				}
 				this.renderState(state, value).catch((err) =>
@@ -332,12 +360,12 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 				}
 			} catch (err) {
 				streamDeck.logger.warn(
-					`dataref-toggle: initial read failed for ${state.path}`,
+					`dataref-toggle: initial read failed for ${state.statePath}`,
 					err,
 				);
 			}
 		} catch (err) {
-			streamDeck.logger.warn(`dataref-toggle: subscribe failed for ${state.path}`, err);
+			streamDeck.logger.warn(`dataref-toggle: subscribe failed for ${state.statePath}`, err);
 			await setNotFound(state.action);
 			await state.action.showAlert();
 		}
@@ -357,9 +385,9 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			state.valueOn,
 			state.strictOnMatch,
 		);
-		// Chain off any in-flight render so setState + setImage from an earlier
-		// update can't interleave with this one. Use a swallowing catch so a
-		// prior failure doesn't block subsequent renders.
+		// Chain off any in-flight render so setState from an earlier update
+		// can't interleave with this one. Use a swallowing catch so a prior
+		// failure doesn't block subsequent renders.
 		const previous = state.renderPromise ?? Promise.resolve();
 		const next = previous
 			.catch(() => {
@@ -368,21 +396,11 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			.then(async () => {
 				if (target === state.currentState) return;
 				streamDeck.logger.info(
-					`dataref-toggle: setState ${target} for ${state.path} (value=${describeValue(value)}, off=${state.valueOff}, on=${state.valueOn}, strict=${state.strictOnMatch})`,
+					`dataref-toggle: setState ${target} for ${state.statePath} (value=${describeValue(value)}, off=${state.valueOff}, on=${state.valueOn}, strict=${state.strictOnMatch})`,
 				);
 				// Once we have valid data, drop any disconnected/not-found overlay.
 				await clearTile(state.action);
 				await state.action.setState(target);
-
-				// Stream Deck does not always refresh the visible image after setState
-				// alone on multi-state keys, so we explicitly push the active image
-				// (custom data URL if uploaded, otherwise the manifest path). This
-				// targets the *currently displayed* state because we just switched to
-				// `target`, which is why we omit the { state } option here.
-				const customImage = target === STATE_ON ? state.imageOn : state.imageOff;
-				const image =
-					customImage ?? (target === STATE_ON ? DEFAULT_IMAGE_ON : DEFAULT_IMAGE_OFF);
-				await state.action.setImage(image);
 				// Only commit currentState after the hardware confirms — keeps the
 				// early-exit guard above honest if a follow-up render races.
 				state.currentState = target;
@@ -393,7 +411,7 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 
 	private onXPlaneOffline(): void {
 		for (const state of this.states.values()) {
-			if (!state.path) continue;
+			if (!state.statePath) continue;
 			// Drop the (already-broken) subscription so the next "online" cleanly
 			// re-subscribes, and force renderState to re-push state+image on
 			// the next live update so the offline placeholder gets replaced.
@@ -407,14 +425,31 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 
 	private onXPlaneOnline(): void {
 		for (const state of this.states.values()) {
-			if (state.path && !state.handle) {
+			if (state.statePath && !state.handle) {
 				this.applySubscription(state).catch((err) =>
 					streamDeck.logger.warn(
-						`dataref-toggle: re-subscribe failed for ${state.path}`,
+						`dataref-toggle: re-subscribe failed for ${state.statePath}`,
 						err,
 					),
 				);
 			}
+		}
+	}
+
+	private onSelectorsChanged(changed: ReadonlySet<string>): void {
+		for (const state of this.states.values()) {
+			if (!state.statePath) continue;
+			const keys = extractPlaceholderKeys(state.statePath);
+			if (!keys.some((k) => changed.has(k))) continue;
+			this.dropSubscription(state);
+			state.lastValue = undefined;
+			state.currentState = STATE_DIRTY;
+			this.applySubscription(state).catch((err) =>
+				streamDeck.logger.warn(
+					`dataref-toggle: selector re-subscribe failed for ${state.statePath}`,
+					err,
+				),
+			);
 		}
 	}
 }
@@ -426,20 +461,19 @@ function parseSettings(s: DataRefToggleSettings): ParsedSettings {
 			: s.triggerMode === "command-on-off"
 				? "command-on-off"
 				: "write";
-	const imageOff =
-		typeof s.imageOff === "string" && s.imageOff.length > 0 ? s.imageOff : undefined;
-	const imageOn = typeof s.imageOn === "string" && s.imageOn.length > 0 ? s.imageOn : undefined;
+	const path = trimString(s.datarefPath);
+	const stateOverride = trimString(s.stateDataRefPath);
 	return {
-		path: trimString(s.datarefPath),
+		path,
+		statePath: stateOverride || path,
 		valueOff: toFiniteNumber(s.valueOff) ?? 0,
 		valueOn: toFiniteNumber(s.valueOn) ?? 1,
 		triggerMode,
 		commandPath: trimString(s.commandPath),
 		commandOnPath: trimString(s.commandOnPath),
 		commandOffPath: trimString(s.commandOffPath),
-		imageOff,
-		imageOn,
 		strictOnMatch: s.strictOnMatch === true,
+		holdMode: s.holdMode === true,
 	};
 }
 

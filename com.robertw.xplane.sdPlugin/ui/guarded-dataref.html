@@ -1,0 +1,109 @@
+<!doctype html>
+<!--
+  xp_streamdeck - Stream Deck plugin for X-Plane 12
+  Copyright (c) 2026 thWelly
+
+  Licensed under the MIT License.
+  See the LICENSE file in the project root for full license text.
+-->
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>X-Plane Guarded DataRef</title>
+		<script src="https://sdpi-components.dev/releases/v4/sdpi-components.js"></script>
+		<script src="xplane-pi-helpers.js"></script>
+		<style>
+			.section-hdr {
+				margin: 12px 12px 4px 12px;
+				font-size: 11px;
+				text-transform: uppercase;
+				letter-spacing: 0.06em;
+				color: #888;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="section-hdr">Short press (guard — toggles 0 ↔ 1)</div>
+		<sdpi-item label="DataRef Path">
+			<sdpi-textfield
+				setting="shortDataRef"
+				placeholder="HSF/ec130/CollectiveHydCover"
+				id="shortField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Feedback">
+			<sdpi-checkbox
+				setting="hideShortConfirmation"
+				label="Hide green OK after short press"
+			></sdpi-checkbox>
+		</sdpi-item>
+
+		<div class="section-hdr">Long press (≥ 500 ms, toggle DataRef)</div>
+		<sdpi-item label="DataRef Path">
+			<sdpi-textfield
+				setting="longDataRef"
+				placeholder="HSF/ec130/CollectiveHydSwitch"
+				id="longField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Value Off">
+			<sdpi-textfield
+				setting="longValueOff"
+				placeholder="0"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Value On">
+			<sdpi-textfield
+				setting="longValueOn"
+				placeholder="1"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+
+		<div class="section-hdr">State indicator (defaults to short DataRef)</div>
+		<sdpi-item label="Guard DataRef">
+			<sdpi-textfield
+				setting="guardDataRef"
+				placeholder="leave empty to use the short DataRef above"
+				id="guardField"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Value Locked">
+			<sdpi-textfield
+				setting="valueLocked"
+				placeholder="defaults to short Value Off"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Value Unlocked">
+			<sdpi-textfield
+				setting="valueUnlocked"
+				placeholder="defaults to short Value On"
+				inputmode="decimal"
+			></sdpi-textfield>
+		</sdpi-item>
+		<sdpi-item label="Strict Unlocked Match">
+			<sdpi-checkbox setting="strictOnMatch">
+				Treat only <code>value === Value Unlocked</code> as unlocked
+			</sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item>
+			<small style="color: #888; font-size: 11px">
+				Assign per-state images (Locked / Unlocked) via the State pickers
+				above — they're handled by Stream Deck directly.
+			</small>
+		</sdpi-item>
+
+		<script>
+			(() => {
+				const shortField = document.getElementById("shortField");
+				const longField = document.getElementById("longField");
+				const guardField = document.getElementById("guardField");
+				if (shortField) window.XPlanePI.attachAutocomplete(shortField, "dataref");
+				if (longField) window.XPlanePI.attachAutocomplete(longField, "dataref");
+				if (guardField) window.XPlanePI.attachAutocomplete(guardField, "dataref");
+			})();
+		</script>
+	</body>
+</html>

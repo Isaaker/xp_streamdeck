@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 import streamDeck, {
 	action,
 	type KeyAction,
@@ -10,7 +18,9 @@ import streamDeck, {
 import type { JsonObject } from "@elgato/utils";
 
 import { TIMINGS } from "../const";
+import { selectors } from "../selectors/registry";
 import { clearOffline, setOffline } from "../util/error-tile";
+import { substitutePlaceholders } from "../util/placeholders";
 import { trimString } from "../util/settings";
 import type { XPlaneClient } from "../xplane";
 
@@ -30,6 +40,7 @@ type Repeater = {
 export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	private readonly visible = new Map<string, KeyAction<CommandSettings>>();
 	private readonly repeaters = new Map<string, Repeater>();
+	private readonly pressed = new Set<string>();
 
 	constructor(private readonly xplane: XPlaneClient) {
 		super();
@@ -46,13 +57,18 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	}
 
 	override onWillDisappear(ev: WillDisappearEvent<CommandSettings>): Promise<void> {
+		this.pressed.delete(ev.action.id);
 		this.stopRepeater(ev.action.id);
 		this.visible.delete(ev.action.id);
 		return Promise.resolve();
 	}
 
 	override async onKeyDown(ev: KeyDownEvent<CommandSettings>): Promise<void> {
-		const path = trimString(ev.payload.settings?.commandPath);
+		const actionId = ev.action.id;
+		this.pressed.add(actionId);
+
+		const rawPath = trimString(ev.payload.settings?.commandPath);
+		const path = substitutePlaceholders(rawPath, selectors.snapshot());
 		const holdMode = ev.payload.settings?.holdMode === true;
 		const hideConfirmation = ev.payload.settings?.hideConfirmation === true;
 
@@ -71,8 +87,12 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 				await this.xplane.activateCommand(id);
 				streamDeck.logger.info(`command activate: ${path} (id=${id})`);
 			}
-			if (!holdMode && ev.payload.settings?.autoRepeat === true) {
-				this.startRepeater(ev.action.id, id, path);
+			if (
+				!holdMode &&
+				ev.payload.settings?.autoRepeat === true &&
+				this.pressed.has(actionId)
+			) {
+				this.startRepeater(actionId, id, path);
 			}
 			if (!hideConfirmation) {
 				await ev.action.showOk();
@@ -84,9 +104,11 @@ export class XPlaneCommand extends SingletonAction<CommandSettings> {
 	}
 
 	override async onKeyUp(ev: KeyUpEvent<CommandSettings>): Promise<void> {
+		this.pressed.delete(ev.action.id);
 		this.stopRepeater(ev.action.id);
 
-		const path = trimString(ev.payload.settings?.commandPath);
+		const rawPath = trimString(ev.payload.settings?.commandPath);
+		const path = substitutePlaceholders(rawPath, selectors.snapshot());
 		const holdMode = ev.payload.settings?.holdMode === true;
 
 		if (!holdMode || !path) return;

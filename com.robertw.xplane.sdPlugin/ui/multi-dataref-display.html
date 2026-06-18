@@ -1,4 +1,11 @@
 <!doctype html>
+<!--
+  xp_streamdeck - Stream Deck plugin for X-Plane 12
+  Copyright (c) 2026 thWelly
+
+  Licensed under the MIT License.
+  See the LICENSE file in the project root for full license text.
+-->
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
@@ -66,6 +73,12 @@
 					inputmode="numeric"
 				></sdpi-textfield>
 			</sdpi-item>
+			<sdpi-item label="Value Mode">
+				<sdpi-select setting="slot1ValueMode" default="numeric">
+					<option value="numeric">Numeric</option>
+					<option value="string">String (data-type DataRefs)</option>
+				</sdpi-select>
+			</sdpi-item>
 		</details>
 
 		<details>
@@ -103,6 +116,12 @@
 					inputmode="numeric"
 				></sdpi-textfield>
 			</sdpi-item>
+			<sdpi-item label="Value Mode">
+				<sdpi-select setting="slot2ValueMode" default="numeric">
+					<option value="numeric">Numeric</option>
+					<option value="string">String (data-type DataRefs)</option>
+				</sdpi-select>
+			</sdpi-item>
 		</details>
 
 		<details>
@@ -139,6 +158,12 @@
 					placeholder="decimals — overridden by explicit %.Nf"
 					inputmode="numeric"
 				></sdpi-textfield>
+			</sdpi-item>
+			<sdpi-item label="Value Mode">
+				<sdpi-select setting="slot3ValueMode" default="numeric">
+					<option value="numeric">Numeric</option>
+					<option value="string">String (data-type DataRefs)</option>
+				</sdpi-select>
 			</sdpi-item>
 		</details>
 

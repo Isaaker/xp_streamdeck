@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 import streamDeck, {
 	action,
 	type DidReceiveSettingsEvent,
@@ -8,7 +16,7 @@ import type { JsonObject } from "@elgato/utils";
 
 import { toFiniteNumber } from "../util/coerce";
 import { combineTitle } from "../util/error-tile";
-import { formatDataRefValue } from "../util/format";
+import { formatDataRefValue, type ValueMode } from "../util/format";
 import { normalizeFormat, trimString } from "../util/settings";
 import type { XPlaneClient } from "../xplane";
 import { SubscribableAction, type SubscribableState } from "./base/subscribable-action";
@@ -21,12 +29,14 @@ type CommandDisplaySettings = JsonObject & {
 	format?: string;
 	unitScale?: string | number;
 	precision?: string | number;
+	valueMode?: ValueMode;
 };
 
 interface ActionState extends SubscribableState<CommandDisplaySettings> {
 	format: string;
 	unitScale?: number;
 	precision?: number;
+	valueMode: ValueMode;
 }
 
 @action({ UUID: "com.robertw.xplane.command-display" })
@@ -44,6 +54,7 @@ export class XPlaneCommandDisplay extends SubscribableAction<CommandDisplaySetti
 			format: parsed.format,
 			unitScale: parsed.unitScale,
 			precision: parsed.precision,
+			valueMode: parsed.valueMode,
 		};
 	}
 
@@ -58,6 +69,7 @@ export class XPlaneCommandDisplay extends SubscribableAction<CommandDisplaySetti
 		state.format = parsed.format;
 		state.unitScale = parsed.unitScale;
 		state.precision = parsed.precision;
+		state.valueMode = parsed.valueMode;
 		return { pathChanged };
 	}
 
@@ -67,6 +79,7 @@ export class XPlaneCommandDisplay extends SubscribableAction<CommandDisplaySetti
 			format: state.format,
 			unitScale: state.unitScale,
 			precision: state.precision,
+			valueMode: state.valueMode,
 		});
 		state.action
 			.setTitle(combineTitle(state.label, valueText))
@@ -103,6 +116,7 @@ function parseSettings(s: CommandDisplaySettings): {
 	format: string;
 	unitScale?: number;
 	precision?: number;
+	valueMode: ValueMode;
 } {
 	return {
 		path: trimString(s.datarefPath),
@@ -110,5 +124,6 @@ function parseSettings(s: CommandDisplaySettings): {
 		format: normalizeFormat(s.format),
 		unitScale: toFiniteNumber(s.unitScale),
 		precision: toFiniteNumber(s.precision),
+		valueMode: s.valueMode === "string" ? "string" : "numeric",
 	};
 }

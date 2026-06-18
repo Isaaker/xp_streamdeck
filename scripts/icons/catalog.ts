@@ -1,13 +1,24 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 export type IconGroup =
 	| "autopilot"
 	| "lights"
 	| "cockpit"
 	| "readouts"
 	| "backgrounds"
+	| "buttons"
 	| "g1000"
 	| "views"
 	| "alerts"
-	| "emergency";
+	| "emergency"
+	| "caution"
+	| "advisory";
 
 // One accent color per functional group — keeps the whole set visually calm.
 // The group name is also the output subdirectory (out/icons/<group>/).
@@ -21,10 +32,13 @@ export const GROUP_ACCENT: Record<IconGroup, string> = {
 	cockpit: "#22c55e", // green
 	readouts: "#9933CC", // WebSafe purple — all live-value tiles read as one set
 	backgrounds: "#000000", // unused — background tiles carry their own color
+	buttons: "#000000", // unused — push-button tiles carry their own color
 	g1000: "#f59e0b", // orange — Garmin-style amber for G1000 command/knob buttons
 	views: "#3b82f6", // blue — saved cockpit view recall buttons
 	alerts: "#000000", // unused — alert tiles derive their color from `severity`
 	emergency: "#ef4444", // red — EMER / FIRE / FUEL CUT-style buttons (red != always warning in cockpit context)
+	caution: "#f59e0b", // orange — caution-level switches (one step below emergency red)
+	advisory: "#ffeb00", // yellow — advisory-level switches (master-caution style)
 };
 
 type IconBase = {
@@ -86,6 +100,15 @@ export type BackgroundIcon = {
 	group: IconGroup;
 	color: string;
 };
+// Same solid fill as `background`, but with a back-arrow (left triangle) at
+// the bottom of the tile. Upper area stays free for a user-provided title
+// overlay. Used as the "back / previous page" companion to plain bg_* tiles.
+export type BackgroundBackIcon = {
+	kind: "background-back";
+	name: string;
+	group: IconGroup;
+	color: string;
+};
 // G1000 GCU keypad button — solid dark tile, oversized bold character
 // centered. No accent stripe or border; the character is the icon.
 export type GcuKeyIcon = IconBase & { kind: "gcu_key" };
@@ -108,6 +131,33 @@ export type AlertIcon = IconBase & {
 // label + LED-bar follow toggle DNA. Sublabel for twin-engine pairs.
 // Pairs with the guarded-command action via <name>_locked.png / <name>_unlocked.png.
 export type GuardedIcon = IconBase & { kind: "guarded"; sublabel?: string };
+// 3-position toggle/slider switch — labelless, just a slot + offset knob.
+// Pairs with the dataref-switch action via <name>_min.png / _mid.png / _max.png.
+// Vertical: min=top, max=bottom. Horizontal: min=left, max=right.
+export type SwitchIcon = {
+	kind: "switch";
+	name: string;
+	axis: "vertical" | "horizontal";
+	group: IconGroup;
+};
+// Bare accent-coloured dot at canvas centre, no ring, no label. Generic
+// "push me" tile reused across many similar physical buttons (e.g. all 7
+// AW109 RTU push buttons share one icon).
+export type DotIcon = {
+	kind: "dot";
+	name: string;
+	group: IconGroup;
+};
+// Round push-button tile — like a doorbell or start button. Filled body in the
+// chosen color, darker bezel ring, glossy upper highlight for a 3D pressable
+// look. No label (a Stream Deck title overlay can sit on top if needed).
+export type PushButtonColor = "red" | "green" | "white" | "blue";
+export type PushButtonIcon = {
+	kind: "pushbutton";
+	name: string;
+	color: PushButtonColor;
+	group: IconGroup;
+};
 export type IconDef =
 	| ToggleIcon
 	| DisplayIcon
@@ -116,10 +166,14 @@ export type IconDef =
 	| CommandIcon
 	| KnobIcon
 	| BackgroundIcon
+	| BackgroundBackIcon
 	| GcuKeyIcon
 	| ViewIcon
 	| AlertIcon
-	| GuardedIcon;
+	| GuardedIcon
+	| SwitchIcon
+	| DotIcon
+	| PushButtonIcon;
 
 export const catalog: IconDef[] = [
 	// === Autopilot — mode toggles ===
@@ -151,6 +205,7 @@ export const catalog: IconDef[] = [
 	{ kind: "nudge", name: "hdg_left", label: "HDG", direction: "left", group: "autopilot" },
 	{ kind: "nudge", name: "hdg_right", label: "HDG", direction: "right", group: "autopilot" },
 	{ kind: "knob", name: "hdg_sync", variant: "push", label: "HDG SYNC", group: "autopilot" },
+	{ kind: "knob", name: "hdg_sync_bare", variant: "push", group: "autopilot" },
 	{ kind: "nudge", name: "src_left", label: "SRC", direction: "left", group: "autopilot" },
 	{ kind: "nudge", name: "src_right", label: "SRC", direction: "right", group: "autopilot" },
 	{ kind: "nudge", name: "alt_up", label: "ALT", direction: "up", group: "autopilot" },
@@ -175,6 +230,15 @@ export const catalog: IconDef[] = [
 	{ kind: "nudge", name: "vs_down", label: "VS", direction: "down", group: "autopilot" },
 	{ kind: "nudge", name: "spd_up", label: "SPD", direction: "up", group: "autopilot" },
 	{ kind: "nudge", name: "spd_down", label: "SPD", direction: "down", group: "autopilot" },
+
+	// === Autopilot — labelless directional arrows (yellow) ===
+	// Bare triangle in the autopilot accent, no label — for generic
+	// up/down/left/right nudges where the surrounding deck layout already
+	// makes the function obvious.
+	{ kind: "nudge", name: "ap_up", direction: "up", group: "autopilot" },
+	{ kind: "nudge", name: "ap_down", direction: "down", group: "autopilot" },
+	{ kind: "nudge", name: "ap_left", direction: "left", group: "autopilot" },
+	{ kind: "nudge", name: "ap_right", direction: "right", group: "autopilot" },
 
 	// === Lights (toggles) — `lt_` prefix avoids clashing with AP "nav" ===
 	{ kind: "toggle", name: "lt_bcn", label: "BCN", group: "lights" },
@@ -217,10 +281,27 @@ export const catalog: IconDef[] = [
 	{ kind: "guarded", name: "fuel_cut", label: "FUEL CUT", group: "cockpit" },
 	{ kind: "guarded", name: "emer_gear", label: "EMER GEAR", group: "cockpit" },
 
+	// === 3-position switches (labelless slot + offset knob) ===
+	// Pair with the `dataref-switch` action (imageMin/Mid/Max). Vertical:
+	// min = top, max = bottom. Horizontal: min = left, max = right.
+	{ kind: "switch", name: "switch_v", axis: "vertical", group: "cockpit" },
+	{ kind: "switch", name: "switch_h", axis: "horizontal", group: "cockpit" },
+	// Color-suffixed variants — same geometry, different groove accent.
+	{ kind: "switch", name: "switch_v_green", axis: "vertical", group: "cockpit" },
+	{ kind: "switch", name: "switch_h_green", axis: "horizontal", group: "cockpit" },
+	{ kind: "switch", name: "switch_v_red", axis: "vertical", group: "emergency" },
+	{ kind: "switch", name: "switch_h_red", axis: "horizontal", group: "emergency" },
+	{ kind: "switch", name: "switch_v_blue", axis: "vertical", group: "views" },
+	{ kind: "switch", name: "switch_h_blue", axis: "horizontal", group: "views" },
+
 	// === Labelless push buttons (label set dynamically via setTitle, or unused) ===
 	// `nolabel` (cockpit/green) already covers the green toggle variant.
 	{ kind: "toggle", name: "nolabel_red", label: "", group: "emergency" },
+	{ kind: "toggle", name: "nolabel_orange", label: "", group: "caution" },
+	{ kind: "toggle", name: "nolabel_yellow", label: "", group: "advisory" },
 	{ kind: "command", name: "nolabel_cmd", label: "", group: "cockpit" },
+	{ kind: "command", name: "slave", label: "SLAVE", group: "cockpit" },
+	{ kind: "command", name: "free", label: "FREE", group: "cockpit" },
 
 	// === Live readouts (display-only, no on/off) ===
 	// Layout reserves the lower 2/3 of the key for the Stream Deck title overlay.
@@ -236,14 +317,28 @@ export const catalog: IconDef[] = [
 
 	// === Engine readouts (PT6 turboprop: NG/ITT/TRQ/NP + house keeping) ===
 	{ kind: "display", name: "eng_ng", label: "NG", group: "readouts" },
+	{ kind: "display", name: "eng_n1", label: "N1", group: "readouts" },
 	{ kind: "display", name: "eng_itt", label: "ITT", group: "readouts" },
+	{ kind: "display", name: "eng_tot", label: "TOT", group: "readouts" },
 	{ kind: "display", name: "eng_trq", label: "TRQ", group: "readouts" },
 	{ kind: "display", name: "eng_np", label: "NP", group: "readouts" },
 	{ kind: "display", name: "eng_ff", label: "FF", group: "readouts" },
 	{ kind: "display", name: "eng_oil_p", label: "OIL P", group: "readouts" },
 	{ kind: "display", name: "eng_oil_t", label: "OIL T", group: "readouts" },
+	{ kind: "display", name: "hyd", label: "HYD", group: "readouts" },
 	{ kind: "display", name: "eng_volt", label: "VOLT", group: "readouts" },
 	{ kind: "display", name: "eng_amp", label: "AMP", group: "readouts" },
+	{ kind: "display", name: "fuel", label: "FUEL", group: "readouts" },
+	{ kind: "display", name: "fuel_l", label: "FUEL L", group: "readouts" },
+	{ kind: "display", name: "fuel_r", label: "FUEL R", group: "readouts" },
+	{ kind: "display", name: "nr", label: "NR", group: "readouts" },
+	{ kind: "display", name: "t4", label: "T4", group: "readouts" },
+	{ kind: "display", name: "fli", label: "FLI", group: "readouts" },
+	{ kind: "display", name: "oat", label: "OAT", group: "readouts" },
+	{ kind: "display", name: "rad_alt", label: "RAD ALT", group: "readouts" },
+	{ kind: "display", name: "bat", label: "BAT", group: "readouts" },
+	{ kind: "display", name: "rpm", label: "RPM", group: "readouts" },
+	{ kind: "display", name: "tr_min", label: "TR/MIN", group: "readouts" },
 	// Label-less display: just the accent line; setTitle() drops the live value below.
 	{ kind: "display", name: "eng_blank", label: "", group: "readouts" },
 
@@ -407,7 +502,21 @@ export const catalog: IconDef[] = [
 	{ kind: "background", name: "bg_blue", color: "#3b82f6", group: "backgrounds" },
 	{ kind: "background", name: "bg_gray", color: "#999EA1", group: "backgrounds" },
 	{ kind: "background", name: "bg_lila", color: "#822c9e", group: "backgrounds" },
-    { kind: "background", name: "bg_bown", color: "#915c2d", group: "backgrounds" },
+	{ kind: "background", name: "bg_bown", color: "#915c2d", group: "backgrounds" },
+
+	// === Back-arrow background tiles (same fill as bg_*, left arrow at bottom) ===
+	// User writes the label themselves via Stream Deck's title field; the arrow
+	// is just the "previous page / back" visual hint. White fill intentionally
+	// omitted — arrow + line are always white, so it'd be invisible.
+	{ kind: "background-back", name: "bg_back_black", color: "#000000", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_yellow", color: "#ffeb00", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_red", color: "#ef4444", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_green", color: "#22c55e", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_orange", color: "#f59e0b", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_blue", color: "#3b82f6", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_gray", color: "#999EA1", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_lila", color: "#822c9e", group: "backgrounds" },
+	{ kind: "background-back", name: "bg_back_bown", color: "#915c2d", group: "backgrounds" },
 
 	// === G1000 — text command buttons (orange accent) ===
 	{ kind: "command", name: "g_menu", label: "MENU", group: "g1000" },
@@ -434,6 +543,7 @@ export const catalog: IconDef[] = [
 	{ kind: "knob", name: "g_inner_left", variant: "inner-ccw", group: "g1000" },
 	{ kind: "knob", name: "g_inner_right", variant: "inner-cw", group: "g1000" },
 	{ kind: "knob", name: "g_push", variant: "push", group: "g1000" },
+	{ kind: "dot", name: "p_push", group: "g1000" },
 
 	// === G1000 GCU — keypad buttons (digits, letters, special keys) ===
 	{ kind: "gcu_key", name: "gcu_0", label: "0", group: "g1000" },
@@ -491,4 +601,10 @@ export const catalog: IconDef[] = [
 	// === Alerts (annunciator-style: flooded tile when ON) ===
 	{ kind: "alert", name: "caution", label: "CAUTION", severity: "caution", group: "alerts" },
 	{ kind: "alert", name: "warning", label: "WARNING", severity: "warning", group: "alerts" },
+
+	// === Push buttons (round 3D button, doorbell / start-button style) ===
+	{ kind: "pushbutton", name: "btn_red", color: "red", group: "buttons" },
+	{ kind: "pushbutton", name: "btn_green", color: "green", group: "buttons" },
+	{ kind: "pushbutton", name: "btn_white", color: "white", group: "buttons" },
+	{ kind: "pushbutton", name: "btn_blue", color: "blue", group: "buttons" },
 ];

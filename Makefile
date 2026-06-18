@@ -6,7 +6,7 @@ SDPLUGIN_DIR := $(PLUGIN_UUID).sdPlugin
 MAIN_BRANCH  := main
 STREAMDECK   := npx --no-install streamdeck
 
-.PHONY: help setup build deploy clean distclean test lint lint-fix format format-check check smoke icons package release cleanup_tags cleanup_branches cleanup_actions
+.PHONY: help setup build deploy clean distclean test lint lint-fix format format-check check smoke icons package release cleanup_tags cleanup_branches cleanup_actions import export
 
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*## "; printf "Available targets:\n"} \
@@ -51,6 +51,16 @@ smoke: ## Run the X-Plane client smoke script (X-Plane must be running)
 
 icons: ## Generate Stream Deck button icons from scripts/icons/catalog.ts into out/icons/
 	npm run --silent icons
+
+import: ## Restore Stream Deck profiles from streamdeck-profiles/ into the app
+	npx tsx scripts/sync-profiles.ts import
+
+export: ## Snapshot live Stream Deck profiles into streamdeck-profiles/
+	npx tsx scripts/sync-profiles.ts export
+
+convert: ## Convert a PilotsDeck profile to this plugin. Usage: make convert IN=in.streamDeckProfile [OUT=out.streamDeckProfile]
+	@if [ -z "$(IN)" ]; then echo "IN is required, e.g. make convert IN='SR2x.streamDeckProfile'"; exit 1; fi
+	npx tsx scripts/convert-pilotsdeck.ts "$(IN)" $(if $(OUT),"$(OUT)",)
 
 package: build ## Build a distributable .streamDeckPlugin (uses streamdeck pack — see M08)
 	$(STREAMDECK) pack -f $(SDPLUGIN_DIR)

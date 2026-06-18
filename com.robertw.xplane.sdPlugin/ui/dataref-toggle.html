@@ -1,4 +1,11 @@
 <!doctype html>
+<!--
+  xp_streamdeck - Stream Deck plugin for X-Plane 12
+  Copyright (c) 2026 thWelly
+
+  Licensed under the MIT License.
+  See the LICENSE file in the project root for full license text.
+-->
 <html lang="en">
 	<head>
 		<meta charset="utf-8" />
@@ -16,40 +23,6 @@
 			.live-preview[data-state="error"] {
 				color: #d97;
 			}
-			.image-upload {
-				display: flex;
-				align-items: center;
-				gap: 8px;
-				flex: 1;
-			}
-			.image-upload .thumb {
-				width: 36px;
-				height: 36px;
-				border-radius: 4px;
-				background: #2d2d2d center/contain no-repeat;
-				border: 1px solid #444;
-				flex: 0 0 auto;
-				display: inline-block;
-			}
-			.image-upload .actions {
-				display: flex;
-				gap: 6px;
-				flex: 1;
-			}
-			.image-upload button {
-				cursor: pointer;
-			}
-			.image-upload input[type="file"] {
-				display: none;
-			}
-			.image-upload .filename {
-				color: #888;
-				font-size: 11px;
-				flex: 1;
-				overflow: hidden;
-				text-overflow: ellipsis;
-				white-space: nowrap;
-			}
 		</style>
 	</head>
 	<body>
@@ -61,8 +34,18 @@
 				required
 			></sdpi-textfield>
 		</sdpi-item>
+		<sdpi-item label="State DataRef">
+			<sdpi-textfield
+				setting="stateDataRefPath"
+				placeholder="(empty = same as DataRef Path)"
+				id="stateDatarefField"
+			></sdpi-textfield>
+		</sdpi-item>
 		<sdpi-item label="Live Value">
 			<span class="live-preview" id="datarefPreview"></span>
+		</sdpi-item>
+		<sdpi-item label="State Live Value">
+			<span class="live-preview" id="stateDatarefPreview"></span>
 		</sdpi-item>
 		<sdpi-item label="Value OFF">
 			<sdpi-textfield
@@ -78,12 +61,19 @@
 				inputmode="decimal"
 			></sdpi-textfield>
 		</sdpi-item>
-		<sdpi-item label="Strict ON Match">
+		<sdpi-item label="Hold Mode">
+			<sdpi-checkbox setting="holdMode" id="holdModeCheckbox">
+				Momentary: write <code>Value ON</code> on press, <code>Value OFF</code> on
+				release (e.g. test/reset button). Trigger Mode / Strict / Command paths
+				are ignored.
+			</sdpi-checkbox>
+		</sdpi-item>
+		<sdpi-item label="Strict ON Match" id="strictOnMatchItem">
 			<sdpi-checkbox setting="strictOnMatch">
 				Treat only <code>value === Value ON</code> as ON (everything else is OFF)
 			</sdpi-checkbox>
 		</sdpi-item>
-		<sdpi-item label="Trigger Mode">
+		<sdpi-item label="Trigger Mode" id="triggerModeItem">
 			<sdpi-select setting="triggerMode" default="write" id="triggerModeSelect">
 				<option value="write">Write DataRef</option>
 				<option value="command">Activate Command</option>
@@ -111,25 +101,11 @@
 				id="commandOffField"
 			></sdpi-textfield>
 		</sdpi-item>
-		<sdpi-item label="Image OFF">
-			<div class="image-upload">
-				<div class="thumb" id="thumbOff"></div>
-				<div class="actions">
-					<button type="button" id="pickOff">Choose…</button>
-					<button type="button" id="clearOff">Reset</button>
-				</div>
-				<input type="file" id="fileOff" accept="image/png,image/jpeg,image/svg+xml" />
-			</div>
-		</sdpi-item>
-		<sdpi-item label="Image ON">
-			<div class="image-upload">
-				<div class="thumb" id="thumbOn"></div>
-				<div class="actions">
-					<button type="button" id="pickOn">Choose…</button>
-					<button type="button" id="clearOn">Reset</button>
-				</div>
-				<input type="file" id="fileOn" accept="image/png,image/jpeg,image/svg+xml" />
-			</div>
+		<sdpi-item>
+			<small style="color: #888; font-size: 11px">
+				Assign per-state images (OFF / ON) via the State pickers above —
+				they're handled by Stream Deck directly.
+			</small>
 		</sdpi-item>
 
 		<script>
@@ -143,39 +119,60 @@
 				const commandItem = document.getElementById("commandItem");
 				const commandOnItem = document.getElementById("commandOnItem");
 				const commandOffItem = document.getElementById("commandOffItem");
+				const triggerModeItem = document.getElementById("triggerModeItem");
+				const strictOnMatchItem = document.getElementById("strictOnMatchItem");
 				const triggerModeSelect = document.getElementById("triggerModeSelect");
+				const holdModeCheckbox = document.getElementById("holdModeCheckbox");
 
-				const applyModeVisibility = (mode) => {
-					const m = mode === "command" || mode === "command-on-off" ? mode : "write";
-					commandItem.style.display = m === "command" ? "" : "none";
-					commandOnItem.style.display = m === "command-on-off" ? "" : "none";
-					commandOffItem.style.display = m === "command-on-off" ? "" : "none";
+				let currentMode = "write";
+				let currentHold = false;
+
+				const applyVisibility = () => {
+					const m =
+						currentMode === "command" || currentMode === "command-on-off"
+							? currentMode
+							: "write";
+					const hold = currentHold === true;
+					triggerModeItem.style.display = hold ? "none" : "";
+					strictOnMatchItem.style.display = hold ? "none" : "";
+					commandItem.style.display = !hold && m === "command" ? "" : "none";
+					commandOnItem.style.display = !hold && m === "command-on-off" ? "" : "none";
+					commandOffItem.style.display = !hold && m === "command-on-off" ? "" : "none";
 				};
 
 				// sdpi-components v4 does not consistently re-fire didReceiveSettings
 				// when the user mutates a control directly in the PI. Listen to the
-				// inner <select> change inside the component's shadow DOM as the
-				// authoritative source for live mode switches. We still subscribe
+				// inner <select>/<input> change inside the component's shadow DOM as
+				// the authoritative source for live mode switches. We still subscribe
 				// to didReceiveSettings as a fallback for externally-driven changes.
-				const findInnerSelect = (el) =>
-					el?.shadowRoot?.querySelector("select") || el?.querySelector("select");
-				const wireTriggerModeChange = async () => {
+				const findInner = (el, tag) =>
+					el?.shadowRoot?.querySelector(tag) || el?.querySelector(tag);
+				const wireInnerChange = async (host, tag, onChange) => {
 					for (let i = 0; i < 30; i++) {
-						const inner = findInnerSelect(triggerModeSelect);
+						const inner = findInner(host, tag);
 						if (inner) {
-							inner.addEventListener("change", () => applyModeVisibility(inner.value));
+							inner.addEventListener("change", () => onChange(inner));
 							return;
 						}
 						await new Promise((r) => setTimeout(r, 50));
 					}
-					console.warn("dataref-toggle PI: could not wire triggerMode change listener");
+					console.warn(`dataref-toggle PI: could not wire ${tag} change listener`);
 				};
-				wireTriggerModeChange();
+				wireInnerChange(triggerModeSelect, "select", (inner) => {
+					currentMode = inner.value;
+					applyVisibility();
+				});
+				wireInnerChange(holdModeCheckbox, "input", (inner) => {
+					currentHold = inner.checked === true;
+					applyVisibility();
+				});
 
 				(async () => {
 					try {
 						const s = (await client.getSettings()) ?? {};
-						applyModeVisibility(s.triggerMode);
+						currentMode = s.triggerMode || "write";
+						currentHold = s.holdMode === true;
+						applyVisibility();
 					} catch (err) {
 						console.error("dataref-toggle PI: initial getSettings failed", err);
 					}
@@ -185,33 +182,28 @@
 				if (live && typeof live.subscribe === "function") {
 					live.subscribe((arg) => {
 						const s = arg?.payload?.settings ?? arg?.settings;
-						if (s && typeof s === "object") applyModeVisibility(s.triggerMode);
+						if (s && typeof s === "object") {
+							currentMode = s.triggerMode || "write";
+							currentHold = s.holdMode === true;
+							applyVisibility();
+						}
 					});
 				}
 
-				window.XPlanePI.wireImageUpload({
-					input: document.getElementById("fileOff"),
-					thumb: document.getElementById("thumbOff"),
-					pickButton: document.getElementById("pickOff"),
-					clearButton: document.getElementById("clearOff"),
-					settingKey: "imageOff",
-				});
-				window.XPlanePI.wireImageUpload({
-					input: document.getElementById("fileOn"),
-					thumb: document.getElementById("thumbOn"),
-					pickButton: document.getElementById("pickOn"),
-					clearButton: document.getElementById("clearOn"),
-					settingKey: "imageOn",
-				});
-
 				const datarefField = document.getElementById("datarefField");
+				const stateDatarefField = document.getElementById("stateDatarefField");
 				const commandField = document.getElementById("commandField");
 				const commandOnFieldEl = document.getElementById("commandOnField");
 				const commandOffFieldEl = document.getElementById("commandOffField");
 				const datarefPreview = document.getElementById("datarefPreview");
+				const stateDatarefPreview = document.getElementById("stateDatarefPreview");
 				if (datarefField) {
 					window.XPlanePI.attachAutocomplete(datarefField, "dataref");
 					window.XPlanePI.attachLivePreview(datarefField, datarefPreview);
+				}
+				if (stateDatarefField) {
+					window.XPlanePI.attachAutocomplete(stateDatarefField, "dataref");
+					window.XPlanePI.attachLivePreview(stateDatarefField, stateDatarefPreview);
 				}
 				if (commandField) window.XPlanePI.attachAutocomplete(commandField, "command");
 				if (commandOnFieldEl)

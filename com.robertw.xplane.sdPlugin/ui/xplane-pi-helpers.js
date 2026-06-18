@@ -1,3 +1,11 @@
+/*
+ * xp_streamdeck - Stream Deck plugin for X-Plane 12
+ * Copyright (c) 2026 thWelly
+ *
+ * Licensed under the MIT License.
+ * See the LICENSE file in the project root for full license text.
+ */
+
 // X-Plane Stream Deck Plugin — Property Inspector helpers.
 // Shared by every action's PI to:
 //   - hook autocomplete into <sdpi-textfield> path inputs (DataRef + Command)
@@ -58,6 +66,47 @@
 		}
 	})();
 
+	// ---------------- Selector placeholder substitution ----------------
+	// Mirrors src/util/placeholders.ts on the plugin side. Lets the live
+	// preview and autocomplete query the *resolved* path (e.g. pdf1/brt)
+	// instead of the literal template (pdf{PDF}/brt) which X-Plane can't find.
+
+	let globalCached = {};
+
+	const refreshGlobal = async () => {
+		const client = getClient();
+		if (!client?.getGlobalSettings) return;
+		try {
+			const s = await client.getGlobalSettings();
+			if (s && typeof s === "object") globalCached = s;
+		} catch (err) {
+			console.error("xplane-pi-helpers: getGlobalSettings failed", err);
+		}
+	};
+
+	(async () => {
+		await refreshGlobal();
+		const client = getClient();
+		const live = client?.didReceiveGlobalSettings;
+		if (live && typeof live.subscribe === "function") {
+			live.subscribe((arg) => {
+				const s = arg?.payload?.settings ?? arg?.settings;
+				if (s && typeof s === "object") globalCached = s;
+			});
+		}
+	})();
+
+	const PLACEHOLDER_RE = /\{([A-Za-z][A-Za-z0-9_]*)\}/g;
+	const substitutePlaceholders = (path) => {
+		if (!path) return path;
+		const selectors = globalCached?.selectors;
+		if (!selectors || typeof selectors !== "object") return path;
+		return path.replace(PLACEHOLDER_RE, (match, key) => {
+			const value = selectors[key];
+			return typeof value === "number" && Number.isFinite(value) ? String(value) : match;
+		});
+	};
+
 	const updateSetting = async (key, value) => {
 		if (!cacheReady) await ready;
 		await refresh();
@@ -72,94 +121,6 @@
 		else next[key] = value;
 		cached = next;
 		await client.setSettings(next);
-	};
-
-	// ---------------- Image upload ----------------
-	// Stream Deck XL key resolution is 96px; @2x = 144px. Larger images inflate
-	// the data URL persisted into settings (each kilobyte is shipped over the
-	// SD WS protocol on every read), and very large data URLs have been
-	// observed to be silently dropped by the SD software on state transitions.
-	// Downscale to 144x144 PNG before persisting.
-
-	const readAsDataURL = (file) =>
-		new Promise((resolve, reject) => {
-			const r = new FileReader();
-			r.onload = () => resolve(String(r.result));
-			r.onerror = () => reject(r.error);
-			r.readAsDataURL(file);
-		});
-
-	const resizeToPng = (dataUrl, targetSize = 144) =>
-		new Promise((resolve, reject) => {
-			const img = new Image();
-			img.onload = () => {
-				const canvas = document.createElement("canvas");
-				canvas.width = targetSize;
-				canvas.height = targetSize;
-				const ctx = canvas.getContext("2d");
-				if (!ctx) {
-					reject(new Error("Canvas 2D context unavailable"));
-					return;
-				}
-				const scale = Math.min(targetSize / img.width, targetSize / img.height);
-				const w = img.width * scale;
-				const h = img.height * scale;
-				const x = (targetSize - w) / 2;
-				const y = (targetSize - h) / 2;
-				ctx.clearRect(0, 0, targetSize, targetSize);
-				ctx.drawImage(img, x, y, w, h);
-				resolve(canvas.toDataURL("image/png"));
-			};
-			img.onerror = () => reject(new Error("Image decode failed"));
-			img.src = dataUrl;
-		});
-
-	const setThumbBackground = (el, dataUrl) => {
-		if (!el) return;
-		el.style.backgroundImage = dataUrl ? `url("${dataUrl}")` : "";
-	};
-
-	// Wires a file input + thumbnail + reset button into the shared settings
-	// cache. The settings key is removed when the user clears the image, so
-	// missing == "no custom image" without a sentinel value.
-	const wireImageUpload = ({ input, thumb, clearButton, settingKey, pickButton }) => {
-		if (!input || !thumb || !settingKey) {
-			console.warn("xplane-pi-helpers: wireImageUpload missing input/thumb/settingKey");
-			return;
-		}
-
-		// Initial thumbnail from whatever the cache already has — wait for the
-		// ready promise to make sure didReceiveSettings has filled `cached`.
-		ready.then(() => {
-			const initial = cached?.[settingKey];
-			if (typeof initial === "string" && initial) setThumbBackground(thumb, initial);
-		});
-
-		input.addEventListener("change", async () => {
-			const file = input.files?.[0];
-			if (!file) return;
-			try {
-				const raw = await readAsDataURL(file);
-				const dataUrl = await resizeToPng(raw);
-				setThumbBackground(thumb, dataUrl);
-				await updateSetting(settingKey, dataUrl);
-			} catch (err) {
-				console.error(`xplane-pi-helpers: failed to read image for ${settingKey}`, err);
-			} finally {
-				input.value = "";
-			}
-		});
-
-		if (pickButton) {
-			pickButton.addEventListener("click", () => input.click());
-		}
-
-		if (clearButton) {
-			clearButton.addEventListener("click", async () => {
-				setThumbBackground(thumb, "");
-				await updateSetting(settingKey, undefined);
-			});
-		}
 	};
 
 	// ---------------- Generic helpers ----------------
@@ -198,10 +159,11 @@
 
 	const fetchSuggestions = async (kind, prefix) => {
 		if (!prefix || prefix.length < 2) return [];
+		const resolvedPrefix = substitutePlaceholders(prefix);
 		const endpoint = kind === "command" ? "commands" : "datarefs";
 		try {
 			const res = await fetchWithTimeout(
-				`${API_BASE}/${endpoint}?filter[name]=${encodeURIComponent(prefix)}`,
+				`${API_BASE}/${endpoint}?filter[name]=${encodeURIComponent(resolvedPrefix)}`,
 			);
 			if (!res.ok) return [];
 			const body = await res.json();
@@ -246,7 +208,8 @@
 	// ---------------- Live DataRef preview ----------------
 
 	const fetchDataRefValue = async (rawName) => {
-		const { basePath, index } = parseDataRefPath(rawName);
+		const resolvedName = substitutePlaceholders(rawName);
+		const { basePath, index } = parseDataRefPath(resolvedName);
 		try {
 			const r1 = await fetchWithTimeout(
 				`${API_BASE}/datarefs?filter[name]=${encodeURIComponent(basePath)}`,
@@ -325,7 +288,5 @@
 		attachAutocomplete,
 		attachLivePreview,
 		updateSetting,
-		resizeToPng,
-		wireImageUpload,
 	};
 })();
