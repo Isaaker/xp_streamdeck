@@ -1,54 +1,88 @@
 # Stream Deck Profiles #
 
-> [!IMPORTANT]  
-> The Streamdeck profiles in the following library only work together with the xp_streamdesk Plugin.
+Stream Desk XL Profiles only function together with the xp_streamdesk Plugin.
 
-## Streamdeck Models Support ##
+## Sync via `make` ##
 
-Streamdeck models currently supported by the profiles:
+Do **not** import/export these profiles through the Stream Deck UI — it creates
+"Copy" duplicates with fresh UUIDs and breaks the cross-profile links in the
+parent `X-Plane` profile.
 
-| **Profile** | Streamdeck XL (4x8) | Streamdeck MK2 & Streamdeck 3 (3x15) |
-| --- | --- | --- |
-| **G1000 - X-Plane Default X1000 (G1000)** | ✅ | ✅ |
-| **Cessna 172 SP by X-Plane** | ✅ | ✅ |
-| **Piper PA-46 M500 by X-Aerodynamics** | ✅ | ❌ |
-| **Diamond DA42 and DA62 by Aerobask** | ✅ | ❌ |
-| **UL Shark by Aerobask** | ✅ | ❌ |
-| **Phenom 300 by Aerobask** | ✅ | ❌ |
-| **Pilatus PC12 by Thranda (G1000 Version)** | ✅ | ❌ |
-| **Toliss A320 Family** | ❌ | ✅ |
-| **A330 by X-Plane & A330 by Aerogenesis** | ❌ | ✅ |
+* `make export` — snapshot live profiles (`xp_stream_*` and the `X-Plane`
+  parent) from `~/Library/Application Support/com.elgato.StreamDeck/ProfilesV3/`
+  into this directory.
+* `make import` — restore every `*.streamDeckProfile` in this directory back
+  into `ProfilesV3/`, patching `Device.UUID` to the local Stream Deck hardware
+  so it works on any Mac (dev laptop ↔ sim Mac).
 
-> [!TIP]
-> If you want to add a profile for other streamdeck models feel free to open a new Issue or Pull Request. This refers only to devices supported by the profiles, for plugin compatibility [check here](https://github.com/rwellinger/xp_streamdeck/tree/main#prerequisites).
+Both commands quit and relaunch the Stream Deck app automatically. Folder
+UUIDs are preserved, so the parent profile's child links stay intact.
 
-## Streamdeck Profiles Overview ##
+### First-time setup on a new Mac
 
-### G1000 - X-Plane Default X1000 (G1000) ###
+If the target Mac already has profiles with the same names but different
+folder UUIDs (e.g. previously imported through the Stream Deck UI), the first
+`make import` will produce **duplicates** — the old profiles stay, the new
+ones from the repo land next to them. This is a one-time situation.
+
+To clean it up:
+
+1. In the Stream Deck app, delete every `xp_stream_*` profile **and** the
+   `X-Plane` parent profile.
+2. Run `make import`.
+3. Open the `X-Plane` parent and re-link the one tile that points to Stream
+   Deck's system "Default Profile" — that profile is intentionally not synced
+   and has a different UUID on every Mac.
+
+From then on every `git pull && make import` overwrites the same folder UUIDs
+in place — no more duplicates, no more re-linking.
+
+### Adding a new profile
+
+Adding a new aircraft profile (e.g. B738):
+
+1. **In the Stream Deck app:** create the new profile and name it
+   `xp_stream_<aircraft>` — e.g. `xp_stream_b738`. The lowercase
+   `xp_stream_` prefix is required; the sync filter ignores anything else.
+2. Configure the pages and buttons.
+3. In the `X-Plane` parent profile, add a new "Switch Profile" tile that
+   points to the new profile.
+4. Run `make export` and select **both** the new profile *and*
+   `xp_stream_parent` — otherwise the sim Mac won't know about the link.
+5. *(Optional)* add a `## <Aircraft>` block with features to this README.
+6. Commit on a feature branch, open a PR, merge.
+
+On the sim Mac: `git pull && make import` picks up the new profile and the
+updated parent automatically — the new tile works on first launch because
+folder UUIDs are preserved across machines.
+
+## X-Plane Menu Profile
+
+This is a default Profile where all profiles are included. Required to link all profiles together. The import/export mechanism supports this on the sync.
+
+Filename: xp_stream_parent.streamDeckProfile
+
+## Default X1000 (G1000) ##
 
 Filename: xp_stream_g1000.streamDeckProfile
 
-Plugin Version Required: 1.1.0.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
-**Features:**
+### Features: ###
 
 * Garmin Default Autopilot
 * PFD and MFD Support
 * GCU (Alpha & Numeric)
 * Cockpit Views
 
-**Links:**
 
-* Streamdeck XL (4x8): [Go to the profile](./StreamDeck%20XL/xp_stream_g1000.streamDeckProfile)
-* Streamdeck MK2 & Streamdeck 3 (3x15): [Go to the profile](./Streamdeck%203/xp_stream_g1000.streamDeckProfile)
-
-## Cessna 172 SP by X-Plane ##
+## Cessna 172 SP ##
 
 Filename: xp_stream_c172sp.streamDeckProfile
 
-Plugin Version Required: 1.1.0.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
-**Features:**
+### Features: ###
 
 * Default Cockpit Buttons
 * Garmin Autopilot
@@ -56,13 +90,59 @@ Plugin Version Required: 1.1.0.0 or newer
 * GCU for G1000 (Alpha & Numeric)
 * Cockpit Views
 
-## Piper PA-46 M500 by X-Aerodynamics ##
+## Cirrus SR22 ##
+
+Filename: xp_stream_sr22.streamDeckProfile
+
+Plugin Version Required: 1.4.3.0 or newer
+
+### Features: ###
+
+* Default Cockpit Buttons
+* Autopilot
+* X1000 (X-Plane G1000)
+* GCU for G1000 (Alpha & Numeric)
+* Cockpit Views
+
+## Lancair Evolution ##
+
+The aircraft from "Austin Meyer"
+
+Filename: xp_stream_lancair.streamDeckProfile
+
+Plugin Version Required: 1.3.0.0 or newer
+
+### Features: ###
+
+* Default Cockpit Buttons
+* Garmin Autopilot
+* X1000 (X-Plane G1000)
+* GCU for G1000 (Alpha & Numeric)
+* Cockpit Views
+
+
+## VAN's VR10 ##
+
+Filename: xp_stream_rv10.streamDeckProfile
+
+Plugin Version Required: 1.4.0.0 or newer
+
+### Features: ###
+
+* Default Cockpit Buttons
+* Garmin Autopilot
+* X1000 (X-Plane G1000)
+* GCU for G1000 (Alpha & Numeric)
+* Cockpit Views
+
+
+## Piper PA-46 M500 ##
 
 Filename: xp_stream_pa46.streamDeckProfile
 
-Plugin Version Required: 1.1.3.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
-**Features:**
+### Features: ###
 
 * Default Cockpit Buttons
 * Full Overhead Panel
@@ -71,13 +151,13 @@ Plugin Version Required: 1.1.3.0 or newer
 * GCU for G1000 (Alpha & Numeric)
 * Cockpit Views
 
-## Diamond DA42 and DA62 by Aerobask ##
+## Diamond DA42 and DA62 ##
 
 Filename: xp_stream_da42.streamDeckProfile
 
-Plugin Version Required: 1.1.0.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
-**Features:**
+### Features: ###
 
 * Default Cockpit Buttons
 * Garmin Autopilot
@@ -85,13 +165,14 @@ Plugin Version Required: 1.1.0.0 or newer
 * GCU for G1000 (Alpha & Numeric)
 * Cockpit Views
 
+
 ## Diamond DA20 / DV20 by Aerobask ##
 
 Filename: xp_stream_dv20.streamDeckProfile
 
-Plugin Version Required: 1.1.0.0 or newer
+Plugin Version Required: 1.4.1.0 or newer
 
-**Features:**
+### Features: ###
 
 * Default Cockpit Buttons
 * DV20 Autopilot
@@ -99,13 +180,15 @@ Plugin Version Required: 1.1.0.0 or newer
 * Skyview Touch Support
 * Cockpit Views
 
-## UL Shark by Aerobask ##
+
+
+## UL Shark ##
 
 Filename: xp_stream_shark.streamDeckProfile
 
-Plugin Version Required: 1.1.1.0 or newer
+Plugin Version Required: 1.3.1.0 or newer
 
-**Features:**
+### Features: ###
 
 * Default Cockpit Buttons
 * DV20 Autopilot
@@ -113,13 +196,13 @@ Plugin Version Required: 1.1.1.0 or newer
 * Skyview Touch Support
 * Cockpit Views
 
-## Phenom 300 by Aerobask ##
+## Phenom 300 ##
 
 Filename: xp_stream_ph300.streamDeckProfile
 
-Plugin Version Required: 1.1.1.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
-**Features:**
+### Features: ###
 
 * Phenom Cockpit Buttons
 * Phenom Autopilot
@@ -134,14 +217,74 @@ I use the PC12 from Thranda in G1000 Configuration on the Mac because better exp
 
 Filename: xp_stream_pc12.streamDeckProfile
 
-Plugin Version Required: 1.1.1.0 or newer
+Plugin Version Required: 1.3.0.0 or newer
 
-**Features:**
+### Features: ###
 
 * PC12 Overhead and Cockpit Buttons
 * PC12 Autopilot
 * Shows some Engine indicators
 * X1000 (X-Plane G1000)
 * GCU for G1000 (Alpha & Numeric)
+* Ground Procedures (Cold&Dark)
+* Cockpit Views
+
+## EuroCopter EC130 (Garmin 430 Edition) ##
+
+Filename: xp_stream_ec130.streamDeckProfile
+
+Plugin Version Required: 1.3.0.0 or newer
+
+### Features: ###
+
+* EC130 Cockpit Buttons
+* EC130 and Hover Assistent Autopilot Support
+* Shows some Engine indicators
+* Garmin 430 Support
+* Ground Procedures (Cold&Dark)
+* Cockpit Views
+
+## AW-109 SP 2.0
+
+Filename: xp_stream_aw109.streamDeckProfile
+
+Plugin Version Required: 1.4.3.0 or newer (Uses the new Display Selector)
+
+### Features: ###
+
+* AW109 Cockpit Buttons
+* AW109 Autopilot
+* Overhead and Ground
+* Shows some Engine indicators
+* Ground Procedures (Cold&Dark)
+* Cockpit Views
+
+## Guimbal Cabri G2
+
+Filename: xp_stream_gabri_g2.streamDeckProfile
+
+Plugin Version Required: 1.4.3.0 or newer (Uses the new Display Selector)
+
+### Features: ###
+
+* G2 Cockpit Buttons
+* G2 Autopilot
+* Shows some Engine indicators
+* Ground Procedures (Cold&Dark)
+* Cockpit Views
+
+## T-6A Texan II by AOA
+I love this from the PC9 adapted airplane. The Cockpit Profile is not yet finish.
+Autopilot is missing as I have to findd out how it really works.
+The DataRef Data is not so unfriendly designed by AOA.
+
+Filename: xp_stream_t6a.streamDeckProfile
+
+Plugin Version Required: 1.4.4.0 or newer (Uses the new Display Selector)
+
+### Features: ###
+
+* T6A Cockpit Buttons
+* G1000 MFD integrated
 * Ground Procedures (Cold&Dark)
 * Cockpit Views
