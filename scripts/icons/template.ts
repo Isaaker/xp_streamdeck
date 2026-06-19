@@ -495,6 +495,9 @@ const PUSHBUTTON_PALETTE: Record<PushButtonColor, { face: string; glint: string 
 	// Off-white face so it doesn't glare; near-pure-white glint keeps the
 	// glossy plastic cue.
 	white: { face: "#d4d4d8", glint: "#ffffff" },
+	// Inactive/unlit button: dark matte face that still clears the bezel inner
+	// ring (#4b5563) and tile BG (#0d0d0d); muted glint reads as "off".
+	black: { face: "#27272a", glint: "#52525b" },
 };
 
 export function renderPushButtonIcon(def: PushButtonIcon): string {

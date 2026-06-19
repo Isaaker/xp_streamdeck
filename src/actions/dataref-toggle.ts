@@ -25,6 +25,13 @@ import { applyIndex, parseDataRefPath } from "../util/dataref-path";
 import { clearTile, setNotFound, setOffline } from "../util/error-tile";
 import { extractPlaceholderKeys, substitutePlaceholders } from "../util/placeholders";
 import { trimString } from "../util/settings";
+import {
+	renderToggleStateSvg,
+	svgToDataUrl,
+	type ToggleBodyColor,
+	type ToggleLabelPosition,
+	type ToggleOrientation,
+} from "../util/toggle-image";
 import type { DataRefValue, SubscriptionHandle, XPlaneClient } from "../xplane";
 
 type TriggerMode = "write" | "command" | "command-on-off";
@@ -40,6 +47,11 @@ type DataRefToggleSettings = JsonObject & {
 	commandOffPath?: string;
 	strictOnMatch?: boolean;
 	holdMode?: boolean;
+	staticLabel?: string;
+	staticLabelPosition?: ToggleLabelPosition;
+	orientation?: ToggleOrientation;
+	bodyColor?: ToggleBodyColor;
+	invert?: boolean;
 };
 
 const STATE_OFF = 0;
@@ -56,6 +68,11 @@ interface ParsedSettings {
 	commandOffPath: string;
 	strictOnMatch: boolean;
 	holdMode: boolean;
+	staticLabel: string;
+	staticLabelPosition: ToggleLabelPosition;
+	orientation: ToggleOrientation;
+	bodyColor: ToggleBodyColor;
+	invert: boolean;
 }
 
 interface ActionState {
@@ -73,6 +90,11 @@ interface ActionState {
 	commandOnPath: string;
 	commandOffPath: string;
 	strictOnMatch: boolean;
+	staticLabel: string;
+	staticLabelPosition: ToggleLabelPosition;
+	orientation: ToggleOrientation;
+	bodyColor: ToggleBodyColor;
+	invert: boolean;
 	handle?: SubscriptionHandle;
 	lastValue?: DataRefValue;
 	currentState: number;
@@ -112,6 +134,11 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			commandOnPath: parsed.commandOnPath,
 			commandOffPath: parsed.commandOffPath,
 			strictOnMatch: parsed.strictOnMatch,
+			staticLabel: parsed.staticLabel,
+			staticLabelPosition: parsed.staticLabelPosition,
+			orientation: parsed.orientation,
+			bodyColor: parsed.bodyColor,
+			invert: parsed.invert,
 			currentState: STATE_DIRTY,
 			inflightKeyDown: false,
 		};
@@ -144,6 +171,11 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 		state.commandOnPath = parsed.commandOnPath;
 		state.commandOffPath = parsed.commandOffPath;
 		state.strictOnMatch = parsed.strictOnMatch;
+		state.staticLabel = parsed.staticLabel;
+		state.staticLabelPosition = parsed.staticLabelPosition;
+		state.orientation = parsed.orientation;
+		state.bodyColor = parsed.bodyColor;
+		state.invert = parsed.invert;
 
 		if (statePathChanged) {
 			this.dropSubscription(state);
@@ -385,6 +417,33 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 			state.valueOn,
 			state.strictOnMatch,
 		);
+		// Bake our own tile when the user picked a non-default look: vertical
+		// orientation, a body color, or a static label. Horizontal + gray + no
+		// label needs no override — the manifest default state image already is
+		// exactly that. A baked tile overrides the manifest/native image but NOT
+		// a user-uploaded one (those take precedence over setImage), so users get
+		// color / orientation / label without having to upload custom images.
+		const renderCustom =
+			state.staticLabel.length > 0 ||
+			state.orientation === "vertical" ||
+			state.bodyColor !== "gray" ||
+			state.invert;
+		// invert flips only the visual (handle position / lit track), not the
+		// logical state — for DataRefs wired the opposite way (e.g. a "closed"
+		// value that should read as OFF).
+		const isOn = target === STATE_ON;
+		const visualOn = state.invert ? !isOn : isOn;
+		const customImage: string | undefined = renderCustom
+			? svgToDataUrl(
+					renderToggleStateSvg(
+						visualOn ? "on" : "off",
+						state.staticLabel,
+						state.staticLabelPosition,
+						state.orientation,
+						state.bodyColor,
+					),
+				)
+			: undefined;
 		// Chain off any in-flight render so setState from an earlier update
 		// can't interleave with this one. Use a swallowing catch so a prior
 		// failure doesn't block subsequent renders.
@@ -401,6 +460,13 @@ export class XPlaneDataRefToggle extends SingletonAction<DataRefToggleSettings> 
 				// Once we have valid data, drop any disconnected/not-found overlay.
 				await clearTile(state.action);
 				await state.action.setState(target);
+				if (customImage !== undefined) {
+					await state.action.setImage(customImage);
+				} else {
+					// Clear any previous plugin-rendered override so the
+					// Stream Deck native state image shows through.
+					await state.action.setImage(undefined);
+				}
 				// Only commit currentState after the hardware confirms — keeps the
 				// early-exit guard above honest if a follow-up render races.
 				state.currentState = target;
@@ -474,7 +540,24 @@ function parseSettings(s: DataRefToggleSettings): ParsedSettings {
 		commandOffPath: trimString(s.commandOffPath),
 		strictOnMatch: s.strictOnMatch === true,
 		holdMode: s.holdMode === true,
+		staticLabel: trimString(s.staticLabel),
+		staticLabelPosition: s.staticLabelPosition === "bottom" ? "bottom" : "top",
+		orientation: s.orientation === "vertical" ? "vertical" : "horizontal",
+		bodyColor: parseBodyColor(s.bodyColor),
+		invert: s.invert === true,
 	};
+}
+
+function parseBodyColor(v: unknown): ToggleBodyColor {
+	switch (v) {
+		case "red":
+		case "green":
+		case "white":
+		case "blue":
+			return v;
+		default:
+			return "gray";
+	}
 }
 
 function sameValue(a: DataRefValue | undefined, b: DataRefValue): boolean {
