@@ -82,8 +82,6 @@ Streamdeck models currently supported by the profiles:
 | **Guimbal Cabri G2** | ✅ | ❌ |
 | **T-6A Texan II by AOA** | ✅ | ❌ |
 | **Toliss Airbus Family** | ❌ | ✅ |
-| **A330 by X-Plane & A330 by Aerogenesis** | ❌ | ✅ |
-
 
 > [!TIP]  
 > You can open Streamdeck 3 or Streamdeck MK2 profiles on Streamdeck XL without problems, but if you open Streamdeck XL profiles on Streamdeck 3 or Streamdeck MK2 the profiles would appear cropped.
