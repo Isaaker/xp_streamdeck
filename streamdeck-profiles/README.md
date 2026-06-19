@@ -357,6 +357,7 @@ Full list of integrated panels:
 * TCAS & XPDR
 * HYD
 * GROUND
+* RADIO
 
 > [!IMPORTANT]  
 > Engine Fire annunciators: light only when fire is detected, remain on after
